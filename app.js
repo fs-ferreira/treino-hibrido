@@ -22,8 +22,10 @@ import {
 } from "./lib/core.js";
 import { workouts, exercises } from "./lib/exercises.js";
 import { illustration } from "./lib/diagrams.js";
+import { createMovementPlayer } from "./lib/movement-player.js";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js";
 import { icon } from "./lib/icons.js";
+let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
 const escape = (s) =>
@@ -344,11 +346,13 @@ function settingsView() {
 }
 
 function openDialog(html, compact = false) {
+  disposeMovement();
   $("#guide-dialog").classList.toggle("confirm-dialog", compact);
   $("#guide-content").innerHTML = html;
   hydrateIcons($("#guide-content"));
   $("#guide-dialog").showModal();
   $("#guide-dialog").scrollTop = 0;
+  disposeMovement = createMovementPlayer($(".movement-guide"));
 }
 function confirmSession(onConfirm) {
   const completed = count(selected),
@@ -712,6 +716,7 @@ $("#guide-dialog").addEventListener("click", (event) => {
   }
 });
 $("#guide-dialog").addEventListener("close", () => {
+  disposeMovement();
   pendingConfirmation = null;
 });
 document.addEventListener("focusout", (event) => {

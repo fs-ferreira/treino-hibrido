@@ -1,0 +1,285 @@
+/* Original vector exercise illustrations. Scoped to avoid icon/guide collisions. */
+.movement-guide .movement {
+  gap: 16px;
+  margin-top: 24px;
+}
+.movement-guide figure {
+  padding: 8px;
+  margin: 0;
+  background: radial-gradient(ellipse at 50% 40%, #20282c 0, #111519 74%);
+  border: 1px solid #394248;
+  overflow: hidden;
+}
+.movement-guide .exercise-figure {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: none;
+  aspect-ratio: 360/310;
+}
+.movement-guide figcaption {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-top: 1px solid #ffffff12;
+  text-align: left;
+  color: #e4e9ed;
+}
+.exercise-figure .scene-floor {
+  stroke: #3b464e;
+  stroke-width: 2;
+  fill: none;
+}
+.exercise-figure .machine-frame {
+  stroke: #697981;
+  stroke-width: 6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.exercise-figure .machine-pad {
+  fill: #34424b;
+  stroke: #7c8d96;
+  stroke-width: 1.5;
+}
+.exercise-figure .pulley,
+.exercise-figure .weight-disc {
+  fill: #202b32;
+  stroke: #91a3ab;
+  stroke-width: 2;
+}
+.exercise-figure .machine-pivot {
+  fill: #d2e0e5;
+  stroke: #34424b;
+  stroke-width: 2;
+}
+.exercise-figure .plate-line {
+  stroke: #8d9da5;
+  stroke-width: 1.5;
+}
+.exercise-figure .cable {
+  stroke: #99aab4;
+  stroke-width: 1.5;
+  fill: none;
+}
+.exercise-figure .handle {
+  stroke: #e1ebee;
+  stroke-width: 4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.exercise-figure .rope {
+  stroke: #e1ebee;
+  stroke-width: 4;
+  stroke-dasharray: 2 2;
+  fill: none;
+  stroke-linecap: round;
+}
+.exercise-figure .roller {
+  fill: #4e6069;
+  stroke: #c0d1d7;
+  stroke-width: 1.5;
+}
+.exercise-figure .load {
+  fill: #657780;
+  stroke: #d4e1e7;
+  stroke-width: 2;
+}
+.exercise-figure .load path {
+  stroke-width: 4;
+}
+.exercise-figure .body-segment {
+  fill: #a1b2b7;
+  stroke: #d4e3e6;
+  stroke-width: 1;
+}
+.exercise-figure .body-torso {
+  fill: #31434a;
+  stroke: #b6c7cd;
+  stroke-width: 1.5;
+}
+.exercise-figure .is-moving {
+  fill: #799b69;
+  stroke: #c3f969;
+  stroke-width: 2;
+}
+.exercise-figure .far-limb {
+  opacity: 0.42;
+}
+.exercise-figure .shorts {
+  fill: #253139;
+  stroke: #91a3ab;
+  stroke-width: 1;
+}
+.exercise-figure .shirt-seam {
+  stroke: #839ba3;
+  stroke-width: 1;
+  fill: none;
+  stroke-dasharray: 3 3;
+}
+.exercise-figure .joint-dot {
+  fill: #142025;
+  stroke: #d1e1e6;
+  stroke-width: 1.3;
+}
+.exercise-figure .neck {
+  stroke: #a1b2b7;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+.exercise-figure .figure-head,
+.exercise-figure .figure-hand {
+  fill: #b8c8cb;
+  stroke: #e1ecee;
+  stroke-width: 1;
+}
+.exercise-figure .hairline {
+  stroke: #30444d;
+  stroke-width: 7;
+  fill: none;
+  stroke-linecap: round;
+}
+.exercise-figure .face-detail {
+  stroke: #e1ecee;
+  stroke-width: 2;
+  fill: none;
+}
+.exercise-figure .shoe {
+  fill: #374952;
+  stroke: #d5e5e8;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.exercise-figure .trajectory {
+  stroke: #79dfe5;
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+  fill: none;
+  stroke-linecap: round;
+}
+.exercise-figure .contact-line {
+  stroke: #79dfe5;
+  stroke-width: 3;
+  fill: none;
+}
+.exercise-figure .figure-cue {
+  font:
+    600 13px system-ui,
+    sans-serif;
+  fill: #e4edf0;
+  letter-spacing: 0;
+}
+.exercise-figure .figure-cue.secondary {
+  font-weight: 400;
+  fill: #a9bac3;
+}
+.movement-legend {
+  font-size: 11px;
+  color: #a9bac3;
+  line-height: 1.7;
+  margin: 12px 0 18px;
+}
+.movement-legend > span {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #c3f969;
+  margin-right: 5px;
+  border-radius: 50%;
+}
+.movement-legend strong {
+  display: block;
+  color: #d9e8ed;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.movement-open {
+  margin-bottom: 16px;
+}
+.movement-player {
+  border: 1px solid #3c4b53;
+  background: #10161b;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.movement-player[hidden],
+.motion-controls[hidden] {
+  display: none;
+}
+.motion-stage {
+  max-width: 440px;
+  margin: auto;
+}
+.motion-stage svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.motion-status {
+  text-align: center;
+  font-size: 12px;
+  min-height: 18px;
+  color: #79dfe5;
+}
+.motion-controls,
+.motion-steps {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.motion-controls .button {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.motion-controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.motion-steps button {
+  background: transparent;
+  border: 1px solid #41525e;
+  border-radius: 7px;
+  color: #c2d0d6;
+  padding: 9px 18px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.motion-steps button[aria-pressed="true"] {
+  border-color: #79dfe5;
+  color: #79dfe5;
+  background: #79dfe511;
+}
+.motion-note {
+  text-align: center;
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .movement-guide .movement {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .movement-guide figure {
+    padding: 6px;
+  }
+  .movement-guide figcaption {
+    font-size: 13px;
+  }
+  .movement-player {
+    padding: 10px;
+  }
+  .motion-controls {
+    gap: 6px;
+  }
+  .motion-controls .button {
+    padding: 10px;
+  }
+  .movement-guide .figure-cue {
+    font-size: 14px;
+  }
+}

@@ -60,9 +60,20 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 - `lib/exercises.js`, `lib/diagrams.js`: conteúdo dos guias e imagens SVG.
 - `assets/references.json`: fontes e demonstrações verificadas.
 - `tests/core.test.mjs`: testes de regressão.
+- `lib/movement-data.js`, `lib/movement-equipment.js`, `lib/movement-player.js`: poses, equipamentos e reprodução dos movimentos.
 
 O plano é uma reprodução organizacional do conteúdo fornecido; não faz avaliação individual nem ajusta automaticamente a carga de treino.
 
 ## Ícones
 
 [Lucide](https://lucide.dev/guide/static) é distribuído localmente, sem CDN nem fonte de emoji. Licença ISC em `assets/lucide-LICENSE.txt`. Para regenerar os ícones: `npm ci` e `npm run icons`. As dependências são apenas de desenvolvimento; execução e publicação não exigem instalação ou build.
+
+## Ilustrações e movimento
+
+Os 21 guias têm desenhos SVG originais com silhueta, articulações, apoios, cargas e setas. Os quadros Início e Final permanecem disponíveis e são empilhados no celular. O contorno destaca a região que se move, não uma representação de ativação muscular.
+
+Em **Ver movimento**, use Reproduzir, Pausar e Reiniciar ou escolha Início, Meio e Final. A animação executa uma ida e volta em cerca de seis segundos, sem repetição automática; a velocidade é ilustrativa. Com `prefers-reduced-motion`, os controles de reprodução são substituídos pela seleção de etapas. Fechar o guia ou ocultar a aba interrompe a reprodução.
+
+As poses usam ângulos e comprimentos constantes; contatos fixos usam cinemática inversa. Crucifixos e adutora usam uma projeção frontal com encurtamento visual em profundidade. Os equipamentos são formas simplificadas e podem diferir da máquina da academia. As referências de cada guia continuam disponíveis para consultar a execução.
+
+Para revisão visual dos 21 exercícios em três posições, execute `node scripts/preview-movements.mjs` e abra `http://127.0.0.1:4173/test-results/movements.html` com o servidor local iniciado. A galeria fica em diretório ignorado pelo Git e não é publicada. Os testes cobrem integridade das poses, comprimentos, apoios, IDs acessíveis, ciclo, pausa, encerramento e movimento reduzido.
