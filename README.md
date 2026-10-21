@@ -22,7 +22,7 @@ Os testes verificam paces, distâncias, oito blocos do intervalado, calendário 
 
 ## Como usar
 
-1. Abra Configurações e informe pace leve, pace moderado-forte e maior corrida recente. O pace de caminhada é opcional.
+1. Abra Configurações e informe os paces com a máscara automática (digite `600` para `6:00`). O pace de caminhada é opcional. Registre a maior corrida recente em distância, tempo e data; o pace médio aparece automaticamente. A opção de usar esse pace como moderado-forte bloqueia o campo manual; desmarcar restaura o valor manual anterior.
 2. Escolha sábado ou domingo para o longão e a duração entre 60 e 90 minutos.
 3. Em Hoje ou Semana, abra uma sessão. Na musculação, registre carga e repetições de cada série; em Como fazer, consulte o guia ilustrado e a demonstração externa.
 4. Depois da corrida, registre duração, distância, esforço e observações.
@@ -42,7 +42,7 @@ Referências de corrida: [CDC](https://www.cdc.gov/physical-activity-basics/meas
 
 ## Dados e backup
 
-Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:v1`; esquema versão 1. Não há contas, analytics, GPS, cronômetro nem sincronização. Dados pessoais nunca são enviados ao repositório. A navegação a vídeos e fontes externas abre os respectivos sites somente quando o usuário clica.
+Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:v1`; esquema versão 2. Diários e backups da versão 1 são migrados, preservando o texto da corrida recente como anotação e todas as sessões. Os novos campos são preenchidos pelo usuário, sem interpretar o texto antigo. Não há contas, analytics, GPS, cronômetro nem sincronização. Dados pessoais nunca são enviados ao repositório. A navegação a vídeos e fontes externas abre os respectivos sites somente quando o usuário clica.
 
 Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação valida todo o arquivo antes de substituir o diário; é solicitada confirmação. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
 
@@ -56,8 +56,13 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 
 - `app.js`: interface, formulários, navegação e persistência.
 - `lib/core.js`: calendário, cálculos e validação dos backups.
+- `lib/icons.js`, `lib/ui.js`: ícones SVG locais Lucide e máscaras de digitação.
 - `lib/exercises.js`, `lib/diagrams.js`: conteúdo dos guias e imagens SVG.
 - `assets/references.json`: fontes e demonstrações verificadas.
 - `tests/core.test.mjs`: testes de regressão.
 
 O plano é uma reprodução organizacional do conteúdo fornecido; não faz avaliação individual nem ajusta automaticamente a carga de treino.
+
+## Ícones
+
+[Lucide](https://lucide.dev/guide/static) é distribuído localmente, sem CDN nem fonte de emoji. Licença ISC em `assets/lucide-LICENSE.txt`. Para regenerar os ícones: `npm ci` e `npm run icons`. As dependências são apenas de desenvolvimento; execução e publicação não exigem instalação ou build.
