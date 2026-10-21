@@ -1,0 +1,139 @@
+{
+  "checkedOn": "2026-10-20",
+  "notes": "Demo page means the professional source contains a named Vimeo/YouTube embed verified in page content. Automated fetching of some player endpoints was blocked; playback and embedding permission have not been tested. Prefer external page links. No media was copied.",
+  "exercises": [
+    {
+      "id": "pec-deck",
+      "name": "Crucifixo na máquina",
+      "source": "https://www.muscleandstrength.com/exercises/pec-dec.html",
+      "demo": "https://www.muscleandstrength.com/exercises/pec-dec.html"
+    },
+    {
+      "id": "incline-press",
+      "name": "Supino inclinado com halteres",
+      "source": "https://www.muscleandstrength.com/exercises/incline-dumbbell-bench-press.html",
+      "demo": "https://www.youtube.com/watch?v=_NrQUYg7Nlc",
+      "demoAuthor": "National Academy of Sports Medicine (NASM)"
+    },
+    {
+      "id": "lat-pulldown",
+      "name": "Puxada aberta",
+      "source": "https://www.muscleandstrength.com/exercises/wide-grip-pull-down",
+      "demo": "https://www.muscleandstrength.com/exercises/wide-grip-pull-down"
+    },
+    {
+      "id": "machine-row",
+      "name": "Remada máquina",
+      "source": "https://www.muscleandstrength.com/exercises/machine-row.html",
+      "demo": "https://www.muscleandstrength.com/exercises/machine-row.html"
+    },
+    {
+      "id": "lateral-raise",
+      "name": "Elevação lateral",
+      "source": "https://www.muscleandstrength.com/exercises/dumbbell-lateral-raise.html",
+      "demo": "https://www.youtube.com/watch?v=XPPfnSEATJA",
+      "demoAuthor": "National Academy of Sports Medicine (NASM)"
+    },
+    {
+      "id": "cable-curl",
+      "name": "Rosca direta na polia",
+      "source": "https://www.muscleandstrength.com/exercises/cable-curl.html",
+      "demo": "https://www.muscleandstrength.com/exercises/cable-curl.html"
+    },
+    {
+      "id": "rope-pushdown",
+      "name": "Tríceps corda na polia",
+      "source": "https://www.muscleandstrength.com/exercises/rope-tricep-extension.html",
+      "demo": "https://www.muscleandstrength.com/exercises/rope-tricep-extension.html"
+    },
+    {
+      "id": "single-rdl",
+      "name": "RDL unilateral",
+      "source": "https://www.acefitness.org/resources/everyone/exercise-library/127/single-arm-single-leg-romanian-dead-lift/",
+      "demo": "https://nismat.org/2020/11/13/single-leg-romanian-deadlift/",
+      "demoAuthor": "Nicholas Institute of Sports Medicine and Athletic Trauma"
+    },
+    {
+      "id": "bulgarian",
+      "name": "Búlgaro",
+      "source": "https://www.muscleandstrength.com/exercises/one-leg-dumbbell-squat-aka-bulgarian-squat.html",
+      "demo": "https://www.muscleandstrength.com/exercises/one-leg-dumbbell-squat-aka-bulgarian-squat.html"
+    },
+    {
+      "id": "leg-curl",
+      "name": "Mesa flexora unilateral",
+      "source": "https://www.muscleandstrength.com/exercises/single-leg-curl.html",
+      "demo": "https://www.muscleandstrength.com/exercises/single-leg-curl.html"
+    },
+    {
+      "id": "leg-extension",
+      "name": "Cadeira extensora unilateral",
+      "source": "https://www.muscleandstrength.com/exercises/single-leg-extension.html",
+      "demo": "https://www.muscleandstrength.com/exercises/single-leg-extension.html"
+    },
+    {
+      "id": "adductor",
+      "name": "Cadeira adutora",
+      "source": "https://www.muscleandstrength.com/exercises/hip-adduction-machine.html",
+      "demo": "https://www.muscleandstrength.com/exercises/hip-adduction-machine.html"
+    },
+    {
+      "id": "seated-calf",
+      "name": "Panturrilha sentado",
+      "source": "https://www.muscleandstrength.com/exercises/seated-calf-raise.html",
+      "demo": "https://www.muscleandstrength.com/exercises/seated-calf-raise.html"
+    },
+    {
+      "id": "standing-calf",
+      "name": "Panturrilha em pé",
+      "source": "https://www.muscleandstrength.com/exercises/standing-machine-calf-raise",
+      "demo": "https://www.muscleandstrength.com/exercises/standing-machine-calf-raise"
+    },
+    {
+      "id": "barbell-row",
+      "name": "Remada curvada com barra",
+      "source": "https://www.muscleandstrength.com/exercises/bent-over-barbell-row.html",
+      "demo": "https://www.muscleandstrength.com/exercises/bent-over-barbell-row.html"
+    },
+    {
+      "id": "crossover",
+      "name": "Cross over na polia",
+      "source": "https://www.muscleandstrength.com/exercises/cable-crossovers-%28mid-chest%29.html",
+      "demo": "https://www.muscleandstrength.com/exercises/cable-crossovers-%28mid-chest%29.html"
+    },
+    {
+      "id": "shoulder-press",
+      "name": "Desenvolvimento sentado com halteres",
+      "source": "https://www.muscleandstrength.com/exercises/seated-dumbbell-press.html",
+      "demo": "https://www.muscleandstrength.com/exercises/seated-dumbbell-press.html"
+    },
+    {
+      "id": "preacher-curl",
+      "name": "Rosca scott com barra",
+      "source": "https://www.muscleandstrength.com/exercises/preacher-curl.html",
+      "demo": "https://www.muscleandstrength.com/exercises/preacher-curl.html"
+    },
+    {
+      "id": "french-press",
+      "name": "Tríceps francês sentado com halter",
+      "source": "https://cdn.muscleandstrength.com/exercises/two-arm-dumbbell-extension.html",
+      "demo": "https://cdn.muscleandstrength.com/exercises/two-arm-dumbbell-extension.html",
+      "note": "www host returned 403 to web fetch; cdn host returned complete source with YouTube embed."
+    },
+    {
+      "id": "machine-crunch",
+      "name": "Abdominal máquina",
+      "source": "https://workoutlabs.com/exercise-guide/ab-crunch-machine/",
+      "demo": "https://www.youtube.com/watch?v=qWtYjH0enBA",
+      "demoAuthor": "Australian Catholic University Sport, Recreation and Wellbeing Centre (ACUSRWC)",
+      "note": "Demo verified in search index as Technogym Machine - Abdominal Crunch. Source guide indexed, direct source fetch returns 403. Match adjustment to actual machine."
+    },
+    {
+      "id": "reverse-crunch",
+      "name": "Abdominal infra — elevação do quadril no banco",
+      "source": "https://www.catalystathletics.com/exercise/320/Reverse-Crunch/",
+      "demo": "https://www.catalystathletics.com/exercise/320/Reverse-Crunch/",
+      "note": "Source and embedded video demonstrate floor reverse crunch and identify bench variations. In app clearly state demo uses floor; bench adaptation stabilizes head and upper back. Do not use M&F seated knee tuck page, despite its reverse-crunch title, because its variant differs from the planned hip curl."
+    }
+  ]
+}
