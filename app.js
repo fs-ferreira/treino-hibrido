@@ -25,6 +25,12 @@ import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js";
 import { icon } from "./lib/icons.js";
+import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.4.0";
+import {
+  createMotion,
+  createAccordions,
+  createDialogController,
+} from "./lib/motion.js?v=1.4.0";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -64,6 +70,28 @@ let data = defaults(),
   toastTimer,
   pendingConfirmation = null,
   draftManualPace = "";
+const motion = createMotion({ onStart: createMotionDiagnostics() });
+document.documentElement.classList.toggle(
+  "no-motion-api",
+  typeof Element.prototype.animate !== "function",
+);
+const accordions = createAccordions(motion, (card, open) => {
+  if (open) expanded.add(card.dataset.exercise);
+  else expanded.delete(card.dataset.exercise);
+});
+const dialogs = createDialogController($("#guide-dialog"), motion, {
+  onClosing() {
+    disposeMovement();
+    pendingConfirmation = null;
+  },
+  onClose() {
+    disposeMovement();
+    pendingConfirmation = null;
+  },
+});
+let currentRoute = routeFromHash();
+const routePositions = new Map();
+history.scrollRestoration = "manual";
 try {
   const saved = localStorage.getItem(KEY);
   if (saved) data = validateBackup(JSON.parse(saved));
@@ -136,13 +164,146 @@ const arrow = '<span aria-hidden="true">↗</span>';
 function heading(kicker, title, description, action = "") {
   return `<div class="page-heading"><div><p class="eyebrow">${kicker}</p><h1>${title}</h1><p class="muted">${description}</p></div>${action}</div>`;
 }
-function render() {
-  const rawRoute = location.hash.slice(1);
-  const route = ["hoje", "semana", "historico", "configuracoes"].includes(
-    rawRoute,
-  )
-    ? rawRoute
+function routeFromHash() {
+  const route = location.hash.slice(1);
+  return ["hoje", "semana", "historico", "configuracoes"].includes(route)
+    ? route
     : "hoje";
+}
+function scrollToSession() {
+  $("#session")?.scrollIntoView({
+    behavior: motion.reduced ? "instant" : "smooth",
+    block: "start",
+  });
+}
+function applyNavigation(route, options = {}) {
+  dialogs.forceClose();
+  if (route === currentRoute && !options.refresh) {
+    if (options.session) scrollToSession();
+    return;
+  }
+  routePositions.set(currentRoute, {
+    left: window.scrollX,
+    top: window.scrollY,
+  });
+  currentRoute = route;
+  render();
+  main.focus({ preventScroll: true });
+  window.scrollTo({
+    ...(routePositions.get(route) ?? { left: 0, top: 0 }),
+    behavior: "instant",
+  });
+  motion.enter(main);
+  if (options.session) scrollToSession();
+}
+function navigateTo(hash, options = {}) {
+  if (location.hash !== `#${hash}`) history.pushState(null, "", `#${hash}`);
+  applyNavigation(routeFromHash(), options);
+}
+function syncTodayStatus() {
+  if (currentRoute !== "hoje") return;
+  const start = weekStart(selected);
+  const done = Array.from(
+    { length: 7 },
+    (_, i) => data.sessions[addDays(start, i)],
+  ).filter((s) => s?.done && s.type !== "rest").length;
+  const ring = $(".progress-ring");
+  if (ring) {
+    ring.style.setProperty("--progress", `${Math.min(done / 6, 1) * 100}%`);
+    ring.querySelector("b").innerHTML = `${done}<small>/6</small>`;
+  }
+  document.querySelectorAll(".week-strip .day").forEach((button) => {
+    const key = button.dataset.date,
+      finished = Boolean(data.sessions[key]?.done);
+    button.classList.toggle("selected", key === selected);
+    button.setAttribute("aria-pressed", String(key === selected));
+    button.setAttribute(
+      "aria-label",
+      `${fullDate(key)}, ${workouts[getType(key)].name}${finished ? ", concluído" : ""}`,
+    );
+    const indicator = button.querySelector(".day-indicator");
+    indicator.classList.toggle("done", finished);
+    indicator.innerHTML = finished ? icon("check") : "";
+  });
+  const link = $(".hero .button"),
+    kind = workouts[getType(selected)].kind;
+  if (link)
+    link.innerHTML = `${data.sessions[selected]?.done ? "Rever treino" : kind === "rest" ? "Ver recuperação" : "Abrir treino"} ${icon("arrow-down")}`;
+}
+function syncStrength(id) {
+  if (!$(".progress-line")) return;
+  const s = data.sessions[selected],
+    total = count(selected);
+  $(".count-pill").textContent = `${total}/21 séries`;
+  $(".progress-line span").style.transform = `scaleX(${total / 21})`;
+  const button = $('[data-action="finish-strength"]');
+  button.classList.toggle("quiet", Boolean(s?.done));
+  button.classList.toggle("primary", !s?.done);
+  button.innerHTML = `${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${icon(s?.done ? "rotate-ccw" : "check")}`;
+  if (id) {
+    const card = $(`[data-exercise="${id}"]`);
+    const sets = s?.sets[id] ?? emptySets(),
+      complete = sets.filter((set) => set.done).length;
+    const badge = card.querySelector(".exercise-check");
+    badge.classList.toggle("complete", complete === 3);
+    badge.innerHTML = complete === 3 ? icon("check") : `${complete}/3`;
+    card.querySelectorAll('[data-field="done"]').forEach((input) => {
+      input
+        .closest(".sets-grid")
+        .classList.toggle(
+          "set-done",
+          Boolean(sets[Number(input.dataset.index)].done),
+        );
+    });
+  }
+  syncTodayStatus();
+}
+function refreshDay() {
+  accordions.finish();
+  motion.finishAll();
+  const before = $(".week-strip").getBoundingClientRect().top;
+  $(".page-heading h1").innerHTML =
+    selected === dateKey()
+      ? 'Vamos nessa<span class="accent">.</span>'
+      : 'Seu treino, no seu tempo<span class="accent">.</span>';
+  $(".page-heading .muted").textContent = fullDate(selected);
+  $(".hero").outerHTML = heroView();
+  $("#session").innerHTML = sessionView(getType(selected));
+  if ($(".week-strip .day").dataset.date !== weekStart(selected))
+    $(".week-strip").outerHTML = weekStrip();
+  hydrateIcons($(".hero"));
+  hydrateIcons($("#session"));
+  syncTodayStatus();
+  if (window.scrollY > 0)
+    window.scrollBy({
+      top: $(".week-strip").getBoundingClientRect().top - before,
+      behavior: "instant",
+    });
+  motion.enter($(".hero"), "day");
+  motion.enter($("#session"), "day");
+}
+function syncLongRun() {
+  const blocks = runningPlan("long", data.settings),
+    total = planTotal(blocks);
+  $(".long-options label strong").textContent =
+    `${data.settings.longMinutes} min`;
+  $(".hero-stats b").textContent = data.settings.longMinutes;
+  const overview = $(".run-overview");
+  overview.querySelector(":scope > div:first-child b").innerHTML =
+    `${total.minutes}<em>min</em>`;
+  overview.querySelector(":scope > div:last-child b").innerHTML =
+    `${total.known ? num(total.km, 2) : "—"}<em>km</em>`;
+  document.querySelectorAll(".run-block").forEach((row, i) => {
+    row.querySelector(".block-values b").textContent =
+      `${blocks[i].minutes} min`;
+    row.querySelector(".block-values small").textContent =
+      blocks[i].km === null ? "—" : `${num(blocks[i].km, 2)} km`;
+  });
+}
+function render() {
+  accordions.finish();
+  motion.finishAll();
+  const route = currentRoute;
   document.querySelectorAll("[data-nav]").forEach((a) => {
     const active = a.dataset.nav === route;
     a.classList.toggle("active", active);
@@ -188,6 +349,11 @@ function weekStrip(start = weekStart(selected)) {
     },
   ).join("")}</div>`;
 }
+function heroView() {
+  const type = getType(selected),
+    w = workouts[type];
+  return `<section class="hero ${w.kind}"><div class="hero-copy">${tag(w.tag, w.kind)}<p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? "<div><b>07</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>" : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : data.settings.longMinutes}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${data.sessions[selected]?.done ? "Rever treino" : w.kind === "rest" ? "Ver recuperação" : "Abrir treino"} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-word">${w.kind === "strength" ? "STR" : w.kind === "run" ? "RUN" : "RST"}</span><span class="art-cross">+</span><span class="art-caption">STRENGTH × ENDURANCE</span></div></section>`;
+}
 function todayView() {
   const type = getType(selected),
     w = workouts[type],
@@ -208,7 +374,7 @@ function todayView() {
     (!data.settings.easyPace
       ? `<div class="setup-banner"><span class="setup-symbol">↗</span><div><strong>Seu ritmo é o ponto de partida.</strong><p>Configure seus paces para calcular os treinos de corrida.</p></div><a class="button" href="#configuracoes">Configurar ritmos ${arrow}</a></div>`
       : "") +
-    `<div class="dashboard-grid"><section class="hero ${w.kind}"><div class="hero-copy">${tag(w.tag, w.kind)}<p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? "<div><b>07</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>" : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : data.settings.longMinutes}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${data.sessions[selected]?.done ? "Rever treino" : w.kind === "rest" ? "Ver recuperação" : "Abrir treino"} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-word">${w.kind === "strength" ? "STR" : w.kind === "run" ? "RUN" : "RST"}</span><span class="art-cross">+</span><span class="art-caption">STRENGTH × ENDURANCE</span></div></section><section class="week-summary panel"><p class="eyebrow">CONSISTÊNCIA &gt; PRESSA</p><h2>Uma semana.<br>Seis movimentos.</h2><div class="progress-ring" style="--progress:${Math.min(done / 6, 1) * 100}%"><div><b>${done}<small>/6</small></b><span>treinos concluídos</span></div></div><div class="split-stat"><span><i class="dot lime"></i> Musculação <b>3</b></span><span><i class="dot cyan"></i> Corrida <b>3</b></span></div></section></div><div class="section-title"><h2>Sua semana</h2><a class="text-link" href="#semana">Ver calendário ${arrow}</a></div>${weekStrip(start)}<section id="session" class="session-section">${sessionView(type)}</section>`
+    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><p class="eyebrow">CONSISTÊNCIA &gt; PRESSA</p><h2>Uma semana.<br>Seis movimentos.</h2><div class="progress-ring" style="--progress:${Math.min(done / 6, 1) * 100}%"><div><b>${done}<small>/6</small></b><span>treinos concluídos</span></div></div><div class="split-stat"><span><i class="dot lime"></i> Musculação <b>3</b></span><span><i class="dot cyan"></i> Corrida <b>3</b></span></div></section></div><div class="section-title"><h2>Sua semana</h2><a class="text-link" href="#semana">Ver calendário ${arrow}</a></div>${weekStrip(start)}<section id="session" class="session-section">${sessionView(type)}</section>`
   );
 }
 function sessionView(type) {
@@ -221,7 +387,7 @@ function strengthView(type) {
   const w = workouts[type],
     s = data.sessions[selected],
     total = count(selected);
-  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/21 séries</span></div><div class="progress-line"><span style="width:${(total / 21) * 100}%"></span></div><p class="section-hint">Abra um exercício para registrar as séries. Toque em “Como fazer” para ver o guia.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><p><span class="status-dot"></span> ${storageProblem ? "Confira o aviso de armazenamento" : "Alterações salvas neste navegador"}</p><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
+  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/21 séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / 21})"></span></div><p class="section-hint">Abra um exercício para registrar as séries. Toque em “Como fazer” para ver o guia.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><p><span class="status-dot"></span> ${storageProblem ? "Confira o aviso de armazenamento" : "Alterações salvas neste navegador"}</p><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
 }
 function exerciseCard(id, index, s) {
   const e = exercises[id],
@@ -239,24 +405,25 @@ function runView(type) {
       (type === "interval" && !data.settings.hardPace);
   return `<div class="section-title"><div><p class="eyebrow cyan-text">CORRIDA · ${shortDate(selected)}</p><h2>O caminho de hoje</h2></div>${tag("RITMO CONTROLADO", "run")}</div><div class="run-layout"><div><div class="run-overview panel"><div><small>DURAÇÃO PREVISTA</small><b>${total.minutes}<em>min</em></b></div><div><small>${total.complete ? "DISTÂNCIA ESTIMADA" : "DISTÂNCIA PARCIAL"}</small><b>${total.known ? num(total.km, 2) : "—"}<em>km</em></b></div></div>${missing ? '<div class="notice">Informe seus ritmos para completar os cálculos. <a href="#configuracoes">Configurar paces →</a></div>' : ""}${type === "long" ? `<div class="panel long-options"><label for="long-minutes">Duração do longão <strong>${data.settings.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${data.settings.longMinutes}"><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption">A faixa do plano equivale a ${parsePace(data.settings.easyPace) ? `${num(distance(60, parsePace(data.settings.easyPace)), 1)}–${num(distance(90, parsePace(data.settings.easyPace)), 1)} km` : "uma distância calculada com seu pace leve"}. Escolha conforme sua capacidade atual; não há aumento automático.</p></div>` : ""}<div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${blocks.map((b, i) => `<div class="run-block"><span class="block-index ${b.kind}">${String(i + 1).padStart(2, "0")}</span><div><b>${b.label}</b><small>${b.pace ? `${paceText(b.pace)} /km · ${num(b.kph)} km/h` : "Pace não informado"}</small></div><div class="block-values"><b>${b.minutes} min</b><small>${b.km === null ? "—" : num(b.km, 2) + " km"}</small></div></div>`).join("")}</div>${!total.complete ? '<p class="caption">O total parcial soma somente as etapas com pace informado. A caminhada pode ficar sem estimativa.</p>' : ""}</div><aside><div class="panel effort-card"><span class="mini-icon">≈</span><p class="eyebrow">FOCO DO TREINO</p><h3>${type === "interval" ? "Forte. Sem sprint." : "O ritmo da conversa."}</h3><p>${type === "interval" ? "Use um pace moderado-forte que você consiga repetir com controle nos oito blocos. Ajuste o ritmo à sua percepção de esforço." : "Mantenha o esforço em 3–4/10, como no plano original. Você deve conseguir conversar com frases completas e sem dificuldade."}</p><a class="text-link" href="#configuracoes">Ajustar meus ritmos ↗</a></div><form id="run-form" class="panel run-form"><p class="eyebrow">DEPOIS DO TREINO</p><h3>Como foi a corrida?</h3><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${r?.minutes ?? ""}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${r?.km ?? ""}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${r ? paceText((r.minutes * 60) / r.km) : "—"} /km</strong></div><label>Esforço percebido (0–10)<select name="rpe" required><option value="">Selecione</option>${Array.from({ length: 11 }, (_, i) => `<option value="${i}" ${r?.rpe === i ? "selected" : ""}>${i}${i === 0 ? " · repouso" : i === 10 ? " · máximo" : ""}</option>`).join("")}</select></label><label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(r?.notes || "")}</textarea></label><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ✓</button></form></aside></div>`;
 }
-function weekView() {
+function calendarView() {
   const dates = Array.from({ length: 7 }, (_, i) => addDays(week, i));
+  return `<div class="calendar-grid">${dates
+    .map((key) => {
+      const type = getType(key),
+        w = workouts[type],
+        s = data.sessions[key];
+      return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}"><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? "7 exercícios · 3 × 6–8" : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
+    })
+    .join("")}</div>`;
+}
+function weekView() {
   return (
     heading(
       "OLHE PARA O TODO",
       'Uma semana equilibrada<span class="accent">.</span>',
       "Três dias de força. Três de corrida. Um para recuperar.",
     ) +
-    `<div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(week)} — ${shortDate(addDays(week, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week">Semana atual</button></div><div class="calendar-grid">${dates
-      .map((key) => {
-        const type = getType(key),
-          w = workouts[type],
-          s = data.sessions[key];
-        return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}"><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? "7 exercícios · 3 × 6–8" : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
-      })
-      .join(
-        "",
-      )}</div><div class="notice subtle">Longão no ${data.settings.longDay === 6 ? "sábado" : "domingo"}. <a href="#configuracoes">Trocar o dia</a>. Sessões já registradas mantêm o treino original.</div>`
+    `<div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(week)} — ${shortDate(addDays(week, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week">Semana atual</button></div>${calendarView()}<div class="notice subtle">Longão no ${data.settings.longDay === 6 ? "sábado" : "domingo"}. <a href="#configuracoes">Trocar o dia</a>. Sessões já registradas mantêm o treino original.</div>`
   );
 }
 function historyView() {
@@ -350,8 +517,7 @@ function openDialog(html, compact = false) {
   $("#guide-dialog").classList.toggle("confirm-dialog", compact);
   $("#guide-content").innerHTML = html;
   hydrateIcons($("#guide-content"));
-  $("#guide-dialog").showModal();
-  $("#guide-dialog").scrollTop = 0;
+  dialogs.show();
   disposeMovement = createMovementPlayer($(".movement-guide"));
 }
 function confirmSession(onConfirm) {
@@ -423,57 +589,86 @@ function sources() {
   );
 }
 document.addEventListener("click", (event) => {
+  const summary = event.target.closest("details[data-exercise] > summary");
+  if (summary) {
+    event.preventDefault();
+    accordions.toggle(summary.parentElement);
+    return;
+  }
+  const link = event.target.closest('a[href^="#"]');
+  if (
+    link &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.shiftKey &&
+    !event.altKey &&
+    event.button === 0
+  ) {
+    const hash = link.getAttribute("href").slice(1);
+    if (
+      ["hoje", "semana", "historico", "configuracoes", "session"].includes(hash)
+    ) {
+      event.preventDefault();
+      navigateTo(hash, { session: hash === "session" });
+      return;
+    }
+  }
   const button = event.target.closest("[data-action]");
   if (!button) return;
   const action = button.dataset.action;
   if (action === "guide") return guide(button.dataset.id);
   if (action === "sources") return sources();
-  if (action === "close-dialog") return $("#guide-dialog").close();
+  if (action === "close-dialog") return dialogs.close();
   if (action === "confirm-session") {
-    const callback = pendingConfirmation;
-    pendingConfirmation = null;
-    $("#guide-dialog").close();
-    callback?.();
+    dialogs.close(pendingConfirmation);
     return;
   }
   if (action === "day" || action === "open-day") {
+    const changed = selected !== button.dataset.date;
     selected = button.dataset.date;
-    expanded.clear();
-    if (action === "open-day") {
-      location.hash = "hoje";
-      render();
-      main.scrollIntoView({ behavior: "smooth" });
-    } else render();
+    if (changed) expanded.clear();
+    if (action === "open-day")
+      navigateTo("hoje", { session: true, refresh: true });
+    else if (changed) refreshDay();
     return;
   }
   if (action === "reset-day") {
-    selected = dateKey();
-    expanded.clear();
-    render();
+    if (selected !== dateKey()) {
+      selected = dateKey();
+      expanded.clear();
+      refreshDay();
+    }
     return;
   }
-  if (action === "prev-week" || action === "next-week") {
-    week = addDays(week, action === "prev-week" ? -7 : 7);
-    render();
-    return;
-  }
-  if (action === "current-week") {
-    week = weekStart(dateKey());
-    render();
+  if (["prev-week", "next-week", "current-week"].includes(action)) {
+    const before = week;
+    week =
+      action === "current-week"
+        ? weekStart(dateKey())
+        : addDays(week, action === "prev-week" ? -7 : 7);
+    if (before !== week) {
+      $(".week-controls h2").textContent =
+        `${shortDate(week)} — ${shortDate(addDays(week, 6))}`;
+      motion.stop($(".calendar-grid"));
+      $(".calendar-grid").outerHTML = calendarView();
+      hydrateIcons($(".calendar-grid"));
+      motion.enter($(".calendar-grid"), "week", week > before ? 1 : -1);
+    }
     return;
   }
   if (action === "finish-strength") {
     if (data.sessions[selected]?.done) {
       session().done = false;
       persist("Sessão reaberta.");
-      render();
+      syncStrength();
       return;
     }
     const key = selected;
     confirmSession(() => {
       session(key).done = true;
       persist("Sessão concluída. Bom trabalho!");
-      render();
+      syncStrength();
+      motion.feedback($(".week-summary .progress-ring b"));
     });
     return;
   }
@@ -520,7 +715,11 @@ document.addEventListener(
   "toggle",
   (event) => {
     if (event.target.matches?.("details[data-exercise]")) {
-      if (event.target.open) expanded.add(event.target.dataset.exercise);
+      const open =
+        event.target.dataset.expanded === undefined
+          ? event.target.open
+          : event.target.dataset.expanded === "true";
+      if (open) expanded.add(event.target.dataset.exercise);
       else expanded.delete(event.target.dataset.exercise);
     }
   },
@@ -553,22 +752,11 @@ document.addEventListener("change", async (event) => {
           : Number(input.value);
     s.done = false;
     persist();
-    if (field === "done") {
-      render();
-      document
-        .querySelector(
-          `[data-id="${id}"][data-index="${i}"][data-field="done"]`,
-        )
-        ?.focus();
-    }
+    syncStrength(id);
+    if (field === "done") motion.feedback(input.nextElementSibling);
     return;
   }
-  if (input.id === "long-minutes") {
-    data.settings.longMinutes = Number(input.value);
-    persist();
-    render();
-    return;
-  }
+  if (input.id === "long-minutes") return;
   if (input.id === "import-file") {
     try {
       const file = input.files[0];
@@ -601,6 +789,12 @@ document.addEventListener("change", async (event) => {
 });
 document.addEventListener("input", (event) => {
   const input = event.target;
+  if (input.id === "long-minutes") {
+    data.settings.longMinutes = Number(input.value);
+    persist();
+    syncLongRun();
+    return;
+  }
   if (input.dataset.mask)
     applyTimeMask(input, (value) =>
       maskTime(value, input.dataset.mask === "duration" ? 6 : 4),
@@ -624,6 +818,7 @@ document.addEventListener("input", (event) => {
       input.value === "" ? "" : Number(input.value);
     s.done = false;
     persist();
+    syncStrength(id);
   }
   if (event.target.closest("#run-form")) {
     const form = $("#run-form"),
@@ -692,17 +887,18 @@ document.addEventListener("submit", (event) => {
     };
     s.done = true;
     persist("Corrida registrada. Mais um treino na conta!");
-    render();
+    syncTodayStatus();
+    $("#run-form button[type=submit]").innerHTML =
+      `Salvar alterações ${icon("check")}`;
+    motion.feedback($("#run-form button[type=submit]"));
   }
 });
-window.addEventListener("hashchange", () => {
-  if (location.hash === "#session") {
-    document.getElementById("session")?.scrollIntoView({ behavior: "smooth" });
-    return;
-  }
-  render();
-  window.scrollTo(0, 0);
-});
+function handleLocation() {
+  if (location.hash === "#main") return;
+  applyNavigation(routeFromHash(), { session: location.hash === "#session" });
+}
+window.addEventListener("hashchange", handleLocation);
+window.addEventListener("popstate", handleLocation);
 $("#guide-dialog").addEventListener("click", (event) => {
   if (event.target === $("#guide-dialog")) {
     const r = event.target.getBoundingClientRect();
@@ -712,12 +908,8 @@ $("#guide-dialog").addEventListener("click", (event) => {
       event.clientY < r.top ||
       event.clientY > r.bottom
     )
-      event.target.close();
+      dialogs.close();
   }
-});
-$("#guide-dialog").addEventListener("close", () => {
-  disposeMovement();
-  pendingConfirmation = null;
 });
 document.addEventListener("focusout", (event) => {
   if (event.target.dataset.mask === "duration") {
@@ -726,3 +918,4 @@ document.addEventListener("focusout", (event) => {
   }
 });
 render();
+if (location.hash === "#session") scrollToSession();

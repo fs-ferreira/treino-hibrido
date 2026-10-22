@@ -353,9 +353,11 @@ nav a.active {
   color: var(--lime);
   background: #c3f96910;
 }
-nav a:hover {
-  background: #ffffff06;
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  nav a:hover {
+    background: #ffffff06;
+    color: var(--text);
+  }
 }
 .side-bottom {
   margin-top: auto;
@@ -449,17 +451,21 @@ main {
     background 0.16s,
     transform 0.16s;
 }
-.button:hover {
-  background: #ffffff0d;
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .button:hover {
+    background: #ffffff0d;
+    transform: translateY(-1px);
+  }
 }
 .button.primary {
   background: var(--lime);
   color: #17200d;
   border-color: var(--lime);
 }
-.button.primary:hover {
-  background: #d4ff92;
+@media (hover: hover) and (pointer: fine) {
+  .button.primary:hover {
+    background: #d4ff92;
+  }
 }
 .button.quiet {
   border-color: var(--line);
@@ -486,9 +492,11 @@ main {
   padding: 10px 0;
   text-align: left;
 }
-.text-link:hover,
-.text-button:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .text-link:hover,
+  .text-button:hover {
+    text-decoration: underline;
+  }
 }
 .setup-banner {
   display: flex;
@@ -824,8 +832,10 @@ main {
 .day.selected > b {
   color: var(--lime);
 }
-.day:hover {
-  border-color: #789259;
+@media (hover: hover) and (pointer: fine) {
+  .day:hover {
+    border-color: #789259;
+  }
 }
 .session-section {
   scroll-margin-top: 30px;
@@ -1064,9 +1074,11 @@ footer .text-button {
     transform 0.2s,
     border-color 0.2s;
 }
-.calendar-card:hover {
-  transform: translateY(-3px);
-  border-color: #72815f;
+@media (hover: hover) and (pointer: fine) {
+  .calendar-card:hover {
+    transform: translateY(-3px);
+    border-color: #72815f;
+  }
 }
 .calendar-card.is-today {
   border-color: var(--lime);
@@ -1392,8 +1404,10 @@ hr {
   font-size: 11px;
   padding: 12px 4px;
 }
-.danger-button:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .danger-button:hover {
+    text-decoration: underline;
+  }
 }
 .form-error {
   color: #ffbba7;
@@ -1650,8 +1664,10 @@ dialog > div > p {
   line-height: 1.6;
   margin: 10px 0;
 }
-.source-link:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .source-link:hover {
+    text-decoration: underline;
+  }
 }
 .source-list {
   display: grid;

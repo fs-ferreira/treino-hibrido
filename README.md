@@ -55,6 +55,7 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 ## Estrutura
 
 - `app.js`: interface, formulários, navegação e persistência.
+- `lib/motion.js`: transições canceláveis, acordeões e ciclo de vida dos painéis.
 - `lib/core.js`: calendário, cálculos e validação dos backups.
 - `lib/icons.js`, `lib/ui.js`: ícones SVG locais Lucide e máscaras de digitação.
 - `lib/exercises.js`, `lib/diagrams.js`: conteúdo dos guias e imagens SVG.
@@ -63,6 +64,14 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 - `lib/movement-data.js`, `lib/movement-equipment.js`, `lib/movement-player.js`: poses, equipamentos e reprodução dos movimentos.
 
 O plano é uma reprodução organizacional do conteúdo fornecido; não faz avaliação individual nem ajusta automaticamente a carga de treino.
+
+## Movimento da interface
+
+As transições duram de 90 a 220 ms. Marcar séries e ajustar a duração do longão atualiza os indicadores no lugar, preservando campos e foco. As abas guardam a posição de rolagem em memória durante a visita. Os guias e confirmações usam painéis pela base em telas de até 600 px; no desktop permanecem centralizados. O fechamento devolve foco e rolagem ao ponto anterior.
+
+O app respeita `prefers-reduced-motion`, inclusive quando a preferência muda durante o uso, e mantém os controles funcionais sem a Web Animations API. Não há migração de armazenamento. As animações de execução dos exercícios continuam opcionais e independentes das transições da interface.
+
+Para medir localmente, abra `http://127.0.0.1:4173/?motion-debug=1#hoje`. Um indicador mostra intervalos de quadros e tarefas acima de 50 ms que se sobrepõem às transições. Os valores são observações do navegador e do dispositivo em uso, não uma garantia de FPS. O diagnóstico só é ativado por esse parâmetro e não transmite nem armazena dados. A [validação da interface](docs/validacao-interface.md) registra os cenários testados e as limitações.
 
 ## Ícones
 
