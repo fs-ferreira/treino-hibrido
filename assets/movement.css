@@ -150,6 +150,16 @@
   stroke-width: 1.2;
   stroke-linejoin: round;
 }
+.exercise-figure .shoe-seam,
+.exercise-figure .finger-detail {
+  fill: none;
+  stroke: #afc2ca;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+}
+.exercise-figure .figure-hand {
+  stroke-width: 0.8;
+}
 .exercise-figure .trajectory {
   stroke: #79dfe5;
   stroke-width: 2;
