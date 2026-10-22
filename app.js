@@ -25,12 +25,12 @@ import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js";
 import { icon } from "./lib/icons.js";
-import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.4.1";
+import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.4.2";
 import {
   createMotion,
   createAccordions,
   createDialogController,
-} from "./lib/motion.js?v=1.4.1";
+} from "./lib/motion.js?v=1.4.2";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -517,7 +517,10 @@ function openDialog(html, compact = false) {
   $("#guide-dialog").classList.toggle("confirm-dialog", compact);
   $("#guide-content").innerHTML = html;
   hydrateIcons($("#guide-content"));
+  $("#guide-dialog > .dialog-top")?.remove();
+  $("#guide-dialog").prepend($("#guide-content .dialog-top"));
   dialogs.show();
+  $("#guide-content").scrollTop = 0;
   disposeMovement = createMovementPlayer($(".movement-guide"));
 }
 function confirmSession(onConfirm) {

@@ -58,6 +58,24 @@ nav a,
 dialog {
   overscroll-behavior: contain;
 }
+#guide-dialog {
+  padding: 0;
+  overflow: hidden;
+}
+#guide-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+#guide-content {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px 28px 28px;
+}
+#guide-content > .tag:first-child {
+  margin-bottom: 16px;
+}
 dialog::backdrop {
   animation: modal-shade-in var(--motion-dialog-in) var(--motion-ease) both;
 }
@@ -65,10 +83,11 @@ dialog[data-state="closing"]::backdrop {
   animation: modal-shade-out var(--motion-dialog-out) var(--motion-ease) both;
 }
 .dialog-top {
-  position: sticky;
-  top: -1px;
-  z-index: 2;
-  padding: 10px 0;
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--line);
   background: #181a1e;
 }
 @keyframes modal-shade-in {
@@ -100,7 +119,10 @@ dialog[data-state="closing"]::backdrop {
     max-height: 92dvh;
     border-radius: 20px 20px 0 0;
     border-bottom: 0;
-    padding: 12px max(20px, env(safe-area-inset-right))
+    padding: 0;
+  }
+  #guide-content {
+    padding: 20px max(20px, env(safe-area-inset-right))
       max(24px, env(safe-area-inset-bottom))
       max(20px, env(safe-area-inset-left));
   }
@@ -108,7 +130,8 @@ dialog[data-state="closing"]::backdrop {
     height: auto;
   }
   .dialog-top {
-    margin-bottom: 14px;
+    padding: 14px max(20px, env(safe-area-inset-right)) 14px
+      max(20px, env(safe-area-inset-left));
   }
 }
 @media (prefers-reduced-motion: reduce) {
