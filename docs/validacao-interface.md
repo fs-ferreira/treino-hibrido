@@ -32,3 +32,7 @@ Safari/iOS, teclado virtual, insets físicos de área segura e desempenho em apa
 - [web.dev: animações de alta performance](https://web.dev/articles/animations-guide).
 - [WebKit: Web Animations no Safari 13.1](https://webkit.org/blog/10266/web-animations-in-safari-13-1/).
 - [MDN: dialog e gerenciamento de foco](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog).
+
+## Ajuste de ritmo — 1.4.1
+
+Após feedback de uso, as transições foram desaceleradas: abas 300 ms, troca de dia 260 ms, semanas e acordeões 320 ms, feedback 240 ms, painel mobile 420/320 ms e modal desktop 320/260 ms. Pressionamento continua rápido em 120 ms. A curva passa a cubic-bezier(0.22, 0.61, 0.36, 1), com entrada menos abrupta. Cancelamento, movimento reduzido e persistência imediata permanecem iguais. A medição acima corresponde à versão 1.4.0.

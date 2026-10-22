@@ -25,12 +25,12 @@ import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js";
 import { icon } from "./lib/icons.js";
-import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.4.0";
+import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.4.1";
 import {
   createMotion,
   createAccordions,
   createDialogController,
-} from "./lib/motion.js?v=1.4.0";
+} from "./lib/motion.js?v=1.4.1";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");

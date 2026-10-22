@@ -67,7 +67,7 @@ O plano é uma reprodução organizacional do conteúdo fornecido; não faz aval
 
 ## Movimento da interface
 
-As transições duram de 90 a 220 ms. Marcar séries e ajustar a duração do longão atualiza os indicadores no lugar, preservando campos e foco. As abas guardam a posição de rolagem em memória durante a visita. Os guias e confirmações usam painéis pela base em telas de até 600 px; no desktop permanecem centralizados. O fechamento devolve foco e rolagem ao ponto anterior.
+As transições duram de 120 a 420 ms, com entrada mais gradual. Abas usam 300 ms; cards expansíveis, 320 ms; painéis mobile abrem em 420 ms e fecham em 320 ms. Marcar séries e ajustar a duração do longão atualiza os indicadores no lugar, preservando campos e foco. As abas guardam a posição de rolagem em memória durante a visita. Os guias e confirmações usam painéis pela base em telas de até 600 px; no desktop permanecem centralizados. O fechamento devolve foco e rolagem ao ponto anterior.
 
 O app respeita `prefers-reduced-motion`, inclusive quando a preferência muda durante o uso, e mantém os controles funcionais sem a Web Animations API. Não há migração de armazenamento. As animações de execução dos exercícios continuam opcionais e independentes das transições da interface.
 

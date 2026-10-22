@@ -1,5 +1,7 @@
 :root {
-  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-dialog-in: 320ms;
+  --motion-dialog-out: 260ms;
+  --motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 html {
   scroll-behavior: auto;
@@ -11,10 +13,10 @@ nav a,
 .text-button,
 .close-button {
   transition:
-    transform 90ms ease-out,
-    background-color 160ms var(--motion-ease),
-    border-color 160ms var(--motion-ease),
-    color 160ms var(--motion-ease);
+    transform 120ms ease-out,
+    background-color 260ms var(--motion-ease),
+    border-color 260ms var(--motion-ease),
+    color 260ms var(--motion-ease);
 }
 :is(.button, .calendar-card, .day, nav a, .text-button, .close-button):not(
     :disabled
@@ -24,10 +26,10 @@ nav a,
 .progress-line span {
   width: 100%;
   transform-origin: left center;
-  transition: transform 160ms var(--motion-ease);
+  transition: transform 260ms var(--motion-ease);
 }
 .chevron {
-  transition: transform 180ms var(--motion-ease);
+  transition: transform 320ms var(--motion-ease);
 }
 .exercise-card[data-expanded="false"] .chevron {
   transform: rotate(0);
@@ -38,16 +40,16 @@ nav a,
 .check-label span,
 .exercise-check {
   transition:
-    background-color 160ms var(--motion-ease),
-    color 160ms var(--motion-ease);
+    background-color 260ms var(--motion-ease),
+    color 260ms var(--motion-ease);
 }
 .exercise-body[inert] {
   pointer-events: none;
 }
 #toast {
   transition:
-    opacity 160ms var(--motion-ease),
-    transform 160ms var(--motion-ease);
+    opacity 260ms var(--motion-ease),
+    transform 260ms var(--motion-ease);
   transform: translate(-50%, 8px);
 }
 #toast.visible {
@@ -57,10 +59,10 @@ dialog {
   overscroll-behavior: contain;
 }
 dialog::backdrop {
-  animation: modal-shade-in 180ms var(--motion-ease) both;
+  animation: modal-shade-in var(--motion-dialog-in) var(--motion-ease) both;
 }
 dialog[data-state="closing"]::backdrop {
-  animation: modal-shade-out 160ms var(--motion-ease) both;
+  animation: modal-shade-out var(--motion-dialog-out) var(--motion-ease) both;
 }
 .dialog-top {
   position: sticky;
@@ -87,6 +89,8 @@ dialog[data-state="closing"]::backdrop {
 }
 @media (max-width: 600px) {
   #guide-dialog {
+    --motion-dialog-in: 420ms;
+    --motion-dialog-out: 320ms;
     position: fixed;
     inset: auto 0 0;
     margin: 0;
