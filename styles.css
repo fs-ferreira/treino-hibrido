@@ -85,6 +85,7 @@ nav a .icon {
   margin-top: 24px;
 }
 .recent-run-card {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 20px;
@@ -106,6 +107,9 @@ nav a .icon {
 }
 .recent-run-fields label:last-child {
   grid-column: 1 / -1;
+}
+.recent-run-fields > label {
+  min-width: 0;
 }
 .recent-run-fields input {
   min-width: 0;
@@ -192,7 +196,7 @@ dialog.confirm-dialog {
     padding: 16px;
   }
   .recent-run-fields {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .dialog-actions {
     flex-direction: column-reverse;
@@ -1252,6 +1256,19 @@ textarea::placeholder {
   color: #737e6c;
   font-size: 12px;
 }
+/* iOS date controls otherwise impose native intrinsic sizing and content-box padding. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 46px;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  text-align: left;
+}
 textarea {
   resize: vertical;
 }
@@ -1315,6 +1332,7 @@ input[type="range"] {
   gap: 24px;
 }
 .settings-form {
+  min-width: 0;
   padding: 30px;
 }
 .settings-form > h2 {
