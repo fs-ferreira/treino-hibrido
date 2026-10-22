@@ -36,10 +36,6 @@ nav a .icon {
   width: 20px;
   height: 20px;
 }
-.brand-mark span .icon {
-  width: 17px;
-  height: 17px;
-}
 .close-button {
   display: inline-flex !important;
   align-items: center;
@@ -245,9 +241,15 @@ button:disabled {
   opacity: 0.4;
   cursor: default;
 }
+:focus,
 :focus-visible {
-  outline: 3px solid var(--cyan);
-  outline-offset: 4px;
+  outline: none;
+}
+:where(a, button, summary, [role="button"]):focus-visible {
+  filter: brightness(1.15);
+}
+:where(input, select, textarea):focus-visible {
+  border-color: #68717b;
 }
 button {
   color: inherit;
@@ -314,24 +316,9 @@ em {
 .brand-mark {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
-  background: var(--lime);
-  color: #12180c;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  font-weight: 900;
-  font-size: 25px;
-  font-style: italic;
-}
-.brand-mark span {
-  font-size: 18px;
-  position: absolute;
-  right: 0;
-  top: -5px;
-  background: var(--lime);
-  line-height: 1;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 .sidebar-caption {
   font-size: 9px;
@@ -1013,8 +1000,7 @@ details[open] .chevron {
   color: #1a230e;
 }
 .check-label input:focus-visible + span {
-  outline: 2px solid var(--cyan);
-  outline-offset: 3px;
+  filter: brightness(1.2);
 }
 .session-bottom {
   display: flex;
@@ -1260,7 +1246,6 @@ textarea {
   color: var(--text);
   padding: 12px 13px;
   margin-top: 8px;
-  outline-offset: 2px;
 }
 input::placeholder,
 textarea::placeholder {
@@ -1380,8 +1365,7 @@ hr {
   cursor: pointer;
 }
 .import-label:focus-within {
-  outline: 3px solid var(--cyan);
-  outline-offset: 3px;
+  filter: brightness(1.15);
 }
 .danger-button {
   background: transparent;
@@ -1811,10 +1795,6 @@ dialog > div > p {
   .brand-mark {
     width: 29px;
     height: 29px;
-    font-size: 21px;
-  }
-  .brand-mark span {
-    font-size: 14px;
   }
   .run-layout {
     grid-template-columns: minmax(0, 1fr) 260px;
