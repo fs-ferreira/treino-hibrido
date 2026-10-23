@@ -22,7 +22,7 @@ Revisão em 22/10/2026. Testes de interface em origem local isolada, sem utiliza
 - Abrir treino de hoje retornou à corrida leve da quinta-feira atual, em 22/10, com o dia correto selecionado e acesso à sessão.
 - Arrastes repetidos nos dois sentidos mantiveram cinco destinos únicos, sem ativar telas durante o gesto. Home, setas, Enter e Tab revelaram o destino focado e permitiram sair da navegação.
 - Layout estável sem rolagem horizontal em 320, 375, 390, 430, 600, 601 e 1.280 px. Conferência adicional em 844 × 390 px, na horizontal. Menu circular até 600 px e convencional em 601 px e acima.
-- Resumo com indicadores centralizados na proporção 30/40/30. As siglas dos dias têm coluna própria, com separação de 12 px no celular, evitando colisão entre DOM e Domingo.
+- Resumo com indicadores centralizados na proporção 32,5/35/32,5. As siglas dos dias têm coluna própria, com separação de 12 px no celular, evitando colisão entre DOM e Domingo.
 - Ações no final do detalhe e rodapé puderam ser posicionadas acima do menu fixo. O guia preserva o painel modal existente e seu isolamento de foco.
 - Nenhum erro de JavaScript foi registrado nos cenários verificados. Animações do menu movimentam apenas os cinco links com `transform`; medições de largura ficam na inicialização e no redimensionamento.
 

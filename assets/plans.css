@@ -75,7 +75,7 @@
 }
 .plan-overview {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 4fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 32.5fr) minmax(0, 35fr) minmax(0, 32.5fr);
   gap: 16px;
   padding: 24px;
   margin: 0 0 34px;
