@@ -31,7 +31,7 @@ import {
   createSettingsController,
   settingsSections,
 } from "./lib/settings.js?v=1.7.1";
-import { createMobileNav } from "./lib/mobile-nav.js?v=1.6.1";
+import { createMobileNav } from "./lib/mobile-nav.js?v=1.7.2";
 import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";

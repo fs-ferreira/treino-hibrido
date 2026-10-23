@@ -270,7 +270,8 @@
     display: block;
     padding-left: 0;
     padding-right: 0;
-    touch-action: pan-y pinch-zoom;
+    /* Own one-finger swipes from their start; two-finger zoom stays native. */
+    touch-action: pinch-zoom;
   }
   .sidebar nav.is-circular .nav-track {
     display: block;
@@ -279,7 +280,7 @@
     height: 60px;
     overflow: hidden;
     overflow: clip;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pinch-zoom;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -295,7 +296,7 @@
     gap: 4px;
     font-size: 11px;
     white-space: nowrap;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pinch-zoom;
     transition:
       background-color 260ms var(--motion-ease),
       color 260ms var(--motion-ease);

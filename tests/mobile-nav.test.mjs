@@ -259,6 +259,64 @@ test("perder a captura do próprio menu encerra o gesto e ignora movimentos post
   assert.equal(t.click(), true);
   t.nav.dispose();
 });
+
+test("toque: desvio vertical inicial não rouba o arraste horizontal do menu", () => {
+  const t = setup();
+  t.pointer("pointerdown", 200, 20, { pointerType: "touch" });
+  t.pointer("pointermove", 203, 42, { pointerType: "touch" });
+  assert.equal(t.nav.position, 0);
+  assert.equal(t.frames.size, 0);
+  t.pointer("pointermove", 80, 58, { pointerType: "touch" });
+  t.tick();
+  assert.ok(t.nav.position > 1);
+  t.pointer("pointerup", 80, 58, { pointerType: "touch" });
+  t.finish();
+  assert.equal(t.nav.position, 1);
+  assert.equal(t.click(), true);
+  assert.equal(t.links[0].attrs["aria-current"], "page");
+  t.nav.dispose();
+});
+
+test("toque: movimento apenas vertical no menu não ativa um destino, mas toque curto funciona", () => {
+  const t = setup();
+  t.pointer("pointerdown", 200, 20, { pointerType: "touch" });
+  t.pointer("pointermove", 204, 100, { pointerType: "touch" });
+  t.pointer("pointerup", 204, 100, { pointerType: "touch" });
+  t.finish();
+  assert.equal(t.nav.position, 0);
+  assert.equal(t.click(), true);
+  t.pointer("pointerdown", 200, 20, { pointerType: "touch" });
+  t.pointer("pointermove", 202, 23, { pointerType: "touch" });
+  t.pointer("pointerup", 202, 23, { pointerType: "touch" });
+  assert.equal(t.click(), false);
+  t.nav.dispose();
+});
+
+test("toque: segundo dedo interrompe o menu sem bloquear o gesto nativo de zoom", () => {
+  const t = setup();
+  t.pointer("pointerdown", 200, 20, { pointerType: "touch" });
+  t.pointer("pointermove", 80, 20, { pointerType: "touch" });
+  t.tick();
+  let prevented = false;
+  t.pointer("pointerdown", 300, 30, {
+    pointerType: "touch",
+    pointerId: 2,
+    isPrimary: false,
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  const settled = t.nav.position;
+  t.pointer("pointermove", -300, 20, { pointerType: "touch" });
+  t.pointer("pointerup", -300, 20, { pointerType: "touch" });
+  t.finish();
+  assert.equal(t.nav.position, settled);
+  assert.equal(Number.isInteger(settled), true);
+  assert.equal(prevented, false);
+  assert.equal(t.click(), true);
+  assert.equal(t.frames.size, 0);
+  t.nav.dispose();
+});
 test("rota usa caminho circular curto e nova ação interrompe o encaixe anterior", () => {
   const t = setup({ reduced: true });
   t.nav.setActive("configuracoes");

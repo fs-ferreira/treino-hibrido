@@ -18,7 +18,7 @@ Abra http://127.0.0.1:4173. Use um servidor HTTP: módulos JavaScript não funci
 npm test
 ```
 
-Os 89 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos, navegação circular e configurações por categoria, incluindo falhas ao salvar e edições temporárias em memória.
+Os 92 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos, navegação circular e configurações por categoria, incluindo falhas ao salvar e edições temporárias em memória.
 
 ## Como usar
 
@@ -86,7 +86,7 @@ A [validação de progressão e painéis](docs/validacao-progressao.md) registra
 
 O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O esquema local permanece na versão 3.
 
-Em telas de até 600 px, arraste o menu inferior para revelar os destinos nos dois sentidos. Ele mostra três opções completas e partes das vizinhas, usando os mesmos cinco links, sem cópias. Arrastar não troca de tela; toque para navegar. O destino aberto fica destacado mesmo quando outra opção está no centro. Acima de 600 px, o menu mantém a navegação convencional.
+Em telas de até 600 px, arraste o menu inferior para revelar os destinos nos dois sentidos. O gesto de um dedo que começa sobre o menu fica reservado às opções, mesmo com desvio vertical inicial; a página continua rolando normalmente fora dessa faixa. O zoom com dois dedos permanece permitido pelo navegador. Ele mostra três opções completas e partes das vizinhas, usando os mesmos cinco links, sem cópias. Arrastar não troca de tela; toque para navegar. O destino aberto fica destacado mesmo quando outra opção está no centro. Acima de 600 px, o menu mantém a navegação convencional.
 
 Tab percorre os cinco destinos uma vez. Setas esquerda/direita movem o foco circularmente; Enter abre a tela. O item focado fica visível. Com movimento reduzido, o encaixe é imediato; sem suporte a Pointer Events, o app oferece o menu convencional com rolagem horizontal. Lista e detalhe preservam suas posições de rolagem em memória, incluindo navegação pelo histórico do navegador.
 
