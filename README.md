@@ -18,7 +18,7 @@ Abra http://127.0.0.1:4173. Use um servidor HTTP: módulos JavaScript não funci
 npm test
 ```
 
-Os 74 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos e navegação circular.
+Os 76 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos e navegação circular, incluindo a transferência de captura durante gestos de toque.
 
 ## Como usar
 

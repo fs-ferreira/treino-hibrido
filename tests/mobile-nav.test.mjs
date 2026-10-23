@@ -106,7 +106,7 @@ function setup(options = {}) {
     for (let i = 0; frames.size && i < 30; i++) tick(20);
     assert.equal(frames.size, 0);
   }
-  function pointer(name, x, y = 20) {
+  function pointer(name, x, y = 20, extra = {}) {
     const target = name === "pointerdown" ? root : win;
     target.emit(name, {
       pointerId: 1,
@@ -114,6 +114,7 @@ function setup(options = {}) {
       clientY: y,
       isPrimary: true,
       button: 0,
+      ...extra,
     });
   }
   function click(detail = 1) {
@@ -221,6 +222,41 @@ test("centenas de gestos atravessam as duas extremidades sem clones nem crescime
     assert.equal(t.links.length, 5);
     assert.equal(t.frames.size, 0);
   }
+  t.nav.dispose();
+});
+test("toque: captura implícita do link ou ícone não encerra o arraste ao passar para o menu", () => {
+  const t = setup();
+  // Touch starts with implicit capture on the hit target. Transferring it to
+  // the track emits lostpointercapture on that child, bubbling to the track.
+  for (const target of [t.links[0], { tagName: "svg" }]) {
+    t.nav.setActive("hoje");
+    t.finish();
+    t.pointer("pointerdown", 200, 20, { pointerType: "touch" });
+    t.pointer("pointermove", 180, 20, { pointerType: "touch" });
+    t.track.emit("lostpointercapture", { target, pointerId: 1 });
+    t.pointer("pointermove", 50, 20, { pointerType: "touch" });
+    t.tick();
+    assert.ok(t.nav.position > 1 && t.nav.position < 2);
+    t.pointer("pointerup", 50, 20, { pointerType: "touch" });
+    t.finish();
+    assert.equal(t.nav.position, 1);
+    assert.equal(t.click(), true);
+    assert.equal(t.links[0].attrs["aria-current"], "page");
+    assert.equal(t.links.length, 5);
+  }
+  t.nav.dispose();
+});
+test("perder a captura do próprio menu encerra o gesto e ignora movimentos posteriores", () => {
+  const t = setup();
+  t.pointer("pointerdown", 200);
+  t.pointer("pointermove", 80);
+  t.tick();
+  t.track.emit("lostpointercapture", { target: t.track, pointerId: 1 });
+  t.pointer("pointermove", -300);
+  t.finish();
+  assert.equal(t.nav.position, 1);
+  assert.equal(t.frames.size, 0);
+  assert.equal(t.click(), true);
   t.nav.dispose();
 });
 test("rota usa caminho circular curto e nova ação interrompe o encaixe anterior", () => {

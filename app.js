@@ -28,7 +28,7 @@ import {
 import { workouts, exercises } from "./lib/exercises.js";
 import { plansView } from "./lib/plans-view.js?v=1.6.0";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.6.0";
-import { createMobileNav } from "./lib/mobile-nav.js?v=1.6.0";
+import { createMobileNav } from "./lib/mobile-nav.js?v=1.6.1";
 import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";

@@ -31,3 +31,9 @@ Revisão em 22/10/2026. Testes de interface em origem local isolada, sem utiliza
 Assets e módulos modificados usam a versão 1.6.0 para evitar cache anterior. O workflow existente valida os testes antes de publicar os arquivos estáticos. Nenhum campo ou migração foi acrescentado ao armazenamento.
 
 Não houve iPhone físico disponível. Safari/iOS, áreas seguras reais e resposta ao toque nesse aparelho permanecem pendentes de validação. As verificações de movimento reduzido e indisponibilidade de APIs foram automatizadas com ambientes controlados; não equivalem a uma medição em todos os navegadores ou dispositivos.
+
+## Correção do arraste por toque — 1.6.1 (23/10/2026)
+
+O encerramento do gesto tratava qualquer `lostpointercapture` recebido na faixa como fim do arraste. Em telas de toque, a captura implícita começa no elemento atingido, como um link ou ícone. Ao transferi-la para a faixa, a perda de captura do filho chega ao ancestral por propagação e encerrava prematuramente o gesto. A correção ignora essa transferência e continua encerrando o gesto quando a própria faixa perde sua captura. Referência: [captura implícita e processamento da transferência no W3C Pointer Events](https://www.w3.org/TR/pointerevents3/#implicit-pointer-capture).
+
+Acrescentados dois testes: transferência de captura do link/ícone seguida de arraste contínuo e perda real da captura da faixa. O primeiro reproduziu a falha antes da correção; os 76 testes passaram depois. A política `pan-y pinch-zoom` também foi aplicada diretamente aos links e ao menu para explicitar o tratamento dos gestos nos elementos tocados. Toques e teclado continuam navegando; arrastes não ativam links. Assets alterados têm versão 1.6.1. A confirmação em Safari/iPhone físico continua pendente.
