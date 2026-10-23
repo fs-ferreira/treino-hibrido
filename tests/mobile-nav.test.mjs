@@ -5,6 +5,7 @@ import {
   wrap,
   circularDistance,
   navPositions,
+  navRelease,
 } from "../lib/mobile-nav.js";
 import { motionProgress } from "../lib/motion.js";
 
@@ -435,4 +436,128 @@ test("curva compartilhada é monotônica e usa tempo, com início e fim exatos",
   assert.ok(
     values.every((v, i) => v >= 0 && v <= 1 && (i === 0 || v >= values[i - 1])),
   );
+});
+
+test("inércia: velocidade projeta avanço curto; pausa e amostras sem tempo não inventam impulso", () => {
+  const samples = [
+    { x: 200, t: 0 },
+    { x: 170, t: 20 },
+    { x: 140, t: 40 },
+    { x: 110, t: 60 },
+  ];
+  for (const width of [320, 390, 600]) {
+    const release = navRelease(0.8, samples, 60, width / 3.5);
+    assert.equal(release.inertia, true);
+    assert.ok(release.target > 0.8 && release.target - 0.8 <= 1.5);
+    assert.ok(release.duration >= 320 && release.duration <= 460);
+  }
+  assert.equal(navRelease(0.8, samples, 160, 390 / 3.5).inertia, false);
+  assert.equal(
+    navRelease(
+      0.8,
+      [
+        { x: 200, t: 0 },
+        { x: 110, t: 0 },
+      ],
+      0,
+      390 / 3.5,
+    ).inertia,
+    false,
+  );
+  const reversed = navRelease(
+    4.2,
+    [
+      { x: 300, t: 0 },
+      { x: 100, t: 30 },
+      { x: 140, t: 50 },
+      { x: 180, t: 70 },
+    ],
+    70,
+    390 / 3.5,
+  );
+  assert.equal(reversed.inertia, true);
+  assert.ok(reversed.target < 4.2);
+});
+
+function flick(t, direction = -1) {
+  t.pointer("pointerdown", 250, 20, { pointerType: "touch" });
+  for (let i = 1; i <= 4; i++) {
+    t.tick(16);
+    t.pointer("pointermove", 250 + direction * 20 * i, 22, {
+      pointerType: "touch",
+    });
+  }
+  const released = t.nav.position;
+  t.pointer("pointerup", 250 + direction * 80, 22, { pointerType: "touch" });
+  return released;
+}
+test("inércia: continua após soltar, desacelera e atravessa as duas extremidades sem navegar", () => {
+  for (const direction of [-1, 1]) {
+    const t = setup();
+    const released = flick(t, direction),
+      positions = [released];
+    const pending = () => assert.ok(t.frames.size <= 1);
+    for (let i = 0; i < 8; i++) {
+      t.tick(40);
+      pending();
+      positions.push(t.nav.position);
+    }
+    const deltas = positions
+      .slice(1)
+      .map((p, i) => circularDistance(p - positions[i], 5) * -direction);
+    assert.ok(deltas[0] > 0);
+    assert.ok(
+      deltas.every(
+        (d, i) => d >= -1e-9 && (i === 0 || d <= deltas[i - 1] + 1e-9),
+      ),
+    );
+    t.finish();
+    const travel = circularDistance(t.nav.position - released, 5) * -direction;
+    assert.ok(travel > 0 && travel <= 1.5);
+    assert.equal(Number.isInteger(t.nav.position), true);
+    assert.equal(t.links[0].attrs["aria-current"], "page");
+    assert.equal(t.click(), true);
+    t.nav.dispose();
+  }
+});
+
+test("inércia: novo toque interrompe imediatamente e não herda o impulso", () => {
+  const t = setup();
+  flick(t);
+  t.tick(80);
+  const caught = t.nav.position;
+  t.pointer("pointerdown", 150, 20, { pointerType: "touch" });
+  assert.equal(t.frames.size, 0);
+  t.tick(100);
+  assert.equal(t.nav.position, caught);
+  t.pointer("pointerup", 150, 20, { pointerType: "touch" });
+  assert.equal(t.click(), false);
+  t.nav.setActive("treinos");
+  t.finish();
+  assert.equal(t.nav.position, 2);
+  t.nav.dispose();
+});
+
+test("inércia: movimento reduzido e cancelamento dispensam a continuação; preferência dinâmica encerra quadros", () => {
+  const reduced = setup({ reduced: true });
+  flick(reduced);
+  assert.equal(reduced.frames.size, 0);
+  assert.equal(reduced.nav.position, 1);
+  reduced.nav.dispose();
+  const t = setup();
+  t.pointer("pointerdown", 250, 20, { pointerType: "touch" });
+  t.tick(20);
+  t.pointer("pointermove", 210, 20, { pointerType: "touch" });
+  t.tick(20);
+  t.pointer("pointermove", 170, 20, { pointerType: "touch" });
+  t.pointer("pointercancel", 170, 20, { pointerType: "touch" });
+  assert.equal(t.frames.size, 0);
+  assert.equal(t.nav.position, 1);
+  flick(t);
+  t.tick(40);
+  t.preference.matches = true;
+  t.preference.emit("change");
+  assert.equal(t.frames.size, 0);
+  assert.equal(Number.isInteger(t.nav.position), true);
+  t.nav.dispose();
 });

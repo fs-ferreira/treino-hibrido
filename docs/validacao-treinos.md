@@ -46,3 +46,12 @@ O menu circular passou de `pan-y pinch-zoom` para `pinch-zoom` no menu, na faixa
 O controlador também não abandona um toque por causa de desvio vertical inicial. Movimento sem arraste horizontal não abre um destino ao terminar; toque curto continua navegando. O segundo dedo encerra a manipulação do menu, sem cancelar o evento nativo, para permitir o zoom. A correção anterior de captura implícita continua preservada.
 
 92 testes passaram. Os três casos novos cobrem desvio vertical seguido de arraste horizontal, movimento vertical sem clique acidental e segundo dedo interrompendo o menu sem impedir o evento nativo. No navegador desktop com viewport mobile: arraste diagonal mudou a posição dos links sem mudar o hash ou a rolagem da página; rolagem fora do menu continuou funcionando. O CSS computado confirmou `pinch-zoom` nas três camadas, e `auto` no corpo. Esses testes não simulam o reconhecedor nativo de gestos do Safari: a confirmação em iPhone físico continua pendente.
+
+
+## Inércia curta — 1.7.3
+
+O controlador estima a velocidade usando até 100 ms de movimentos recentes do ponteiro e considera a última direção ao inverter o gesto. Ao soltar, projeta uma continuação curta, limitada a 1,5 espaçamento entre itens, com desaceleração cúbica e encaixe exato em 320–460 ms. Segurar por mais de 80 ms antes de soltar não produz impulso. Amostras sem intervalo válido ou movimento muito lento usam apenas o encaixe habitual.
+
+Novo toque cancela a animação imediatamente, sem herdar a velocidade anterior. Cancelamento do ponteiro e preferência por movimento reduzido não iniciam inércia; alterações de preferência, aba oculta, navegação e redimensionamento encerram o movimento. A política de prioridade de toque da versão 1.7.2 permanece preservada.
+
+96 testes passaram. Os quatro casos novos cobrem cálculo da projeção, pausa/reversão, continuação e desaceleração nos dois sentidos e nas extremidades circulares, interrupção por novo toque, cancelamento e movimento reduzido. No navegador com viewport mobile, a posição continuou avançando após o arraste e estabilizou no encaixe, com o mesmo hash, rolagem da página e cinco links. Todos os quadros são agrupados em uma única fila de requestAnimationFrame, encerrada ao parar. Nenhuma mudança nos dados locais ou nas regras dos treinos. A percepção do movimento em Safari/iPhone físico continua pendente de validação.
