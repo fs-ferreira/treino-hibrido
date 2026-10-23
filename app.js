@@ -16,7 +16,7 @@ import {
   durationText,
   validDate,
   recentRunPace,
-} from "./lib/core.js?v=1.5.0";
+} from "./lib/core.js?v=1.6.0";
 import {
   withoutWeight,
   loadSuggestions,
@@ -24,18 +24,21 @@ import {
   paceRevision,
   effortTarget,
   nextPaceRevisions,
-} from "./lib/progression.js?v=1.5.0";
+} from "./lib/progression.js?v=1.6.0";
 import { workouts, exercises } from "./lib/exercises.js";
+import { plansView } from "./lib/plans-view.js?v=1.6.0";
+import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.6.0";
+import { createMobileNav } from "./lib/mobile-nav.js?v=1.6.0";
 import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
-import { hydrateIcons, applyTimeMask } from "./lib/ui.js";
-import { icon } from "./lib/icons.js";
-import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.5.0";
+import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";
+import { icon } from "./lib/icons.js?v=1.6.0";
+import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.6.0";
 import {
   createMotion,
   createAccordions,
   createDialogController,
-} from "./lib/motion.js?v=1.5.0";
+} from "./lib/motion.js?v=1.6.0";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -71,6 +74,7 @@ let data = defaults(),
   selected = dateKey(),
   week = weekStart(selected),
   expanded = new Set(),
+  expandedPlanDays = new Set([1]),
   references = {},
   toastTimer,
   pendingConfirmation = null,
@@ -79,14 +83,19 @@ let data = defaults(),
   dialogReturnFocus = null,
   draftManualPace = "";
 const motion = createMotion({ onStart: createMotionDiagnostics() });
+const mobileNav = createMobileNav($("nav"));
 document.documentElement.classList.toggle(
   "no-motion-api",
   typeof Element.prototype.animate !== "function",
 );
-const accordions = createAccordions(motion, (card, open) => {
-  if (open) expanded.add(card.dataset.exercise);
-  else expanded.delete(card.dataset.exercise);
-});
+function rememberDisclosure(card, open) {
+  const isPlan = card.dataset.planDay !== undefined;
+  const collection = isPlan ? expandedPlanDays : expanded;
+  const key = isPlan ? Number(card.dataset.planDay) : card.dataset.exercise;
+  if (open) collection.add(key);
+  else collection.delete(key);
+}
+const accordions = createAccordions(motion, rememberDisclosure);
 const dialogs = createDialogController($("#guide-dialog"), motion, {
   onClosing() {
     disposeMovement();
@@ -199,10 +208,7 @@ function heading(kicker, title, description, action = "") {
   return `<div class="page-heading"><div><p class="eyebrow">${kicker}</p><h1>${title}</h1><p class="muted">${description}</p></div>${action}</div>`;
 }
 function routeFromHash() {
-  const route = location.hash.slice(1);
-  return ["hoje", "semana", "historico", "configuracoes"].includes(route)
-    ? route
-    : "hoje";
+  return resolveRoute(location.hash).key;
 }
 function scrollToSession() {
   $("#session")?.scrollIntoView({
@@ -356,13 +362,8 @@ function syncLongRun() {
 function render() {
   accordions.finish();
   motion.finishAll();
-  const route = currentRoute;
-  document.querySelectorAll("[data-nav]").forEach((a) => {
-    const active = a.dataset.nav === route;
-    a.classList.toggle("active", active);
-    if (active) a.setAttribute("aria-current", "page");
-    else a.removeAttribute("aria-current");
-  });
+  const route = resolveRoute(currentRoute);
+  mobileNav.setActive(route.section);
   $("#top-date").textContent = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
@@ -377,13 +378,14 @@ function render() {
       {
         hoje: todayView,
         semana: weekView,
+        treinos: () => plansView(data.settings, route, expandedPlanDays),
         historico: historyView,
         configuracoes: settingsView,
-      }[route] || todayView
+      }[route.section] || todayView
     )();
-  document.title = `${{ hoje: "Hoje", semana: "Semana", historico: "Histórico", configuracoes: "Configurações" }[route] || "Hoje"} · HÍBRIDO`;
+  document.title = `${{ hoje: "Hoje", semana: "Semana", treinos: route.planId ? "Treino Híbrido" : "Treinos", historico: "Histórico", configuracoes: "Configurações" }[route.section] || "Hoje"} · HÍBRIDO`;
   hydrateIcons();
-  if (route === "configuracoes") {
+  if (route.section === "configuracoes") {
     draftManualPace = data.settings.useRecentPace
       ? data.settings.manualHardPace
       : data.settings.hardPace;
@@ -746,7 +748,9 @@ function sources() {
   );
 }
 document.addEventListener("click", (event) => {
-  const summary = event.target.closest("details[data-exercise] > summary");
+  const summary = event.target.closest(
+    "details[data-exercise] > summary, details[data-plan-day] > summary",
+  );
   if (summary) {
     event.preventDefault();
     accordions.toggle(summary.parentElement);
@@ -762,10 +766,14 @@ document.addEventListener("click", (event) => {
     event.button === 0
   ) {
     const hash = link.getAttribute("href").slice(1);
-    if (
-      ["hoje", "semana", "historico", "configuracoes", "session"].includes(hash)
-    ) {
+    if (isAppHash(hash)) {
       event.preventDefault();
+      if (link.hasAttribute("data-open-today")) {
+        selected = dateKey();
+        expanded.clear();
+        navigateTo("hoje", { refresh: true, session: true });
+        return;
+      }
       navigateTo(hash, { session: hash === "session" });
       return;
     }
@@ -903,13 +911,14 @@ document.addEventListener("click", (event) => {
 document.addEventListener(
   "toggle",
   (event) => {
-    if (event.target.matches?.("details[data-exercise]")) {
+    if (
+      event.target.matches?.("details[data-exercise], details[data-plan-day]")
+    ) {
       const open =
         event.target.dataset.expanded === undefined
           ? event.target.open
           : event.target.dataset.expanded === "true";
-      if (open) expanded.add(event.target.dataset.exercise);
-      else expanded.delete(event.target.dataset.exercise);
+      rememberDisclosure(event.target, open);
     }
   },
   true,

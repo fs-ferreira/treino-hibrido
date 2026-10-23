@@ -13,6 +13,7 @@ const names = [
   "activity",
   "layout-dashboard",
   "calendar-days",
+  "clipboard-list",
   "chart-no-axes-combined",
   "settings",
   "circle",

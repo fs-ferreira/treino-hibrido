@@ -18,7 +18,7 @@ Abra http://127.0.0.1:4173. Use um servidor HTTP: módulos JavaScript não funci
 npm test
 ```
 
-Os testes verificam paces, distâncias, oito blocos do intervalado, calendário local, isolamento das semanas, validação de backup e completude dos 21 guias.
+Os 74 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos e navegação circular.
 
 ## Como usar
 
@@ -26,7 +26,8 @@ Os testes verificam paces, distâncias, oito blocos do intervalado, calendário 
 2. Escolha sábado ou domingo para o longão e a duração entre 60 e 90 minutos.
 3. Em Hoje ou Semana, abra uma sessão. Na musculação, registre carga e repetições de cada série; em Como fazer, consulte o guia ilustrado e a demonstração externa.
 4. Depois da corrida, registre duração, distância, esforço e observações.
-5. Consulte Histórico e exporte periodicamente um backup em Configurações.
+5. Em Treinos, consulte o plano ativo e sua divisão em sete dias. Abra os dias para ver exercícios, guias e etapas das corridas. O catálogo é apenas para consulta; os resultados continuam sendo registrados nas sessões.
+6. Consulte Histórico e exporte periodicamente um backup em Configurações.
 
 O app preserva os 21 exercícios, 3 séries de 6–8 repetições e a distribuição semanal das imagens do post de @thalleshirakawa. Variantes adotadas são indicadas nos guias. Ilustrações SVG são originais e esquemáticas; os vídeos externos mostram o movimento com mais detalhe.
 
@@ -67,7 +68,15 @@ Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:
 
 Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação abre um painel com seleção de JSON, validação e resumo de sessões, séries e corridas; somente o botão Restaurar backup confirma a substituição. Erros aparecem no painel. Cabeçalho e ações permanecem acessíveis enquanto o conteúdo rola. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação em um painel do app. Não há alert, confirm ou prompt nativos; Escape, cancelar ou fechar preserva o diário. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
 
-A [validação de progressão e painéis](docs/validacao-progressao.md) registra os testes e as limitações desta versão.
+A [validação de progressão e painéis](docs/validacao-progressao.md) registra os testes dessa funcionalidade. A [validação de Treinos e navegação](docs/validacao-treinos.md) cobre a versão 1.6.0.
+
+## Treinos e navegação
+
+O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O esquema local permanece na versão 3.
+
+Em telas de até 600 px, arraste o menu inferior para revelar os destinos nos dois sentidos. Ele mostra três opções completas e partes das vizinhas, usando os mesmos cinco links, sem cópias. Arrastar não troca de tela; toque para navegar. O destino aberto fica destacado mesmo quando outra opção está no centro. Acima de 600 px, o menu mantém a navegação convencional.
+
+Tab percorre os cinco destinos uma vez. Setas esquerda/direita movem o foco circularmente; Enter abre a tela. O item focado fica visível. Com movimento reduzido, o encaixe é imediato; sem suporte a Pointer Events, o app oferece o menu convencional com rolagem horizontal. Lista e detalhe preservam suas posições de rolagem em memória, incluindo navegação pelo histórico do navegador.
 
 ## Publicar e atualizar
 
@@ -79,6 +88,8 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 
 - `app.js`: interface, formulários, navegação e persistência.
 - `lib/motion.js`: transições canceláveis, acordeões e ciclo de vida dos painéis.
+- `lib/mobile-nav.js`: menu circular com cinco links, gestos, teclado e encaixe cancelável.
+- `lib/plans.js`, `lib/plans-view.js`, `lib/routes.js`: catálogo estático, consulta dos sete dias e rotas de lista/detalhe.
 - `lib/core.js`: calendário, cálculos e validação dos backups.
 - `lib/progression.js`: sugestões por série, ajuste de paces e planejamento preservado por sessão.
 - `lib/icons.js`, `lib/ui.js`: ícones SVG locais Lucide e máscaras de digitação.
