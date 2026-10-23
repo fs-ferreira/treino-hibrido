@@ -25,12 +25,12 @@ import {
 import { workouts, exercises } from "./lib/exercises.js";
 import { runBlocksView } from "./lib/run-view.js?v=1.7.0";
 import { plansView } from "./lib/plans-view.js?v=1.7.0";
-import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.7.0";
+import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.7.1";
 import {
   settingsView,
   createSettingsController,
   settingsSections,
-} from "./lib/settings.js?v=1.7.0";
+} from "./lib/settings.js?v=1.7.1";
 import { createMobileNav } from "./lib/mobile-nav.js?v=1.6.1";
 import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
@@ -125,13 +125,8 @@ try {
   storageProblem =
     "Não foi possível ler o diário salvo. Seus dados não serão sobrescritos. Exporte uma cópia em Configurações → Dados antes de limpar o armazenamento.";
 }
-let draftStorage;
-try {
-  draftStorage = window.sessionStorage;
-} catch {}
 const settingsUi = createSettingsController({
   getSettings: () => data.settings,
-  storage: draftStorage,
   navigate: (section) => navigateTo(`configuracoes/${section}`),
   save(next) {
     const previous = data.settings;

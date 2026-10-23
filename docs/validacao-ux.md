@@ -1,4 +1,14 @@
-# Configurações e UX — 1.7.0
+# Configurações e UX — 1.7.1
+
+## Ajuste da versão 1.7.1
+
+Por solicitação do usuário, o botão de descarte e a persistência de rascunhos em `sessionStorage` foram removidos. As edições ficam em memória ao navegar; recarregar perde as alterações não salvas. O diário e as configurações já salvas permanecem em `localStorage`.
+
+O rodapé agora apresenta um único botão Salvar alterações, com largura total no mobile, ícone e estado de pendência/salvamento. A borda branca de foco foi removida; o teclado continua funcionando com feedback discreto por brilho/fundo.
+
+Os 89 testes foram mantidos, atualizando os casos de rascunho para verificar a nova duração das edições. Testes no navegador confirmaram troca de categoria preservando a edição, perda ao recarregar e permanência após Salvar. A descrição abaixo registra o comportamento histórico da versão 1.7.0; a mudança acima substitui sua política de rascunhos e descarte.
+
+## Validação anterior — 1.7.0
 
 Validação em 23/10/2026. Implementação nativa; esquema do diário mantido na versão 3. O menu circular, sua transferência de captura por toque e os SVGs foram preservados.
 

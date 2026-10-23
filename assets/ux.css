@@ -10,12 +10,15 @@ html {
   scroll-padding-bottom: 180px;
 }
 :where(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #d5d9df;
-  outline-offset: 3px;
+  outline: none;
   filter: none;
 }
+:where(a, button, summary):focus-visible {
+  filter: brightness(1.12);
+}
 :where(input, select, textarea):focus-visible {
-  border-color: #d5d9df;
+  border-color: var(--line);
+  background-color: #15181c;
 }
 .muted,
 .section-hint,
@@ -469,17 +472,17 @@ dialog > div > p,
 }
 .settings-actions {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   position: static;
   bottom: calc(var(--nav-reserve) + 8px);
   z-index: 5;
-  background: #202328;
-  border: 1px solid #424952;
-  border-radius: 12px;
-  padding: 16px;
+  background: #181c20;
+  border-top: 1px solid #333c38;
+  border-radius: 0 0 12px 12px;
+  padding: 20px 0 0;
   margin-top: 32px;
-  box-shadow: 0 -8px 20px #0003;
 }
 .settings-actions p {
   color: var(--muted);
@@ -487,17 +490,45 @@ dialog > div > p,
   margin: 0;
   line-height: 1.5;
 }
-.settings-actions > div {
+.settings-save-status {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
 }
-.settings-actions .button {
-  min-height: 48px;
+.settings-save-status > span {
+  display: flex;
+  flex-shrink: 0;
+}
+.settings-save-status .icon {
+  width: 16px;
+  height: 16px;
+}
+.settings-actions .settings-save {
+  min-height: 52px;
+  min-width: 200px;
+  padding: 14px 24px;
+  gap: 10px;
+  border-radius: 12px;
   white-space: normal;
+}
+.settings-actions .settings-save:disabled {
+  opacity: 1;
+  color: #a2ada5;
+  background: #252c28;
+  border-color: #38443a;
 }
 [data-settings-form][data-pending="true"] .settings-actions {
   position: sticky;
+  padding: 16px;
+  margin-inline: -16px;
+  border: 1px solid #43523c;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px #0005;
+}
+[data-settings-form][data-pending="true"] .settings-save-status {
+  color: var(--lime);
 }
 .settings-short-viewport [data-settings-form] .settings-actions {
   position: static;
@@ -557,9 +588,6 @@ dialog > div > p,
 }
 .danger-zone h3 {
   color: #ffb8b8;
-}
-.draft-warning {
-  font-size: 14px;
 }
 @media (max-height: 560px) {
   [data-settings-form][data-pending] .settings-actions {
@@ -798,16 +826,15 @@ dialog > div > p,
     gap: 0;
   }
   .settings-actions {
-    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-top: 16px;
   }
-  .settings-actions > div {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 8px;
-  }
-  .settings-actions .button {
-    font-size: 13px;
-    padding: 10px 8px;
+  .settings-actions .settings-save {
+    width: 100%;
+    min-width: 0;
+    font-size: 15px;
   }
   .data-actions {
     flex-direction: column;

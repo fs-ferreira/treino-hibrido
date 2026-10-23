@@ -2,25 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { defaults, validateBackup, runningPlan } from "../lib/core.js";
 import {
-  DRAFT_KEY,
   settingsSections,
   settingsDraft,
   validateSettings,
-  createSettingsDrafts,
+  createSettingsEdits,
   settingsView,
   createSettingsController,
 } from "../lib/settings.js";
 import { resolveRoute, isAppHash } from "../lib/routes.js";
 import { runBlocksView } from "../lib/run-view.js";
 
-const storage = () => {
-  const values = new Map();
-  return {
-    getItem: (k) => values.get(k) ?? null,
-    setItem: (k, v) => values.set(k, v),
-    removeItem: (k) => values.delete(k),
-  };
-};
 test("configurações: quatro categorias, formulários independentes e rotas compatíveis", () => {
   assert.deepEqual(
     settingsSections.map((s) => s.id),
@@ -46,6 +37,11 @@ test("configurações: quatro categorias, formulários independentes e rotas com
     /settings-tab-progressao[^>]+aria-selected="true" tabindex="0"/,
   );
   assert.doesNotMatch(html, /data-settings-form="dados"/);
+  assert.doesNotMatch(html, /Descartar alterações|data-settings-discard/);
+  assert.equal(
+    (html.match(/class="button primary settings-save"/g) || []).length,
+    3,
+  );
 });
 test("salvar Progressão ou Semana ignora rascunhos inválidos de Corrida e preserva campos de outras categorias", () => {
   const s = defaults().settings,
@@ -164,80 +160,71 @@ test("corrida vinculada preserva o pace forte manual e reinicia somente as refer
     "6:00",
   );
 });
-test("rascunhos recuperam valores parciais após recriar a aba, sem alterar os ajustes salvos", () => {
-  const s = defaults().settings,
-    memory = storage(),
-    a = createSettingsDrafts(memory),
-    raw = {
-      ...settingsDraft("corrida", s),
-      easyPace: "6:",
-      recentTime: "00:4",
-    };
-  a.capture("corrida", raw, s);
-  a.capture("progressao", { loadProgression: "7.5", paceProgression: true }, s);
-  assert.equal(s.easyPace, "");
-  assert.equal(s.loadProgression, 5);
-  const b = createSettingsDrafts(memory);
-  assert.deepEqual(b.get("corrida", s), raw);
-  assert.equal(b.dirty("corrida", s), true);
-  b.discard("progressao");
-  assert.equal(b.dirty("corrida", s), true);
-  assert.equal(b.get("progressao", s).loadProgression, "5");
-  b.clear();
-  assert.equal(memory.getItem(DRAFT_KEY), null);
-  assert.equal(createSettingsDrafts(memory).dirty("corrida", s), false);
+test("edições parciais ficam apenas na página atual e não sobrevivem a uma nova instância", () => {
+  const saved = defaults().settings,
+    edits = createSettingsEdits();
+  const raw = {
+    ...settingsDraft("corrida", saved),
+    easyPace: "6:",
+    recentTime: "00:4",
+  };
+  edits.capture("corrida", raw, saved);
+  assert.deepEqual(edits.get("corrida", saved), raw);
+  assert.equal(saved.easyPace, "");
+  assert.equal(createSettingsEdits().get("corrida", saved).easyPace, "");
+  assert.equal(createSettingsEdits().dirty("corrida", saved), false);
 });
-test("rascunhos não entram no backup e são removidos ao voltar aos valores salvos", () => {
+test("salvar uma categoria libera só suas edições, mantendo as demais em memória", () => {
+  const saved = defaults().settings,
+    edits = createSettingsEdits();
+  edits.capture(
+    "corrida",
+    { ...settingsDraft("corrida", saved), easyPace: "6:" },
+    saved,
+  );
+  edits.capture(
+    "progressao",
+    { loadProgression: "7.5", paceProgression: true },
+    saved,
+  );
+  Object.assign(
+    saved,
+    validateSettings("progressao", edits.get("progressao", saved), saved)
+      .settings,
+  );
+  edits.saved("progressao");
+  assert.equal(edits.dirty("progressao", saved), false);
+  assert.equal(edits.dirty("corrida", saved), true);
+  assert.equal(edits.get("corrida", saved).easyPace, "6:");
+});
+test("edições não entram no backup e voltar aos valores salvos remove a pendência", () => {
   const data = defaults(),
-    memory = storage(),
-    drafts = createSettingsDrafts(memory);
-  drafts.capture("semana", { longDay: "0", longMinutes: "90" }, data.settings);
+    edits = createSettingsEdits();
+  edits.capture("semana", { longDay: "0", longMinutes: "90" }, data.settings);
   assert.equal(
     validateBackup(JSON.parse(JSON.stringify(data))).settings.longMinutes,
     60,
   );
-  drafts.capture(
+  edits.capture(
     "semana",
     settingsDraft("semana", data.settings),
     data.settings,
   );
-  assert.equal(drafts.dirty("semana", data.settings), false);
-  assert.equal(memory.getItem(DRAFT_KEY), null);
+  assert.equal(edits.dirty("semana", data.settings), false);
 });
-test("falha de armazenamento de rascunho preserva a edição em memória e informa a limitação", () => {
-  const denied = {
-      getItem() {
-        throw Error();
-      },
-      setItem() {
-        throw Error();
-      },
-      removeItem() {
-        throw Error();
-      },
-    },
-    s = defaults().settings,
-    d = createSettingsDrafts(denied);
+test("edições são cópias independentes e reset não altera o diário salvo", () => {
+  const saved = defaults().settings,
+    original = JSON.stringify(saved),
+    edits = createSettingsEdits();
   const raw = { loadProgression: "9", paceProgression: true };
-  d.capture("progressao", raw, s);
-  assert.deepEqual(d.get("progressao", s), raw);
-  assert.ok(d.warning);
-  d.clear();
-  assert.equal(d.dirty("progressao", s), false);
-});
-test("rascunho inválido ou de versão desconhecida não entra no diário nem quebra os formulários", () => {
-  const s = defaults().settings;
-  for (const value of [
-    "{",
-    '{"version":8,"drafts":{}}',
-    '{"version":1,"drafts":{"corrida":{"easyPace":false}}}',
-  ]) {
-    const memory = storage();
-    memory.setItem(DRAFT_KEY, value);
-    const d = createSettingsDrafts(memory);
-    assert.ok(d.warning);
-    assert.deepEqual(d.get("corrida", s), settingsDraft("corrida", s));
-  }
+  edits.capture("progressao", raw, saved);
+  raw.loadProgression = "3";
+  const copy = edits.get("progressao", saved);
+  copy.loadProgression = "1";
+  assert.equal(edits.get("progressao", saved).loadProgression, "9");
+  edits.clear();
+  assert.equal(edits.dirty("progressao", saved), false);
+  assert.equal(JSON.stringify(saved), original);
 });
 test("intervalado agrupado mantém os 18 estágios e oito ciclos com total de 40 minutos", () => {
   const s = {
@@ -265,7 +252,7 @@ test("intervalado agrupado mantém os 18 estágios e oito ciclos com total de 40
 });
 
 // Minimal DOM boundary: events and rendered controls, without implementing form logic.
-function controllerFixture(memory = storage(), commit = () => true) {
+function controllerFixture(commit = () => true) {
   const listeners = new Map(),
     saved = defaults().settings,
     doc = { activeElement: null };
@@ -351,7 +338,6 @@ function controllerFixture(memory = storage(), commit = () => true) {
       return true;
     },
     navigate() {},
-    storage: memory,
     window: { addEventListener() {}, removeEventListener() {} },
   });
   controller.mount(root, "progressao");
@@ -360,7 +346,10 @@ function controllerFixture(memory = storage(), commit = () => true) {
     forms,
     saved,
     listeners,
-    memory,
+    remount() {
+      controller.unmount();
+      controller.mount(root, "progressao");
+    },
     commits: () => commits,
     submit(id) {
       listeners.get("submit")({ target: forms[id], preventDefault() {} });
@@ -369,7 +358,7 @@ function controllerFixture(memory = storage(), commit = () => true) {
 }
 
 test("controller: falha ao salvar conserva rascunho, ajustes e mensagem, sem confirmação de sucesso", () => {
-  const f = controllerFixture(storage(), () => false);
+  const f = controllerFixture(() => false);
   f.forms.progressao.elements.loadProgression.value = "8.5";
   f.submit("progressao");
   assert.equal(f.saved.loadProgression, 5);
@@ -384,10 +373,9 @@ test("controller: falha ao salvar conserva rascunho, ajustes e mensagem, sem con
   );
   f.controller.unmount();
   assert.equal(f.listeners.size, 0);
-  assert.equal(
-    createSettingsDrafts(f.memory).get("progressao", f.saved).loadProgression,
-    "8.5",
-  );
+  f.remount();
+  assert.equal(f.forms.progressao.elements.loadProgression.value, "8.5");
+  assert.equal(f.saved.loadProgression, 5);
 });
 
 test("controller: salvar somente uma categoria preserva o outro formulário e seu rascunho inválido", () => {
@@ -402,9 +390,12 @@ test("controller: salvar somente uma categoria preserva o outro formulário e se
   assert.equal(f.saved.loadProgression, 7.5);
   assert.equal(f.saved.easyPace, "");
   assert.equal(f.forms.corrida.elements.easyPace.value, "6:00");
-  const drafts = createSettingsDrafts(f.memory);
-  assert.equal(drafts.dirty("progressao", f.saved), false);
-  assert.equal(drafts.get("corrida", f.saved).easyPace, "6:00");
+  f.remount();
+  assert.equal(f.forms.corrida.elements.easyPace.value, "6:00");
+  assert.equal(
+    f.forms.progressao.querySelector('[type="submit"]').disabled,
+    true,
+  );
   assert.equal(
     f.forms.progressao.querySelector("[data-settings-status]").textContent,
     "Salvo neste navegador",
@@ -415,9 +406,12 @@ test("controller: reset após substituição do diário invalida rascunhos e men
   const f = controllerFixture();
   f.forms.corrida.elements.easyPace.value = "6:00";
   f.submit("corrida");
-  assert.ok(f.memory.getItem(DRAFT_KEY));
   f.controller.reset();
   f.controller.unmount();
-  assert.equal(f.memory.getItem(DRAFT_KEY), null);
-  assert.equal(createSettingsDrafts(f.memory).dirty("corrida", f.saved), false);
+  f.remount();
+  assert.equal(f.forms.corrida.elements.easyPace.value, "");
+  assert.equal(
+    f.forms.progressao.querySelector("[data-settings-status]").textContent,
+    "Sem alterações pendentes",
+  );
 });
