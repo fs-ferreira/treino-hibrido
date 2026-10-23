@@ -14,8 +14,6 @@ import {
   maskTime,
   parseDuration,
   durationText,
-  validDate,
-  recentRunPace,
 } from "./lib/core.js?v=1.6.0";
 import {
   withoutWeight,
@@ -23,11 +21,16 @@ import {
   getRunPlan,
   paceRevision,
   effortTarget,
-  nextPaceRevisions,
 } from "./lib/progression.js?v=1.6.0";
 import { workouts, exercises } from "./lib/exercises.js";
-import { plansView } from "./lib/plans-view.js?v=1.6.0";
-import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.6.0";
+import { runBlocksView } from "./lib/run-view.js?v=1.7.0";
+import { plansView } from "./lib/plans-view.js?v=1.7.0";
+import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.7.0";
+import {
+  settingsView,
+  createSettingsController,
+  settingsSections,
+} from "./lib/settings.js?v=1.7.0";
 import { createMobileNav } from "./lib/mobile-nav.js?v=1.6.1";
 import { illustration } from "./lib/diagrams.js";
 import { createMovementPlayer } from "./lib/movement-player.js";
@@ -80,8 +83,7 @@ let data = defaults(),
   pendingConfirmation = null,
   pendingImport = null,
   importGeneration = 0,
-  dialogReturnFocus = null,
-  draftManualPace = "";
+  dialogReturnFocus = null;
 const motion = createMotion({ onStart: createMotionDiagnostics() });
 const mobileNav = createMobileNav($("nav"));
 document.documentElement.classList.toggle(
@@ -121,8 +123,24 @@ try {
 } catch (error) {
   storageLocked = true;
   storageProblem =
-    "Não foi possível ler o diário salvo. Seus dados não serão sobrescritos. Exporte uma cópia em Configurações antes de limpar o armazenamento.";
+    "Não foi possível ler o diário salvo. Seus dados não serão sobrescritos. Exporte uma cópia em Configurações → Dados antes de limpar o armazenamento.";
 }
+let draftStorage;
+try {
+  draftStorage = window.sessionStorage;
+} catch {}
+const settingsUi = createSettingsController({
+  getSettings: () => data.settings,
+  storage: draftStorage,
+  navigate: (section) => navigateTo(`configuracoes/${section}`),
+  save(next) {
+    const previous = data.settings;
+    data.settings = next;
+    if (persist("Ajustes salvos neste navegador.")) return true;
+    data.settings = previous;
+    return false;
+  },
+});
 fetch("./assets/references.json")
   .then((r) => {
     if (!r.ok) throw Error();
@@ -226,7 +244,23 @@ function applyNavigation(route, options = {}) {
     left: window.scrollX,
     top: window.scrollY,
   });
+  const previous = resolveRoute(currentRoute),
+    next = resolveRoute(route);
   currentRoute = route;
+  if (
+    previous.section === "configuracoes" &&
+    next.section === "configuracoes" &&
+    $("#settings-page") &&
+    !options.refresh
+  ) {
+    window.scrollTo({
+      ...(routePositions.get(route) ?? { left: 0, top: 0 }),
+      behavior: "instant",
+    });
+    settingsUi.show(next.settingsSection, true);
+    updateTitle(next);
+    return;
+  }
   render();
   main.focus({ preventScroll: true });
   window.scrollTo({
@@ -265,10 +299,11 @@ function syncTodayStatus() {
     indicator.classList.toggle("done", finished);
     indicator.innerHTML = finished ? icon("check") : "";
   });
-  const link = $(".hero .button"),
-    kind = workouts[getType(selected)].kind;
+  const link = $(".hero .button");
+  if ($(".hero .session-state"))
+    $(".hero .session-state").textContent = sessionStatus(selected).label;
   if (link)
-    link.innerHTML = `${data.sessions[selected]?.done ? "Rever treino" : kind === "rest" ? "Ver recuperação" : "Abrir treino"} ${icon("arrow-down")}`;
+    link.innerHTML = `${sessionStatus(selected).action} ${icon("arrow-down")}`;
 }
 function syncStrength(id) {
   if (!$(".progress-line")) return;
@@ -322,6 +357,9 @@ function refreshDay() {
       : 'Seu treino, no seu tempo<span class="accent">.</span>';
   $(".page-heading .muted").textContent = fullDate(selected);
   $(".hero").outerHTML = heroView();
+  $("[data-action=reset-day]").hidden = selected === dateKey();
+  $(".setup-banner")?.remove();
+  $(".dashboard-grid").insertAdjacentHTML("beforebegin", setupBanner());
   $("#session").innerHTML = sessionView(getType(selected));
   if ($(".week-strip .day").dataset.date !== weekStart(selected))
     $(".week-strip").outerHTML = weekStrip();
@@ -359,7 +397,20 @@ function syncLongRun() {
       blocks[i].km === null ? "—" : `${num(blocks[i].km, 2)} km`;
   });
 }
+function updateTitle(route) {
+  const title =
+    route.section === "configuracoes"
+      ? `${settingsSections.find((s) => s.id === route.settingsSection)?.label ?? "Corrida"} · Configurações`
+      : ({
+          hoje: "Hoje",
+          semana: "Semana",
+          treinos: route.planId ? "Treino Híbrido" : "Treinos",
+          historico: "Histórico",
+        }[route.section] ?? "Hoje");
+  document.title = `${title} · HÍBRIDO`;
+}
 function render() {
+  settingsUi.unmount();
   accordions.finish();
   motion.finishAll();
   const route = resolveRoute(currentRoute);
@@ -380,17 +431,13 @@ function render() {
         semana: weekView,
         treinos: () => plansView(data.settings, route, expandedPlanDays),
         historico: historyView,
-        configuracoes: settingsView,
+        configuracoes: () => settingsView(data.settings, route.settingsSection),
       }[route.section] || todayView
     )();
-  document.title = `${{ hoje: "Hoje", semana: "Semana", treinos: route.planId ? "Treino Híbrido" : "Treinos", historico: "Histórico", configuracoes: "Configurações" }[route.section] || "Hoje"} · HÍBRIDO`;
+  updateTitle(route);
   hydrateIcons();
-  if (route.section === "configuracoes") {
-    draftManualPace = data.settings.useRecentPace
-      ? data.settings.manualHardPace
-      : data.settings.hardPace;
-    updateRecentPace();
-  }
+  if (route.section === "configuracoes")
+    settingsUi.mount($("#settings-page"), route.settingsSection);
 }
 function weekStrip(start = weekStart(selected)) {
   return `<div class="week-strip" aria-label="Dias da semana">${Array.from(
@@ -404,10 +451,34 @@ function weekStrip(start = weekStart(selected)) {
     },
   ).join("")}</div>`;
 }
+function sessionStatus(key) {
+  const s = data.sessions[key],
+    kind = workouts[getType(key)].kind;
+  const started = Boolean(
+    s?.run ||
+      Object.values(s?.sets ?? {}).some((sets) =>
+        sets.some((set) => set.done || set.kg !== "" || set.reps !== ""),
+      ),
+  );
+  return s?.done
+    ? { label: "Concluído", action: "Rever treino" }
+    : kind === "rest"
+      ? { label: "Descanso", action: "Ver recuperação" }
+      : started
+        ? { label: "Em andamento", action: "Continuar treino" }
+        : { label: "Planejado", action: "Abrir treino" };
+}
+function setupBanner() {
+  return workouts[getType(selected)].kind === "run" && !data.settings.easyPace
+    ? '<div class="setup-banner"><div><strong>Prepare seus ritmos de corrida.</strong><p>Informe seus paces para estimar distância e velocidade.</p></div><a class="button" href="#configuracoes/corrida">Configurar ritmos ' +
+        icon("arrow-up-right") +
+        "</a></div>"
+    : "";
+}
 function heroView() {
   const type = getType(selected),
     w = workouts[type];
-  return `<section class="hero ${w.kind}"><div class="hero-copy">${tag(w.tag, w.kind)}<p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? "<div><b>07</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>" : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (data.sessions[selected]?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${data.sessions[selected]?.done ? "Rever treino" : w.kind === "rest" ? "Ver recuperação" : "Abrir treino"} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-word">${w.kind === "strength" ? "STR" : w.kind === "run" ? "RUN" : "RST"}</span><span class="art-cross">+</span><span class="art-caption">STRENGTH × ENDURANCE</span></div></section>`;
+  return `<section class="hero ${w.kind}"><div class="hero-copy">${tag(w.tag, w.kind)}<span class="session-state">${sessionStatus(selected).label}</span><p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? "<div><b>07</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>" : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (data.sessions[selected]?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${sessionStatus(selected).action} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-word">${w.kind === "strength" ? "STR" : w.kind === "run" ? "RUN" : "RST"}</span><span class="art-cross">+</span><span class="art-caption">STRENGTH × ENDURANCE</span></div></section>`;
 }
 function todayView() {
   const type = getType(selected),
@@ -424,11 +495,9 @@ function todayView() {
         ? 'Vamos nessa<span class="accent">.</span>'
         : 'Seu treino, no seu tempo<span class="accent">.</span>',
       fullDate(selected),
-      `<button class="button quiet" data-action="reset-day">Ir para hoje</button>`,
+      `<button class="button quiet" data-action="reset-day" ${selected === dateKey() ? "hidden" : ""}>Ir para hoje</button>`,
     ) +
-    (!data.settings.easyPace
-      ? `<div class="setup-banner"><span class="setup-symbol">↗</span><div><strong>Seu ritmo é o ponto de partida.</strong><p>Configure seus paces para calcular os treinos de corrida.</p></div><a class="button" href="#configuracoes">Configurar ritmos ${arrow}</a></div>`
-      : "") +
+    setupBanner() +
     `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><p class="eyebrow">CONSISTÊNCIA &gt; PRESSA</p><h2>Uma semana.<br>Seis movimentos.</h2><div class="progress-ring" style="--progress:${Math.min(done / 6, 1) * 100}%"><div><b>${done}<small>/6</small></b><span>treinos concluídos</span></div></div><div class="split-stat"><span><i class="dot lime"></i> Musculação <b>3</b></span><span><i class="dot cyan"></i> Corrida <b>3</b></span></div></section></div><div class="section-title"><h2>Sua semana</h2><a class="text-link" href="#semana">Ver calendário ${arrow}</a></div>${weekStrip(start)}<section id="session" class="session-section">${sessionView(type)}</section>`
   );
 }
@@ -492,8 +561,8 @@ function paceAdvice(plan, type) {
     };
   return `<section class="panel pace-advice ${a.blocked ? "pace-conflict" : ""}" aria-label="Sugestão de ritmo"><p class="eyebrow cyan-text">${plan.saved ? "PLANEJAMENTO REGISTRADO" : a.sourceDate ? "RITMO AJUSTADO AO HISTÓRICO" : "SEU PACE BASE"}</p><div class="pace-advice-title"><h3>${a.pace ? `${paceText(a.pace)} <small>/km</small>` : "Recalibre seus ritmos"}</h3><span>Alvo ${min}–${max}/10${type === "interval" ? " nos blocos fortes" : ""}</span></div>
     ${a.sourceDate ? `<p>Referência: ${shortDate(a.sourceDate)} · ${paceText(a.previousPace)}/km · esforço ${a.rpe}/10.</p><p>${reasons[a.reason] || ""}${a.percent ? ` Ajuste de ${a.percent > 0 ? "+" : ""}${weightText(a.percent)}% no tempo por km.` : ""}</p>` : "<p>Sem corrida equivalente elegível nesta referência. Usamos seu ritmo configurado.</p>"}
-    ${a.blocked ? `<p class="form-error">${type === "interval" ? "O pace forte sugerido precisa ser mais rápido que a recuperação. As etapas fortes ficam sem estimativa até a recalibração." : "O ritmo calculado ficou fora da faixa de 0:01 a 99:59/km. A distância fica sem estimativa até a recalibração."} <a href="#configuracoes">Revisar paces base</a>.</p>` : ""}
-    <p class="caption">Estimativa gradual do app; o esforço real continua orientando a execução. Seus paces base ficam preservados. ${plan.saved ? "Este plano foi salvo com a sessão." : "O cálculo parte de uma corrida realizada; abrir a tela não acumula ajustes."}</p></section>`;
+    ${a.blocked ? `<p class="form-error">${type === "interval" ? "O pace forte sugerido precisa ser mais rápido que a recuperação. As etapas fortes ficam sem estimativa até a recalibração." : "O ritmo calculado ficou fora da faixa de 0:01 a 99:59/km. A distância fica sem estimativa até a recalibração."} <a href="#configuracoes/corrida">Revisar paces base</a>.</p>` : ""}
+    <details class="help-details pace-method"><summary>Entender esta sugestão</summary><p class="caption" data-plan-caption>Estimativa gradual do app; o esforço real continua orientando a execução. Seus paces base ficam preservados. ${plan.saved ? "Este plano foi salvo com a sessão." : "O cálculo parte de uma corrida realizada; abrir a tela não acumula ajustes."}</p></details></section>`;
 }
 function runView(type) {
   const plan = getRunPlan(type, data.settings, data.sessions, selected),
@@ -503,12 +572,12 @@ function runView(type) {
     isLong = type === "long";
   return `<div class="section-title"><div><p class="eyebrow cyan-text">CORRIDA · ${shortDate(selected)}</p><h2>O caminho de hoje</h2></div>${tag("RITMO CONTROLADO", "run")}</div>
     <div class="run-layout"><div><div class="run-overview panel"><div><small>DURAÇÃO PREVISTA</small><b>${total.minutes}<em>min</em></b></div><div><small>${total.complete ? "DISTÂNCIA ESTIMADA" : "DISTÂNCIA PARCIAL"}</small><b>${total.known ? num(total.km, 2) : "—"}<em>km</em></b></div></div>
-    ${missing && !plan.adjustment.blocked ? '<div class="notice">Informe seus ritmos para completar os cálculos. <a href="#configuracoes">Configurar paces →</a></div>' : ""}
+    ${missing && !plan.adjustment.blocked ? '<div class="notice">Informe seus ritmos para completar os cálculos. <a href="#configuracoes/corrida">Configurar paces →</a></div>' : ""}
     ${r && !plan.saved ? '<p class="notice subtle">Este registro antigo não guardava o planejamento original. O plano abaixo é uma simulação com as referências atuais.</p>' : ""}
     ${paceAdvice(plan, type)}
     ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption">A faixa do plano equivale a <span id="long-distance-range">${longRangeText(snapshot.easyPace)}</span>. ${plan.saved ? "Duração preservada no planejamento registrado." : "Escolha conforme sua capacidade atual; a duração não aumenta automaticamente."}</p></div>` : ""}
-    <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${blocks.map((b, i) => `<div class="run-block"><span class="block-index ${b.kind}">${String(i + 1).padStart(2, "0")}</span><div><b>${b.label}</b><small>${b.pace ? `${paceText(b.pace)} /km · ${num(b.kph)} km/h` : "Pace não informado"}</small></div><div class="block-values"><b>${b.minutes} min</b><small>${b.km === null ? "—" : num(b.km, 2) + " km"}</small></div></div>`).join("")}</div>${!total.complete ? '<p class="caption">O total parcial soma somente as etapas com pace informado. A caminhada pode ficar sem estimativa.</p>' : ""}</div>
-    <aside><div class="panel effort-card"><span class="mini-icon">${icon("activity")}</span><p class="eyebrow">FOCO DO TREINO</p><h3>${type === "interval" ? "Forte. Sem sprint." : "O ritmo da conversa."}</h3><p>${type === "interval" ? "Blocos fortes em 7–8/10 de esforço: um ritmo repetível, com controle nos oito blocos. O ajuste usa apenas os dados desses blocos." : "Mantenha o esforço em 3–4/10, como no plano original. Você deve conseguir conversar com frases completas e sem dificuldade."}</p><a class="text-link" href="#configuracoes">Ajustar meus ritmos ${arrow}</a></div>
+    <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${!total.complete ? '<p class="caption">O total parcial soma somente as etapas com pace informado. A caminhada pode ficar sem estimativa.</p>' : ""}</div>
+    <aside><div class="panel effort-card"><span class="mini-icon">${icon("activity")}</span><p class="eyebrow">FOCO DO TREINO</p><h3>${type === "interval" ? "Forte. Sem sprint." : "O ritmo da conversa."}</h3><p>${type === "interval" ? "Blocos fortes em 7–8/10 de esforço: um ritmo repetível, com controle nos oito blocos. O ajuste usa apenas os dados desses blocos." : "Mantenha o esforço em 3–4/10, como no plano original. Você deve conseguir conversar com frases completas e sem dificuldade."}</p><a class="text-link" href="#configuracoes/corrida">Ajustar meus ritmos ${arrow}</a></div>
     <form id="run-form" class="panel run-form"><p class="eyebrow">DEPOIS DO TREINO</p><h3>Como foi a corrida?</h3><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${r?.minutes ?? ""}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${r?.km ?? ""}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${r ? paceText((r.minutes * 60) / r.km) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(r?.rpe)}</select></label>
     ${type === "interval" ? `<fieldset class="hard-run-fields"><legend>Blocos fortes <span class="optional">opcional</span></legend><p class="caption" id="hard-run-hint">Preencha os dois campos para ajustar o próximo intervalado. Não use a média da sessão inteira.</p><label>Pace médio dos blocos fortes<input name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${r?.hardPace ? paceText(r.hardPace) : ""}" placeholder="mm:ss" aria-describedby="hard-run-hint"></label><label>Esforço dos blocos fortes (0–10)<select name="hardRpe">${effortOptions(r?.hardRpe)}</select></label></fieldset>` : ""}
     <label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(r?.notes || "")}</textarea></label><p id="run-error" class="form-error" role="alert"></p><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button></form></aside></div>`;
@@ -520,7 +589,7 @@ function calendarView() {
       const type = getType(key),
         w = workouts[type],
         s = data.sessions[key];
-      return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}"><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? "7 exercícios · 3 × 6–8" : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
+      return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""}><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${key === dateKey() || key === selected ? `<span class="day-context">${key === dateKey() ? "Hoje" : "Dia selecionado"}</span>` : ""}${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? "7 exercícios · 3 × 6–8" : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
     })
     .join("")}</div>`;
 }
@@ -531,7 +600,7 @@ function weekView() {
       'Uma semana equilibrada<span class="accent">.</span>',
       "Três dias de força. Três de corrida. Um para recuperar.",
     ) +
-    `<div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(week)} — ${shortDate(addDays(week, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week">Semana atual</button></div>${calendarView()}<div class="notice subtle">Longão no ${data.settings.longDay === 6 ? "sábado" : "domingo"}. <a href="#configuracoes">Trocar o dia</a>. Sessões já registradas mantêm o treino original.</div>`
+    `<div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(week)} — ${shortDate(addDays(week, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week" ${week === weekStart(dateKey()) ? "hidden" : ""}>Semana atual</button></div>${calendarView()}<div class="notice subtle">Longão no ${data.settings.longDay === 6 ? "sábado" : "domingo"}. <a href="#configuracoes/semana">Trocar o dia</a>. Sessões já registradas mantêm o treino original.</div>`
   );
 }
 function historyView() {
@@ -557,11 +626,13 @@ function historyView() {
     (entries.length
       ? `<div class="history-list">${entries
           .map(
-            ([key, s]) =>
-              `<article class="panel history-entry"><div class="history-title"><div>${tag(workouts[s.type].kind === "run" ? "CORRIDA" : "FORÇA", workouts[s.type].kind)}<h2>${workouts[s.type].name}</h2><p>${fullDate(key)}</p></div><button class="button quiet" data-action="open-day" data-date="${key}">Abrir ${arrow}</button></div>${
+            ([key, s], index) =>
+              `${index === 0 || entries[index - 1][0].slice(0, 7) !== key.slice(0, 7) ? `<h2 class="history-month">${dateFromKey(key).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>` : ""}<article class="panel history-entry"><div class="history-title"><div>${tag(workouts[s.type].kind === "run" ? "CORRIDA" : "FORÇA", workouts[s.type].kind)}<h3>${workouts[s.type].name}</h3><p>${fullDate(key)}</p></div><button class="button quiet" data-action="open-day" data-date="${key}">Abrir ${arrow}</button></div>${
                 s.run
                   ? `<div class="history-run"><span><b>${num(s.run.km, 2)}</b> km</span><span><b>${num(s.run.minutes, 1)}</b> min</span><span><b>${paceText((s.run.minutes * 60) / s.run.km)}</b> /km</span><span>Esforço <b>${s.run.rpe}/10</b></span></div>${s.run.hardPace ? `<p class="caption">Blocos fortes · ${paceText(s.run.hardPace)}/km · esforço ${s.run.hardRpe}/10</p>` : ""}${s.run.plan ? `<p class="caption">Planejado · ${paceText(s.type === "interval" ? s.run.plan.hardPace : s.run.plan.easyPace)}/km · ${s.type === "interval" ? 40 : s.type === "easy" ? 30 : s.run.plan.longMinutes} min</p>` : ""}${s.run.notes ? `<p class="history-note">${escape(s.run.notes)}</p>` : ""}`
-                  : `<div class="history-sets">${Object.entries(s.sets)
+                  : `<details class="history-strength"><summary>Consultar séries registradas ${icon("chevron-down")}</summary><div class="history-sets">${Object.entries(
+                      s.sets,
+                    )
                       .filter(([, sets]) =>
                         sets.some(
                           (x) => x.done || x.kg !== "" || x.reps !== "",
@@ -571,61 +642,13 @@ function historyView() {
                         ([id, sets]) =>
                           `<div><span>${escape(exercises[id]?.name || id)}</span><b>${setHistoryText(sets, Boolean(s.withoutWeight?.[id]))}</b></div>`,
                       )
-                      .join("")}</div>`
+                      .join("")}</div></details>`
               }<p class="caption">${s.done ? "✓ Sessão concluída" : "◐ Sessão em andamento"}</p></article>`,
           )
           .join("")}</div>`
       : `<div class="empty-state panel"><span>↗</span><h2>Sua história começa no próximo treino.</h2><p>Registre as séries ou uma corrida e volte aqui para acompanhar.</p><a class="button primary" href="#hoje">Ver meu treino ${arrow}</a></div>`)
   );
 }
-function settingsView() {
-  const s = data.settings,
-    run = s.recentRun;
-  return (
-    heading(
-      "AJUSTE AO SEU RITMO",
-      'Seu ponto de partida<span class="accent">.</span>',
-      "Informe os ritmos que você pratica. O planejador faz as contas.",
-    ) +
-    `
-  <div class="settings-layout">
-    <form id="settings-form" class="panel settings-form">
-      <p class="eyebrow">01 / CORRIDA</p><h2>Seus ritmos, em min/km</h2>
-      <p class="muted">Digite apenas os números. Os dois-pontos são inseridos automaticamente.</p>
-      <div class="form-pair">
-        <label for="easy-pace">Pace leve<input id="easy-pace" name="easyPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${escape(s.easyPace)}" placeholder="mm:ss" aria-describedby="easy-pace-hint"><small id="easy-pace-hint">Conversa confortável, com frases completas.</small></label>
-        <label for="hard-pace">Pace moderado-forte<input id="hard-pace" name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" ${s.useRecentPace ? "readonly" : ""} value="${escape(s.hardPace)}" placeholder="mm:ss" aria-describedby="hard-pace-hint"><small id="hard-pace-hint">Controlado e repetível. Calibrado pelo seu esforço.</small></label>
-      </div>
-      <label for="walk-pace">Pace de caminhada <span class="optional">opcional</span><input id="walk-pace" name="walkPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${escape(s.walkPace)}" placeholder="mm:ss"><small>Usado nos 3 minutos finais do intervalado.</small></label>
-      <section class="recent-run-card" aria-labelledby="recent-run-title">
-        <h3 id="recent-run-title">Maior corrida recente</h3>
-        <p class="muted">Registre os dados para calcular seu pace médio.</p>
-        ${s.recentRunNote ? `<p class="legacy-note">Registro anterior: ${escape(s.recentRunNote)}</p>` : ""}
-        <div class="recent-run-fields">
-          <label for="recent-km">Distância (km)<input id="recent-km" name="recentKm" type="number" inputmode="decimal" min="0.001" max="1000" step="0.001" value="${run.km}" placeholder="Ex.: 8"></label>
-          <label for="recent-time">Tempo (hh:mm:ss)<input id="recent-time" name="recentTime" data-mask="duration" inputmode="numeric" maxlength="8" value="${durationText(run.seconds)}" placeholder="00:48:00"><small>Ex.: 48 minutos = 00:48:00.</small></label>
-          <label for="recent-date">Data<input id="recent-date" name="recentDate" type="date" max="${dateKey()}" value="${run.date}"></label>
-        </div>
-        <div class="actual-pace">Pace da corrida<strong id="recent-pace" aria-live="polite">— /km</strong></div>
-        <label class="pace-toggle" for="use-recent-pace"><input id="use-recent-pace" name="useRecentPace" type="checkbox" ${s.useRecentPace ? "checked" : ""}><span>Usar este pace como moderado-forte padrão<small>O campo fica vinculado a esta corrida e não pode ser editado enquanto a opção estiver marcada.</small></span></label>
-      </section>
-      <section class="progression-settings" aria-labelledby="progression-title">
-        <hr><p class="eyebrow">02 / PROGRESSÃO</p><h2 id="progression-title">Próximo passo, com referência.</h2>
-        <label for="load-progression">Progressão de carga (%)<input id="load-progression" name="loadProgression" type="number" inputmode="decimal" min="0" max="10" step="0.5" required value="${s.loadProgression}"><small>Por série: sugere o aumento ao atingir pelo menos 8 repetições. Abaixo disso, mantém. Use 0% para manter todas as cargas.</small></label>
-        <label class="pace-toggle" for="pace-progression"><input id="pace-progression" name="paceProgression" type="checkbox" ${s.paceProgression ? "checked" : ""}><span>Progressão de pace<small>Reduz pela metade pequenas correções para desacelerar. Após duas corridas equivalentes na faixa de esforço, sugere um avanço de 1% no pace.</small></span></label>
-        <p class="caption">O ajuste ao esforço funciona mesmo com a progressão desligada. Leve e longão: 3–4/10; blocos fortes: 7–8/10. Seus paces base não são sobrescritos. Alterá-los reinicia a referência de ajuste dos treinos afetados.</p>
-      </section>
-      <hr><p class="eyebrow">03 / SUA SEMANA</p>
-      <div class="form-pair"><label>Dia do longão<select name="longDay"><option value="6" ${s.longDay === 6 ? "selected" : ""}>Sábado</option><option value="0" ${s.longDay === 0 ? "selected" : ""}>Domingo</option></select></label><label>Duração do longão<select name="longMinutes">${[60, 65, 70, 75, 80, 85, 90].map((n) => `<option value="${n}" ${s.longMinutes === n ? "selected" : ""}>${n} minutos</option>`).join("")}</select></label></div>
-      <p class="caption">O outro dia do fim de semana fica reservado ao descanso.</p>
-      <button class="button primary" type="submit">Salvar configurações ✓</button><p id="settings-error" class="form-error" role="alert"></p>
-    </form>
-    <aside><section class="panel backup-card"><p class="eyebrow">SEU DIÁRIO É SEU</p><h2>Guarde uma cópia.</h2><p>Os registros ficam neste navegador. Exporte um backup para guardar ou transferir para outro dispositivo.</p><button class="button" data-action="export">↓ Exportar backup JSON</button><button class="button" data-action="import">↑ Importar backup</button><p class="caption">A importação substitui o diário atual após confirmação.</p></section>
-    <section class="panel method-card"><p class="eyebrow">COMO CALCULAMOS</p><h3>Tempo × seu ritmo.</h3><p>A distância estimada é o tempo dividido pelo pace. A divisão semanal e o esforço 3–4/10 vêm das imagens. Os blocos fortes usam a referência escolhida de 7–8/10.</p><p>Você pode informar o pace moderado-forte ou vincular o pace médio da corrida recente por sua escolha. O histórico ajusta sugestões por esforço sem sobrescrever essas bases. A regra é gradual, não uma avaliação fisiológica.</p><button class="text-button" data-action="sources">Consultar fontes ↗</button></section><button class="danger-button" data-action="clear">Limpar todos os dados deste app</button></aside>
-  </div>`
-  );
-}
-
 function openDialog(html, compact = false) {
   disposeMovement();
   dialogReturnFocus = null;
@@ -650,16 +673,6 @@ function confirmSession(onConfirm) {
     true,
   );
 }
-function readRecentRun(form) {
-  return {
-    km:
-      form.elements.recentKm.value === ""
-        ? ""
-        : Number(form.elements.recentKm.value),
-    seconds: parseDuration(form.elements.recentTime.value) ?? "",
-    date: form.elements.recentDate.value,
-  };
-}
 function importDialog() {
   importGeneration++;
   pendingImport = null;
@@ -681,6 +694,7 @@ function clearDialog() {
     try {
       localStorage.removeItem(KEY);
       data = defaults();
+      settingsUi.reset();
       storageLocked = false;
       storageProblem = "";
       expanded.clear();
@@ -697,21 +711,6 @@ function clearDialog() {
     `<div class="dialog-top"><span class="eyebrow">ARMAZENAMENTO LOCAL</span><button class="close-button" data-action="close-dialog" aria-label="Fechar confirmação">${icon("x")}</button></div><h2 id="guide-title">Limpar este diário?</h2><p class="muted">${total ? `${total} ${total === 1 ? "sessão registrada será apagada" : "sessões registradas serão apagadas"}` : "As configurações deste app serão apagadas"}, junto com os paces e as preferências salvas neste navegador.</p><p class="import-warning">Essa ação não pode ser desfeita pelo app. Guarde um backup antes de continuar.</p><div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Manter meu diário</button><button class="button danger" data-action="confirm-action">Apagar dados deste app</button></div>`,
     true,
   );
-}
-function updateRecentPace() {
-  const form = $("#settings-form");
-  if (!form) return;
-  const run = readRecentRun(form),
-    pace = recentRunPace(run),
-    checked = form.elements.useRecentPace.checked,
-    hard = form.elements.hardPace;
-  $("#recent-pace").textContent = pace ? `${paceText(pace)} /km` : "— /km";
-  hard.readOnly = checked;
-  hard.setAttribute("aria-readonly", String(checked));
-  if (checked) hard.value = pace ? paceText(pace) : "";
-  $("#hard-pace-hint").textContent = checked
-    ? "Vinculado à corrida recente. Desmarque a opção abaixo para editar."
-    : "Controlado e repetível. Calibrado pelo seu esforço.";
 }
 function guide(id) {
   const ex = exercises[id],
@@ -845,6 +844,7 @@ document.addEventListener("click", (event) => {
       motion.stop($(".calendar-grid"));
       $(".calendar-grid").outerHTML = calendarView();
       hydrateIcons($(".calendar-grid"));
+      $("[data-action=current-week]").hidden = week === weekStart(dateKey());
       motion.enter($(".calendar-grid"), "week", week > before ? 1 : -1);
     }
     return;
@@ -892,6 +892,7 @@ document.addEventListener("click", (event) => {
       try {
         localStorage.setItem(KEY, JSON.stringify(imported));
         data = imported;
+        settingsUi.reset();
         storageLocked = false;
         storageProblem = "";
         expanded.clear();
@@ -925,6 +926,7 @@ document.addEventListener(
 );
 document.addEventListener("change", async (event) => {
   const input = event.target;
+  if (input.closest("[data-settings-form]")) return;
   if (input.dataset.withoutWeight) {
     const id = input.dataset.withoutWeight,
       s = exerciseSession(id);
@@ -932,13 +934,6 @@ document.addEventListener("change", async (event) => {
     s.done = false;
     persist();
     syncStrength(id);
-    return;
-  }
-  if (input.name === "useRecentPace") {
-    const hard = $("#hard-pace");
-    if (input.checked) draftManualPace = hard.value;
-    else hard.value = draftManualPace;
-    updateRecentPace();
     return;
   }
   if (input.dataset.field) {
@@ -1003,6 +998,7 @@ document.addEventListener("change", async (event) => {
 });
 document.addEventListener("input", (event) => {
   const input = event.target;
+  if (input.closest("[data-settings-form]")) return;
   if (input.id === "long-minutes" && !input.disabled) {
     data.settings.longMinutes = Number(input.value);
     persist();
@@ -1013,17 +1009,6 @@ document.addEventListener("input", (event) => {
     applyTimeMask(input, (value) =>
       maskTime(value, input.dataset.mask === "duration" ? 6 : 4),
     );
-  if (
-    input.closest("#settings-form") &&
-    ["recentKm", "recentTime", "recentDate"].includes(input.name)
-  )
-    updateRecentPace();
-  if (
-    input.name === "hardPace" &&
-    input.closest("#settings-form") &&
-    !input.readOnly
-  )
-    draftManualPace = input.value;
   if (
     input.dataset.field &&
     input.dataset.field !== "done" &&
@@ -1050,69 +1035,8 @@ document.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target,
     values = Object.fromEntries(new FormData(form));
+  if (form.matches("[data-settings-form]")) return;
   if (!form.reportValidity()) return;
-  if (form.id === "settings-form") {
-    const error = $("#settings-error");
-    const recentRun = readRecentRun(form),
-      useRecentPace = form.elements.useRecentPace.checked;
-    const recentFilled = ["recentKm", "recentTime", "recentDate"].some(
-      (name) => form.elements[name].value !== "",
-    );
-    if (
-      (recentFilled || useRecentPace) &&
-      (!recentRunPace(recentRun) ||
-        !validDate(recentRun.date) ||
-        recentRun.date > dateKey())
-    ) {
-      error.textContent =
-        "Informe uma distância e um tempo maiores que zero e uma data válida até hoje. Use hh:mm:ss para o tempo.";
-      return;
-    }
-    if (useRecentPace) values.hardPace = paceText(recentRunPace(recentRun));
-    for (const key of ["easyPace", "hardPace", "walkPace"]) {
-      if (values[key] && !parsePace(values[key])) {
-        error.textContent =
-          "Use um pace maior que zero no formato mm:ss (segundos entre 00 e 59).";
-        return;
-      }
-    }
-    if (Boolean(values.hardPace) !== Boolean(values.easyPace)) {
-      error.textContent =
-        "Informe os paces leve e moderado-forte juntos, ou deixe ambos vazios para configurar somente a musculação.";
-      return;
-    }
-    if (
-      values.hardPace &&
-      parsePace(values.hardPace) >= parsePace(values.easyPace)
-    ) {
-      error.textContent =
-        "O pace moderado-forte deve ser menor (mais rápido) que o pace leve. Confira os valores.";
-      return;
-    }
-    const nextSettings = {
-      ...data.settings,
-      easyPace: values.easyPace,
-      hardPace: values.hardPace,
-      walkPace: values.walkPace,
-      recentRun,
-      recentRunNote: data.settings.recentRunNote,
-      useRecentPace,
-      manualHardPace: useRecentPace
-        ? parsePace(draftManualPace)
-          ? draftManualPace
-          : ""
-        : values.hardPace,
-      longDay: Number(values.longDay),
-      longMinutes: Number(values.longMinutes),
-      loadProgression: Number(values.loadProgression),
-      paceProgression: form.elements.paceProgression.checked,
-    };
-    nextSettings.paceRevisions = nextPaceRevisions(data.settings, nextSettings);
-    data.settings = nextSettings;
-    persist("Configurações salvas. Seu planejador está pronto.");
-    error.textContent = "";
-    return;
-  }
   if (form.id === "run-form") {
     const s = session(),
       previous = s.run;
@@ -1155,7 +1079,7 @@ document.addEventListener("submit", (event) => {
       const slider = $("#long-minutes");
       if (slider) slider.disabled = true;
       $(".pace-advice .eyebrow").textContent = "PLANEJAMENTO REGISTRADO";
-      $(".pace-advice .caption").textContent =
+      $(".pace-advice [data-plan-caption]").textContent =
         "Estimativa gradual do app; o esforço real continua orientando a execução. Seus paces base ficam preservados. Este plano foi salvo com a sessão.";
     }
     s.done = true;
@@ -1185,7 +1109,10 @@ $("#guide-dialog").addEventListener("click", (event) => {
   }
 });
 document.addEventListener("focusout", (event) => {
-  if (event.target.dataset.mask === "duration") {
+  if (
+    !event.target.closest("[data-settings-form]") &&
+    event.target.dataset.mask === "duration"
+  ) {
     const seconds = parseDuration(event.target.value);
     if (seconds) event.target.value = durationText(seconds);
   }

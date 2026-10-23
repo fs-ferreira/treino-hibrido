@@ -18,16 +18,16 @@ Abra http://127.0.0.1:4173. Use um servidor HTTP: módulos JavaScript não funci
 npm test
 ```
 
-Os 76 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos e navegação circular, incluindo a transferência de captura durante gestos de toque.
+Os 89 testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, catálogo de treinos, navegação circular e configurações por categoria, incluindo falhas de armazenamento e preservação de rascunhos.
 
 ## Como usar
 
-1. Abra Configurações e informe os paces com a máscara automática (digite `600` para `6:00`). O pace de caminhada é opcional. Registre a maior corrida recente em distância, tempo e data; o pace médio aparece automaticamente. A opção de usar esse pace como moderado-forte bloqueia o campo manual; desmarcar restaura o valor manual anterior.
-2. Escolha sábado ou domingo para o longão e a duração entre 60 e 90 minutos.
+1. Abra **Configurações → Corrida** e informe os paces com a máscara automática (digite `600` para `6:00`). O pace de caminhada é opcional. Registre a maior corrida recente em distância, tempo e data; o pace médio aparece automaticamente. A opção de usar esse pace como moderado-forte bloqueia o campo manual; desmarcar restaura o valor manual anterior. Use **Salvar alterações** para aplicar.
+2. Em **Configurações → Semana**, escolha sábado ou domingo para o longão e a duração entre 60 e 90 minutos. Em **Progressão**, ajuste as sugestões de carga e ritmo. Cada categoria tem seu próprio salvamento.
 3. Em Hoje ou Semana, abra uma sessão. Na musculação, registre carga e repetições de cada série; em Como fazer, consulte o guia ilustrado e a demonstração externa.
 4. Depois da corrida, registre duração, distância, esforço e observações.
 5. Em Treinos, consulte o plano ativo e sua divisão em sete dias. Abra os dias para ver exercícios, guias e etapas das corridas. O catálogo é apenas para consulta; os resultados continuam sendo registrados nas sessões.
-6. Consulte Histórico e exporte periodicamente um backup em Configurações.
+6. Consulte Histórico, organizado por mês, e exporte periodicamente um backup em **Configurações → Dados**.
 
 O app preserva os 21 exercícios, 3 séries de 6–8 repetições e a distribuição semanal das imagens do post de @thalleshirakawa. Variantes adotadas são indicadas nos guias. Ilustrações SVG são originais e esquemáticas; os vídeos externos mostram o movimento com mais detalhe.
 
@@ -60,7 +60,19 @@ Exemplo: 8:00/km com esforço 6 e teto 4 resulta em `480 × 1,05 = 504`, ou **8:
 
 Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 3 preservam essas informações.
 
-Para usar apenas a musculação, é possível salvar a progressão deixando os paces e a corrida recente vazios. Se começar a preencher um par de paces ou uma corrida recente, complete os respectivos campos.
+Para usar apenas a musculação, é possível salvar Progressão sem preencher Corrida. Se começar a preencher um par de paces ou uma corrida recente, complete os respectivos campos antes de salvar essa categoria.
+
+## Configurações por categoria
+
+As quatro abas são **Corrida**, **Progressão**, **Semana** e **Dados**. As três primeiras têm Salvar e Descartar; Dados reúne backup, fontes e limpeza com confirmação. Links diretos usam `#configuracoes/corrida`, `#configuracoes/progressao`, `#configuracoes/semana` e `#configuracoes/dados`. O endereço anterior `#configuracoes` continua abrindo Corrida.
+
+As edições ficam em rascunhos separados no `sessionStorage`, chave `treino-hibrido:settings-draft:v1`. Trocar de aba, sair da tela ou recarregar preserva esses rascunhos na mesma sessão do navegador. Fechar a aba pode encerrá-la: o rascunho não substitui um backup. Se esse armazenamento estiver indisponível, o app mantém a edição em memória e informa a limitação.
+
+Somente **Salvar alterações** muda o planejamento. Cada categoria valida apenas seus campos; um pace incompleto não impede salvar a progressão. Erros aparecem nos campos e num resumo; o foco vai para o primeiro campo inválido. Falhas de gravação preservam o rascunho e os ajustes anteriores. Uma confirmação persistente identifica o salvamento concluído.
+
+Os formulários continuam montados ao alternar categorias. Na barra de abas, setas movem o foco, Enter/Espaço ativam e Tab segue para o conteúdo. A barra tem rolagem horizontal finita em telas estreitas. As ações ficam aderentes quando há alterações e espaço disponível; em viewports curtas ou com teclado reduzindo a área visível, voltam ao fluxo normal.
+
+Backups incluem apenas configurações salvas, sem os rascunhos. Restaurar um backup ou limpar o diário após confirmação invalida as edições anteriores. Nenhuma mudança no esquema versão 3.
 
 ## Dados e backup
 
@@ -68,7 +80,7 @@ Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:
 
 Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação abre um painel com seleção de JSON, validação e resumo de sessões, séries e corridas; somente o botão Restaurar backup confirma a substituição. Erros aparecem no painel. Cabeçalho e ações permanecem acessíveis enquanto o conteúdo rola. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação em um painel do app. Não há alert, confirm ou prompt nativos; Escape, cancelar ou fechar preserva o diário. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
 
-A [validação de progressão e painéis](docs/validacao-progressao.md) registra os testes dessa funcionalidade. A [validação de Treinos e navegação](docs/validacao-treinos.md) cobre a versão 1.6.0.
+A [validação de progressão e painéis](docs/validacao-progressao.md) registra os testes dessa funcionalidade. A [validação de Treinos e navegação](docs/validacao-treinos.md) cobre a versão 1.6.0. A [validação de Configurações e UX](docs/validacao-ux.md) detalha a versão 1.7.0 e as limitações dos testes de dispositivo.
 
 ## Treinos e navegação
 
@@ -90,6 +102,9 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 - `lib/motion.js`: transições canceláveis, acordeões e ciclo de vida dos painéis.
 - `lib/mobile-nav.js`: menu circular com cinco links, gestos, teclado e encaixe cancelável.
 - `lib/plans.js`, `lib/plans-view.js`, `lib/routes.js`: catálogo estático, consulta dos sete dias e rotas de lista/detalhe.
+- `lib/settings.js`: catálogo das categorias, formulários, validação independente e rascunhos de sessão.
+- `lib/run-view.js`: etapas da corrida, com os oito ciclos do intervalado agrupados para consulta.
+- `assets/ux.css`: escala de leitura, controles, categorias e ajustes responsivos compartilhados.
 - `lib/core.js`: calendário, cálculos e validação dos backups.
 - `lib/progression.js`: sugestões por série, ajuste de paces e planejamento preservado por sessão.
 - `lib/icons.js`, `lib/ui.js`: ícones SVG locais Lucide e máscaras de digitação.
