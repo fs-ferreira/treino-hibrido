@@ -35,16 +35,39 @@ O app preserva os 21 exercícios, 3 séries de 6–8 repetições e a distribui�
 - Pace é convertido de `mm:ss` para segundos/km.
 - Distância (km) = minutos × 60 ÷ pace; velocidade (km/h) = 3600 ÷ pace.
 - Intervalado: 5 min leves + 8 × (3 min moderado-forte + 1 min leve) + 3 min de caminhada = 40 min. Sem pace de caminhada, a distância exibida é parcial.
-- Corrida leve: 30 min. Longão: 60–90 min. Esforço 3–4/10 conforme o post, sem progressão automática.
+- Corrida leve: 30 min. Longão: 60–90 min. Esforço 3–4/10 conforme o post; duração sem progressão automática. Os blocos fortes usam alvo de esforço 7–8/10, escolhido para o aplicativo.
 - O pace moderado-forte é informado pelo usuário; não é derivado de um percentual arbitrário do pace leve. Não há implementação de cálculo VDOT.
 
 Referências de corrida: [CDC](https://www.cdc.gov/physical-activity-basics/measuring/index.html) e [V.O2](https://vdoto2.com/calculator/). Referências específicas dos exercícios e demonstrações estão em `assets/references.json` e no guia de cada exercício. Consulta em 20/10/2026. Principais fontes: ACE, Muscle & Strength, NASM, NISMAT e Catalyst Athletics. Os links externos dependem da disponibilidade dos provedores. A demonstração de reverse crunch é no chão; o guia descreve a adaptação ao banco.
 
+## Progressão de cargas e paces
+
+Em cada exercício, **Sem peso adicional** vale para as três séries. Os campos de carga ficam desabilitados; as cargas digitadas são preservadas para restaurar ao desmarcar. O histórico e as sugestões ignoram essas cargas enquanto o modo estiver ativo. Novos treinos herdam a última escolha por exercício; registros antigos com carga zero continuam como foram registrados.
+
+**Progressão de carga (%)** começa em 5%, aceita 0–10% em passos de 0,5. Cada série busca a última referência concluída com carga positiva e repetições, na mesma posição da série e antes da data aberta. Ao atingir pelo menos 8 repetições, sugere `carga × (1 + percentual/100)`; abaixo disso, mantém. Arredondamento a centésimos de kg, sem presumir os incrementos da academia. O botão **Usar** aplica apenas àquela série, com ajuste manual disponível; séries concluídas não são substituídas. O percentual é uma preferência, não uma avaliação automática de capacidade. A [ACSM de 2009](https://pubmed.ncbi.nlm.nih.gov/19204579/) relaciona progressão ao desempenho em repetições; o gatilho exato de 8 é uma regra deste app, não uma reprodução literal da recomendação.
+
+Na corrida, o próximo treino equivalente usa o pace realizado e o esforço da última sessão elegível, separando **leve**, **longão** e **intervalado**. Leve e longão têm alvo 3–4/10; os blocos fortes têm alvo 7–8/10. Intervalados precisam de **pace médio dos blocos fortes** e **esforço dos blocos fortes**, ambos opcionais e preenchidos juntos. A média da sessão inteira não substitui esses dados. Esforço 0, sessões abertas, datas iguais/posteriores ao plano e dados ausentes não alimentam o ajuste.
+
+A política inicial é uma **heurística do aplicativo**, não uma fórmula fisiológica validada que converte esforço em velocidade. Como reforça o [CDC](https://www.cdc.gov/physical-activity-basics/measuring/), o esforço é relativo a cada pessoa:
+
+- Acima do teto: aumentar segundos/km em 2,5% por ponto excedente, até 10%.
+- Abaixo do piso: reduzir segundos/km em 2,5% por ponto, até 5%.
+- Dentro da faixa: manter o pace realizado.
+- **Progressão de pace**, desligada por padrão: metade da desaceleração quando o excesso é de 1–2 pontos; correção integral com 3 ou mais. Após as duas últimas sessões equivalentes dentro da faixa, reduzir o pace em 1%, sem somar outra correção.
+
+Exemplo: 8:00/km com esforço 6 e teto 4 resulta em `480 × 1,05 = 504`, ou **8:24/km**. Com progressão, `480 × 1,025 = 492`, ou **8:12/km**. Arredondar apenas o pace final para segundos inteiros. Abrir telas ou semanas sem novos registros não acumula ajustes. Volume, recuperação e caminhada não aumentam automaticamente; no intervalado, somente os blocos fortes recebem a adaptação. Um ritmo forte que deixe de ser mais rápido que a recuperação fica sem estimativa até recalibrar os paces.
+
+Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 3 preservam essas informações.
+
+Para usar apenas a musculação, é possível salvar a progressão deixando os paces e a corrida recente vazios. Se começar a preencher um par de paces ou uma corrida recente, complete os respectivos campos.
+
 ## Dados e backup
 
-Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:v1`; esquema versão 2. Diários e backups da versão 1 são migrados, preservando o texto da corrida recente como anotação e todas as sessões. Os novos campos são preenchidos pelo usuário, sem interpretar o texto antigo. Não há contas, analytics, GPS, cronômetro nem sincronização. Dados pessoais nunca são enviados ao repositório. A navegação a vídeos e fontes externas abre os respectivos sites somente quando o usuário clica.
+Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:v1`; esquema versão 3. Diários e backups das versões 1 e 2 são migrados, preservando o texto da corrida recente como anotação e todas as sessões. Os novos campos são preenchidos pelo usuário, sem interpretar o texto antigo. Não há contas, analytics, GPS, cronômetro nem sincronização. Dados pessoais nunca são enviados ao repositório. A navegação a vídeos e fontes externas abre os respectivos sites somente quando o usuário clica.
 
-Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação valida todo o arquivo antes de substituir o diário; é solicitada confirmação. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
+Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação abre um painel com seleção de JSON, validação e resumo de sessões, séries e corridas; somente o botão Restaurar backup confirma a substituição. Erros aparecem no painel. Cabeçalho e ações permanecem acessíveis enquanto o conteúdo rola. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação em um painel do app. Não há alert, confirm ou prompt nativos; Escape, cancelar ou fechar preserva o diário. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
+
+A [validação de progressão e painéis](docs/validacao-progressao.md) registra os testes e as limitações desta versão.
 
 ## Publicar e atualizar
 
@@ -57,6 +80,7 @@ Para atualizar: editar, executar `npm test`, testar no navegador e enviar um com
 - `app.js`: interface, formulários, navegação e persistência.
 - `lib/motion.js`: transições canceláveis, acordeões e ciclo de vida dos painéis.
 - `lib/core.js`: calendário, cálculos e validação dos backups.
+- `lib/progression.js`: sugestões por série, ajuste de paces e planejamento preservado por sessão.
 - `lib/icons.js`, `lib/ui.js`: ícones SVG locais Lucide e máscaras de digitação.
 - `lib/exercises.js`, `lib/diagrams.js`: conteúdo dos guias e imagens SVG.
 - `assets/references.json`: fontes e demonstrações verificadas.
@@ -69,7 +93,7 @@ O plano é uma reprodução organizacional do conteúdo fornecido; não faz aval
 
 As transições duram de 120 a 420 ms, com entrada mais gradual. Abas usam 300 ms; cards expansíveis, 320 ms; painéis mobile abrem em 420 ms e fecham em 320 ms. Marcar séries e ajustar a duração do longão atualiza os indicadores no lugar, preservando campos e foco. As abas guardam a posição de rolagem em memória durante a visita. Os guias e confirmações usam painéis pela base em telas de até 600 px; no desktop permanecem centralizados. O fechamento devolve foco e rolagem ao ponto anterior.
 
-O app respeita `prefers-reduced-motion`, inclusive quando a preferência muda durante o uso, e mantém os controles funcionais sem a Web Animations API. Não há migração de armazenamento. As animações de execução dos exercícios continuam opcionais e independentes das transições da interface.
+O app respeita `prefers-reduced-motion`, inclusive quando a preferência muda durante o uso, e mantém os controles funcionais sem a Web Animations API. A camada de movimento não altera o armazenamento. As animações de execução dos exercícios continuam opcionais e independentes das transições da interface.
 
 Para medir localmente, abra `http://127.0.0.1:4173/?motion-debug=1#hoje`. Um indicador mostra intervalos de quadros e tarefas acima de 50 ms que se sobrepõem às transições. Os valores são observações do navegador e do dispositivo em uso, não uma garantia de FPS. O diagnóstico só é ativado por esse parâmetro e não transmite nem armazena dados. A [validação da interface](docs/validacao-interface.md) registra os cenários testados e as limitações.
 

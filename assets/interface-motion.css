@@ -90,6 +90,13 @@ dialog[data-state="closing"]::backdrop {
   border-bottom: 1px solid var(--line);
   background: #181a1e;
 }
+#guide-dialog > .dialog-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 16px 28px;
+  border-top: 1px solid var(--line);
+  background: #181a1e;
+}
 @keyframes modal-shade-in {
   from {
     opacity: 0;
@@ -131,6 +138,11 @@ dialog[data-state="closing"]::backdrop {
   }
   .dialog-top {
     padding: 14px max(20px, env(safe-area-inset-right)) 14px
+      max(20px, env(safe-area-inset-left));
+  }
+  #guide-dialog > .dialog-actions {
+    padding: 14px max(20px, env(safe-area-inset-right))
+      max(20px, env(safe-area-inset-bottom))
       max(20px, env(safe-area-inset-left));
   }
 }
