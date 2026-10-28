@@ -8,10 +8,10 @@ Capturas antes e depois usam o mesmo histórico sintético da mesa flexora unila
 
 | Viewport | Altura anterior | Altura nova | Redução |
 | -------- | --------------: | ----------: | ------: |
-| 320 px   |        974,8 px |    665,1 px |   31,8% |
-| 390 px   |        870,3 px |    634,0 px |   27,1% |
-| 768 px   |        769,9 px |    488,9 px |   36,5% |
-| 1440 px  |        769,9 px |    488,9 px |   36,5% |
+| 320 px   |        974,8 px |    672,5 px |   31,0% |
+| 390 px   |        870,3 px |    651,5 px |   25,1% |
+| 768 px   |        769,9 px |    464,9 px |   39,6% |
+| 1440 px  |        769,9 px |    464,9 px |   39,6% |
 
 As metas de redução mínima de 20% no celular e 35% no desktop foram atendidas. Os campos continuam com fonte de 16 px e pelo menos 48 px de altura. Botões, rótulos de conclusão, opção de peso e abertura do histórico mantêm áreas de toque de pelo menos 44 × 44 px. As capturas incluem a seção de histórico fechada e aberta, sem rolagem horizontal nas quatro larguras.
 
@@ -19,7 +19,7 @@ As metas de redução mínima de 20% no celular e 35% no desktop foram atendidas
 
 Os cenários Playwright cobrem:
 
-- As quatro larguras, disposição horizontal da sugestão no desktop e posição abaixo da carga até 600 px.
+- As quatro larguras, disposição horizontal da sugestão no desktop e cabeçalho próprio para cada série até 600 px. No celular, identificação e sugestão ficam acima de carga, repetições e conclusão; os três controles têm a mesma altura e alinhamento, com rótulos locais para os campos.
 - Primeiro registro sem sugestões e sem a descrição repetida da variante.
 - Aplicação por série sem substituir cargas manuais ou repetições das outras séries.
 - Sugestões arredondadas para o quilo inteiro superior e ajuste manual em passos de 0,5 kg, com persistência. Botões − e + respeitam os limites de 0 e 2000 kg e o modo sem peso adicional.
