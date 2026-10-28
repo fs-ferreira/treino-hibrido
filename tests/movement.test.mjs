@@ -9,13 +9,7 @@ import {
   illustration,
   solveJoint,
 } from "../lib/diagrams.js";
-import {
-  BONES,
-  norm,
-  sub,
-  sagittalFoot,
-  gripOf,
-} from "../lib/movement-anatomy.js";
+import { BONES, norm, sub, sagittalFoot } from "../lib/movement-anatomy.js";
 import { cyclePose, createMovementPlayer } from "../lib/movement-player.js";
 const close = (a, b, tolerance = 1e-7) =>
   assert.ok(Math.abs(a - b) < tolerance, `${a} ≠ ${b}`);
@@ -181,11 +175,16 @@ test("apoios, mãos e barras respeitam os pontos de contato", () => {
       "reverse",
     ]) {
       const r = rigAt(kind, t);
+      // A wrist may articulate independently of the forearm when both hands
+      // hold a rigid bar. Palm length is measured before projection.
       for (const [side, index] of [
         ["near", 0],
         ["far", 1],
       ])
-        gripOf(r[`${side}Arm`]).forEach((v, j) => close(v, r.grips[index][j]));
+        close(
+          norm(sub(r.hands[index].worldGrip, r.hands[index].worldWrist)),
+          BONES.palm,
+        );
     }
     const rev = rigAt("reverse", t);
     assert.deepEqual(rev.shoulder, [111, 196]);

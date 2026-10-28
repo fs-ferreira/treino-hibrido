@@ -877,7 +877,7 @@ main {
 .exercise-card[open] {
   border-color: #536345;
 }
-.exercise-card summary {
+.exercise-card > summary {
   padding: 19px 21px;
   display: flex;
   align-items: center;
@@ -885,7 +885,7 @@ main {
   cursor: pointer;
   list-style: none;
 }
-.exercise-card summary::-webkit-details-marker {
+.exercise-card > summary::-webkit-details-marker {
   display: none;
 }
 .exercise-number {
@@ -928,7 +928,7 @@ main {
 .chevron {
   color: var(--muted);
 }
-details[open] .chevron {
+details[open] > summary .chevron {
   transform: rotate(180deg);
 }
 .exercise-body {
@@ -954,47 +954,9 @@ details[open] .chevron {
 [hidden] {
   display: none !important;
 }
-.weight-toggle {
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #101216;
-}
-.weight-toggle small {
-  line-height: 1.5;
-}
 .without-weight input[data-field="kg"] {
   opacity: 0.4;
   cursor: not-allowed;
-}
-.load-suggestion {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0 11px 54px;
-}
-.load-suggestion > div {
-  min-width: 0;
-}
-.load-suggestion small {
-  display: block;
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.load-suggestion span {
-  display: block;
-  font-size: 11px;
-  color: #c3cbd4;
-  line-height: 1.6;
-}
-.load-suggestion strong {
-  color: var(--lime);
-}
-.load-suggestion button {
-  flex-shrink: 0;
-  min-height: 44px;
 }
 button:disabled {
   cursor: default;
@@ -1133,10 +1095,6 @@ button:disabled {
   color: #35130d;
 }
 @media (max-width: 600px) {
-  .load-suggestion {
-    padding-left: 0;
-    gap: 8px;
-  }
   .pace-advice {
     padding: 18px;
   }
@@ -2228,7 +2186,7 @@ dialog > div > p {
   .section-hint {
     font-size: 11px;
   }
-  .exercise-card summary {
+  .exercise-card > summary {
     padding: 16px 13px;
     gap: 11px;
   }

@@ -1,0 +1,145 @@
+:root {
+  color-scheme: dark;
+  font: 15px system-ui;
+  background: #0c1013;
+  color: #e4edf0;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0 auto;
+  max-width: 1320px;
+  padding: 24px;
+}
+h1 {
+  font-size: 24px;
+}
+h2 {
+  font-size: 20px;
+  margin-top: 40px;
+}
+h3 {
+  font-size: 17px;
+}
+p {
+  color: #a9bac3;
+  line-height: 1.6;
+}
+.lab-player {
+  background: #11191e;
+  border: 1px solid #394850;
+  border-radius: 12px;
+  padding: 20px;
+}
+.lab-controls,
+.lab-flags,
+.lab-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.lab-controls label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 180px;
+}
+select,
+button {
+  min-height: 44px;
+  border: 1px solid #50616d;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #1e2c34;
+  color: #e4edf0;
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.lab-flags {
+  margin: 16px 0;
+}
+.lab-flags label,
+.lab-actions label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+}
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+#lab-stage {
+  max-width: 520px;
+  margin: auto;
+}
+.exercise-figure {
+  display: block;
+  width: 100%;
+  background: #141d22;
+}
+.lab-phase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+.lab-phase input {
+  flex: 1;
+  min-height: 44px;
+  min-width: 0;
+}
+.lab-phase output {
+  width: 48px;
+  text-align: right;
+}
+.lab-review {
+  margin-bottom: 32px;
+  scroll-margin-top: 16px;
+}
+.lab-review article {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.lab-object-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+figure {
+  margin: 0;
+  min-width: 0;
+}
+figcaption {
+  padding: 12px;
+  background: #1b252b;
+}
+#lab-diagnostics[data-invalid="true"] {
+  color: #ff9c9c;
+}
+.lab-controls [hidden] {
+  display: none;
+}
+@media (max-width: 600px) {
+  body {
+    padding: 12px;
+  }
+  .lab-player {
+    padding: 12px;
+  }
+  .lab-review article {
+    grid-template-columns: 1fr;
+  }
+  .lab-object-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
