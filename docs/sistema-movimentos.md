@@ -80,3 +80,7 @@ Os testes de navegador usam Playwright apenas em desenvolvimento. Usa-se Chromiu
 As verificações automáticas abrangem comprimentos rígidos e de cabo (`1e-6`), contatos (`0,25` unidade), orientação de pegada (`1°`), singularidades, limites, consultas determinísticas e volumes simplificados de interferência das cargas com cabeça/tronco. Esses volumes não representam todas as colisões anatômicas possíveis. A revisão visual continua necessária para conferir a variante didática e a legibilidade da projeção.
 
 Referências de arquitetura: [OpenSim — componentes, corpos e articulações](https://opensimconfluence.atlassian.net/wiki/spaces/OpenSim/pages/53088473), [Blender — alvos e polos de IK](https://docs.blender.org/manual/en/dev/animation/constraints/tracking/ik_solver.html), [MuJoCo — percursos e polias](https://mujoco.readthedocs.io/en/3.4.0/XMLreference.html#tendon-spatial).
+
+## Reprodução nos guias
+
+Os 21 guias mostram uma única cena animada, iniciada automaticamente ao abrir. O movimento repete ciclos de ida e volta de seis segundos. Pausar e selecionar uma etapa interrompem a reprodução; fechar o guia ou ocultar a aba também a interrompe. Com movimento reduzido, o guia oferece a seleção de Início, Meio e Final sem reprodução automática. Os quadros separados e o botão intermediário “Ver movimento” foram removidos.

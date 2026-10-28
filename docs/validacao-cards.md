@@ -17,12 +17,13 @@ As metas de redução mínima de 20% no celular e 35% no desktop foram atendidas
 
 ## Estados e interações verificados
 
-Os dez cenários Playwright cobrem:
+Os cenários Playwright cobrem:
 
 - As quatro larguras, disposição horizontal da sugestão no desktop e posição abaixo da carga até 600 px.
 - Primeiro registro sem sugestões e sem a descrição repetida da variante.
 - Aplicação por série sem substituir cargas manuais ou repetições das outras séries.
-- Preservação do elemento de entrada, foco e posição de rolagem ao aplicar uma sugestão.
+- Sugestões arredondadas para o quilo inteiro superior e ajuste manual em passos de 0,5 kg, com persistência. Botões − e + respeitam os limites de 0 e 2000 kg e o modo sem peso adicional.
+- Preservação do elemento de entrada e da rolagem ao aplicar uma sugestão, sem transferir o foco para o campo e abrir o teclado no celular; verificado também com toque em contexto mobile.
 - Bloqueio e liberação de sugestões ao concluir e reabrir uma série, incluindo estado carregado do armazenamento.
 - Modo sem peso adicional: cargas preservadas, campos desabilitados, sugestões ocultas e persistência após recarregar.
 - Referências de datas diferentes por série, manutenção abaixo de oito repetições e progressão configurada em 0%.

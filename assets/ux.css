@@ -147,18 +147,21 @@ textarea::placeholder {
   gap: 12px;
 }
 .set-row {
-  align-items: start;
+  align-items: center;
   padding: 10px 0;
   border-top: 1px solid #ffffff0a;
 }
 .set-row > b {
-  padding-top: 15px;
+  padding-top: 0;
   font-variant-numeric: tabular-nums;
 }
 .sets-grid input {
   font-size: 16px;
   min-width: 0;
   height: 48px;
+}
+.exercise-card .sets-grid input[type="number"] {
+  margin-top: 0;
 }
 .set-header {
   font-size: 11px;
@@ -1045,5 +1048,80 @@ dialog > div > p,
   }
   .hero-stats {
     gap: 20px;
+  }
+}
+
+/* Weight controls replace the browser's small spinner arrows. */
+.weight-stepper {
+  display: grid;
+  grid-template-columns: 44px minmax(44px, 1fr) 44px;
+  align-items: center;
+  flex: 1 1 132px;
+  min-width: 132px;
+}
+.weight-step {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid #3c4149;
+  border-radius: 7px 0 0 7px;
+  background: #1e2425;
+  color: var(--text);
+  font: 500 22px/1 system-ui;
+  cursor: pointer;
+}
+.weight-step:last-child {
+  border-radius: 0 7px 7px 0;
+}
+.weight-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.exercise-card .weight-stepper input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+  padding: 4px !important;
+}
+.weight-stepper input::-webkit-inner-spin-button,
+.weight-stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .exercise-card .sets-grid {
+    grid-template-columns: 24px minmax(132px, 1.6fr) minmax(44px, 0.7fr) 44px;
+    gap: 6px;
+  }
+  .weight-stepper {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+}
+@media (max-width: 360px) {
+  .exercise-card .sets-grid {
+    gap: 3px;
+  }
+}
+
+.exercise-card .sets-grid input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.exercise-card .sets-grid input[type="number"]::-webkit-inner-spin-button,
+.exercise-card .sets-grid input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .exercise-card .set-row > input[type="number"] {
+    padding: 4px !important;
   }
 }

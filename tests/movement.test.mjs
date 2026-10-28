@@ -319,11 +319,9 @@ function harness(reduce = false) {
     },
   };
 }
-test("player pausa, retoma, conclui uma vez e libera recursos ao fechar", () => {
+test("player inicia automaticamente, repete, pausa e libera recursos ao fechar", () => {
   const h = harness();
-  assert.equal(h.queue.size, 0);
-  h.click("open");
-  h.click("play");
+  assert.equal(h.queue.size, 1);
   h.step(0);
   h.step(1000);
   const drawing = h.get(".motion-stage").innerHTML;
@@ -335,8 +333,8 @@ test("player pausa, retoma, conclui uma vez e libera recursos ao fechar", () => 
   h.click("play");
   h.step(2000);
   h.step(7000);
-  assert.equal(h.queue.size, 0);
-  assert.match(h.get(".motion-status").textContent, /concluído/);
+  assert.equal(h.queue.size, 1);
+  assert.match(h.get(".motion-status").textContent, /Reproduzindo/);
   h.click("play");
   h.step(8000);
   h.dispose();
@@ -346,7 +344,6 @@ test("player pausa, retoma, conclui uma vez e libera recursos ao fechar", () => 
 });
 test("movimento reduzido oferece etapas e não inicia animação", () => {
   const h = harness(true);
-  h.click("open");
   assert.equal(h.get(".motion-controls").hidden, true);
   h.click("play");
   assert.equal(h.queue.size, 0);
@@ -360,7 +357,6 @@ test("movimento reduzido oferece etapas e não inicia animação", () => {
 });
 test("preferência reduzida e aba oculta interrompem reprodução", () => {
   const h = harness();
-  h.click("open");
   h.click("play");
   h.doc.hidden = true;
   h.doc.change();
