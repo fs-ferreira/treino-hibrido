@@ -82,9 +82,27 @@ for (const width of [320, 390, 768, 1440])
     }
     const input = await field(card, "kg", 0).boundingBox(),
       button = await use(card, 0).boundingBox();
-    if (width <= 600)
-      expect(button.y).toBeGreaterThanOrEqual(input.y + input.height);
-    else {
+    if (width <= 600) {
+      expect(button.y + button.height).toBeLessThanOrEqual(input.y);
+      await expect(card.locator(".set-header")).not.toBeVisible();
+      for (let i = 0; i < 3; i++) {
+        const row = card.locator(".set-row").nth(i),
+          kg = await field(card, "kg", i).boundingBox(),
+          reps = await field(card, "reps", i).boundingBox(),
+          done = await row.locator(".check-label").boundingBox();
+        expect(Math.abs(kg.y - reps.y)).toBeLessThan(1);
+        expect(Math.abs(kg.y - done.y)).toBeLessThan(1);
+        expect(reps.x).toBeGreaterThanOrEqual(kg.x + kg.width);
+        expect(done.x).toBeGreaterThanOrEqual(reps.x + reps.width);
+        for (const target of await row.locator(".weight-step").all()) {
+          const bounds = await target.boundingBox();
+          expect(bounds.width).toBeGreaterThanOrEqual(44);
+          expect(bounds.height).toBeGreaterThanOrEqual(44);
+        }
+        await expect(row.locator(".load-label")).toBeVisible();
+        await expect(row.locator(".reps-label")).toBeVisible();
+      }
+    } else {
       expect(button.x).toBeGreaterThanOrEqual(input.x + input.width);
       expect(Math.abs(button.y - input.y)).toBeLessThan(5);
     }
@@ -411,3 +429,51 @@ test("touch applies suggested weight without focusing a numeric input", async ({
     await context.close();
   }
 });
+
+for (const width of [320, 600])
+  test(`mobile series stay aligned without suggestions at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1100 });
+    const current = EMPTY_SETS();
+    current[0] = { kg: 125.5, reps: 8, done: true };
+    const card = await openExerciseCard(
+      page,
+      cardFixture({ history: false, currentSets: current }),
+    );
+    const assertLayout = async () => {
+      const bounds = await card.boundingBox();
+      for (const row of await card.locator(".set-row").all()) {
+        const controls = await Promise.all([
+          row.locator(".weight-stepper").boundingBox(),
+          row.locator('[data-field="reps"]').boundingBox(),
+          row.locator(".check-label").boundingBox(),
+        ]);
+        for (const box of controls) {
+          expect(Math.abs(box.y - controls[0].y)).toBeLessThan(1);
+          expect(box.x).toBeGreaterThanOrEqual(bounds.x);
+          expect(box.x + box.width).toBeLessThanOrEqual(
+            bounds.x + bounds.width,
+          );
+        }
+        await expect(row.locator(".load-suggestion")).not.toBeVisible();
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    };
+    await assertLayout();
+    await card
+      .getByRole("checkbox", { name: "Sem peso adicional", exact: true })
+      .check();
+    await assertLayout();
+    await expect(field(card, "kg", 0)).toHaveValue("125.5");
+    await expect(field(card, "kg", 0)).toBeDisabled();
+    await card
+      .getByRole("checkbox", { name: "Sem peso adicional", exact: true })
+      .uncheck();
+    await expect(field(card, "kg", 0)).toBeEnabled();
+    await expect(field(card, "kg", 0)).toHaveValue("125.5");
+  });

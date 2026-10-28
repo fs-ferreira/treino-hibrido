@@ -1095,21 +1095,6 @@ dialog > div > p,
   -webkit-appearance: none;
   margin: 0;
 }
-@media (max-width: 600px) {
-  .exercise-card .sets-grid {
-    grid-template-columns: 24px minmax(132px, 1.6fr) minmax(44px, 0.7fr) 44px;
-    gap: 6px;
-  }
-  .weight-stepper {
-    flex: 0 0 auto;
-    width: 100%;
-  }
-}
-@media (max-width: 360px) {
-  .exercise-card .sets-grid {
-    gap: 3px;
-  }
-}
 
 .exercise-card .sets-grid input[type="number"] {
   appearance: textfield;
@@ -1120,8 +1105,114 @@ dialog > div > p,
   -webkit-appearance: none;
   margin: 0;
 }
+/* Mobile series have their own heading and field labels instead of a narrow table. */
+.mobile-set-label {
+  display: none;
+}
 @media (max-width: 600px) {
+  .exercise-body {
+    padding: 0 12px 12px;
+  }
+  .exercise-tools {
+    flex-wrap: nowrap;
+    margin: 6px 0;
+    gap: 4px;
+  }
+  .exercise-tools .exercise-guide {
+    font-size: 12px;
+    padding: 8px 0 8px 8px;
+  }
+  .exercise-card .set-header {
+    display: none;
+  }
+  .exercise-card .set-row {
+    grid-template-columns: minmax(132px, 1fr) minmax(54px, 0.5fr) 44px;
+    grid-template-areas:
+      "series suggestion suggestion"
+      "load-label reps-label ."
+      "load reps done";
+    gap: 6px 8px;
+    padding: 10px 0 14px;
+  }
+  .set-row > b {
+    grid-area: series;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .set-row > b::before {
+    content: "Série";
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .set-row .load-cell {
+    display: contents;
+  }
+  .set-row .weight-stepper {
+    grid-area: load;
+    width: 100%;
+  }
+  .set-row .load-suggestion {
+    grid-area: suggestion;
+    width: auto;
+    justify-self: end;
+  }
+  .set-row .load-apply {
+    width: auto;
+    min-height: 44px;
+    padding: 6px 10px;
+    gap: 4px;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    border-color: transparent;
+    background: #c3f9690a;
+    border-radius: 8px;
+  }
+  .set-row .load-apply[data-usable="false"] {
+    white-space: normal;
+    max-width: 108px;
+  }
+  .mobile-set-label {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 16px;
+  }
+  .load-label {
+    grid-area: load-label;
+  }
+  .reps-label {
+    grid-area: reps-label;
+    text-align: center;
+  }
   .exercise-card .set-row > input[type="number"] {
+    grid-area: reps;
+    text-align: center;
     padding: 4px !important;
+  }
+  .set-row .check-label {
+    grid-area: done;
+    height: 48px;
+  }
+  .set-row .check-label span {
+    width: 44px;
+    height: 48px;
+    border-color: #3c4149;
+    background: #0e1115;
+  }
+  .set-row .check-label input:checked + span {
+    background: var(--lime);
+    border-color: var(--lime);
+  }
+  .exercise-side-note {
+    margin-top: 4px;
+    font-size: 11px;
+  }
+  .exercise-history {
+    margin-top: 10px;
   }
 }
