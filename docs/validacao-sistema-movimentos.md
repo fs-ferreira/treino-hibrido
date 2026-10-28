@@ -33,7 +33,7 @@ Tolerâncias: `1e-6` para comprimentos rígidos e cabos, `0,25` unidade para con
 
 As capturas de início, meio e final abrangem os 21 exercícios em 390 e 1280 px: 42 imagens com três posições cada, totalizando 126 posições. Cada exercício também executa um ciclo completo no navegador nas duas larguras. As verificações incluem ausência de erro JavaScript, de falhas geométricas e de rolagem horizontal da galeria.
 
-Foram conferidos objetos isolados, corpo sem equipamentos, pontos de conexão, eixos locais, seleção de fase e movimento reduzido. O player usado em produção foi exercitado com reprodução, pausa, retomada, reinício, seleção de etapas, conclusão do ciclo e descarte dos recursos. Os testes Node também cobrem interrupção ao ocultar a aba e mudança de preferência de movimento.
+Foram conferidos objetos isolados, corpo sem equipamentos, pontos de conexão, eixos locais, seleção de fase e movimento reduzido. O player usado em produção foi exercitado com reprodução, pausa, retomada, reinício, seleção de etapas, repetição do ciclo e descarte dos recursos. Os testes Node também cobrem interrupção ao ocultar a aba e mudança de preferência de movimento.
 
 Correções observadas durante a integração:
 
@@ -56,3 +56,5 @@ Capturas, relatório de desempenho e traces de falhas ficam em `test-results/bro
 A revisão automatizada usa Chromium headless e larguras de viewport; não substitui verificação em aparelhos físicos. As figuras e volumes de contato são didáticos, os mecanismos são ideais e os equipamentos representam as variantes dos guias. Não há cálculo de força, atrito, ativação muscular ou validação biomecânica individual.
 
 A arquitetura, o inventário e o cadastro de novos objetos estão em [sistema-movimentos.md](sistema-movimentos.md).
+
+A atualização dos guias foi verificada com `npm test` e dois cenários Playwright específicos do player: os 21 exercícios abrem com exatamente um SVG, sem botão “Ver movimento”, e avançam automaticamente; o player continua reproduzindo após um ciclo e preserva pausa, etapas, descarte e movimento reduzido.

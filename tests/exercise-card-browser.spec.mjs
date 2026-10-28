@@ -31,8 +31,8 @@ for (const width of [320, 390, 768, 1440])
     const card = await openExerciseCard(page),
       history = card.locator(".exercise-history");
     await expect(history).not.toHaveAttribute("open");
-    await expect(use(card, 0)).toHaveText("Usar 12,6 kg");
-    await expect(use(card, 1)).toHaveText("Usar 16,8 kg");
+    await expect(use(card, 0)).toHaveText("Usar 13 kg");
+    await expect(use(card, 1)).toHaveText("Usar 17 kg");
     await expect(use(card, 0)).toHaveAccessibleDescription(
       /Referência.*12 kg × 8/,
     );
@@ -142,8 +142,9 @@ test("apply one suggestion, keep manual values, focus, scroll and completion", a
   await use(card, 1).scrollIntoViewIfNeeded();
   const scroll = await page.evaluate(() => scrollY);
   await use(card, 1).click();
-  await expect(field(card, "kg", 1)).toHaveValue("16.8");
-  await expect(field(card, "kg", 1)).toBeFocused();
+  await expect(field(card, "kg", 1)).toHaveValue("17");
+  await expect(field(card, "kg", 1)).not.toBeFocused();
+  await expect(use(card, 1)).toBeFocused();
   await expect(field(card, "kg", 0)).toHaveValue("14.5");
   await expect(field(card, "kg", 2)).toHaveValue("");
   await expect(field(card, "reps", 0)).toHaveValue("7");
@@ -174,7 +175,7 @@ test("apply one suggestion, keep manual values, focus, scroll and completion", a
     reps: 7,
     done: false,
   });
-  expect(saved.sessions[CARD_DATE].sets[CARD_ID][1].kg).toBe(16.8);
+  expect(saved.sessions[CARD_DATE].sets[CARD_ID][1].kg).toBe(17);
 });
 
 test("without additional weight preserves three loads and persists across reload", async ({
@@ -273,7 +274,7 @@ test("each series keeps its reference date and out-of-range suggestions stay blo
     run: null,
   };
   const card = await openExerciseCard(page, data);
-  await expect(use(card, 1)).toHaveText("Usar 14,7 kg");
+  await expect(use(card, 1)).toHaveText("Usar 15 kg");
   await expect(use(card, 2)).toBeDisabled();
   await expect(use(card, 2)).toHaveText("Fora do limite");
   await card.locator(".exercise-history > summary").click();
@@ -325,4 +326,88 @@ test("completed series cannot receive a load on initial render", async ({
   await expect(field(card, "kg", 0)).toHaveValue("12");
   await field(card, "done", 0).uncheck();
   await expect(use(card, 0)).toBeEnabled();
+});
+
+test("manual weights use half kilograms and persist", async ({ page }) => {
+  const card = await openExerciseCard(page);
+  for (const [typed, expected] of [
+    ["10.1", "10.5"],
+    ["10.5", "10.5"],
+    ["10", "10"],
+    ["0", "0"],
+    ["2000", "2000"],
+  ]) {
+    await field(card, "kg", 0).fill(typed);
+    await field(card, "kg", 0).blur();
+    await expect(field(card, "kg", 0)).toHaveValue(expected);
+  }
+  await page.reload();
+  await page.locator(`[data-exercise="${CARD_ID}"] > summary`).click();
+  await expect(
+    field(page.locator(`[data-exercise="${CARD_ID}"]`), "kg", 0),
+  ).toHaveValue("2000");
+});
+
+test("plus and minus adjust half kilograms, respect bounds and weightless mode", async ({
+  page,
+}) => {
+  const card = await openExerciseCard(page);
+  const minus = card
+      .locator('[data-action="step-load"][data-direction="-1"]')
+      .first(),
+    plus = card
+      .locator('[data-action="step-load"][data-direction="1"]')
+      .first();
+  await expect(minus).toBeDisabled();
+  await plus.click();
+  await expect(field(card, "kg", 0)).toHaveValue("0.5");
+  await plus.click();
+  await expect(field(card, "kg", 0)).toHaveValue("1");
+  await minus.click();
+  await expect(field(card, "kg", 0)).toHaveValue("0.5");
+  await minus.click();
+  await expect(field(card, "kg", 0)).toHaveValue("0");
+  await expect(minus).toBeDisabled();
+  await field(card, "kg", 0).fill("2000");
+  await field(card, "kg", 0).blur();
+  await expect(plus).toBeDisabled();
+  await minus.click();
+  await expect(field(card, "kg", 0)).toHaveValue("1999.5");
+  await card
+    .getByRole("checkbox", { name: "Sem peso adicional", exact: true })
+    .check();
+  await expect(plus).toBeDisabled();
+  await expect(minus).toBeDisabled();
+  await card
+    .getByRole("checkbox", { name: "Sem peso adicional", exact: true })
+    .uncheck();
+  await expect(plus).toBeEnabled();
+  await page.reload();
+  await page.locator(`[data-exercise="${CARD_ID}"] > summary`).click();
+  await expect(
+    field(page.locator(`[data-exercise="${CARD_ID}"]`), "kg", 0),
+  ).toHaveValue("1999.5");
+});
+
+test("touch applies suggested weight without focusing a numeric input", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    baseURL: "http://127.0.0.1:4173",
+  });
+  try {
+    const page = await context.newPage(),
+      card = await openExerciseCard(page);
+    await use(card, 0).tap();
+    await expect(field(card, "kg", 0)).toHaveValue("13");
+    await expect(field(card, "kg", 0)).not.toBeFocused();
+    expect(await page.evaluate(() => document.activeElement.tagName)).not.toBe(
+      "INPUT",
+    );
+  } finally {
+    await context.close();
+  }
 });

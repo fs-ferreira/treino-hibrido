@@ -244,7 +244,7 @@ test("todos os 21 exercícios têm guia, esquema original e referências", () =>
       assert.ok(e[field].length > 20);
     assert.equal(
       (illustration(e).match(/class="exercise-figure"/g) || []).length,
-      2,
+      1,
     );
     const ref = refs.exercises.find((r) => r.id === e.id);
     assert.ok(ref?.source.startsWith("https://"));

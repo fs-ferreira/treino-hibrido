@@ -18,10 +18,11 @@ import {
 import {
   withoutWeight,
   loadSuggestions,
+  roundLoadUp,
   getRunPlan,
   paceRevision,
   effortTarget,
-} from "./lib/progression.js?v=1.6.0";
+} from "./lib/progression.js?v=1.7.6";
 import { workouts, exercises } from "./lib/exercises.js";
 import { runBlocksView } from "./lib/run-view.js?v=1.7.0";
 import { plansView } from "./lib/plans-view.js?v=1.7.0";
@@ -32,8 +33,8 @@ import {
   settingsSections,
 } from "./lib/settings.js?v=1.7.1";
 import { createMobileNav } from "./lib/mobile-nav.js?v=1.7.3";
-import { illustration } from "./lib/diagrams.js";
-import { createMovementPlayer } from "./lib/movement-player.js";
+import { illustration } from "./lib/diagrams.js?v=1.7.5";
+import { createMovementPlayer } from "./lib/movement-player.js?v=1.7.5";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";
 import { icon } from "./lib/icons.js?v=1.6.0";
 import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.6.0";
@@ -340,6 +341,16 @@ function syncStrength(id) {
           Boolean(sets[index].done) ||
           use.dataset.usable === "false";
     });
+    card.querySelectorAll('[data-action="step-load"]').forEach((button) => {
+      const input = card.querySelector(
+        `[data-field="kg"][data-index="${button.dataset.index}"]`,
+      );
+      button.disabled =
+        noWeight ||
+        (Number(button.dataset.direction) < 0
+          ? input.value === "" || Number(input.value) <= 0
+          : Number(input.value) >= 2000);
+    });
     card.classList.toggle("without-weight", noWeight);
   }
   syncTodayStatus();
@@ -543,7 +554,7 @@ function exerciseCard(id, index, s) {
       .map((set, i) => {
         const suggestion = suggestions[i];
         const verb = suggestion?.percent ? "Usar" : "Manter";
-        return `<div class="sets-grid set-row ${set.done ? "set-done" : ""}"><b>${String(i + 1).padStart(2, "0")}</b><div class="load-cell"><input type="number" inputmode="decimal" min="0" max="2000" step="0.01" value="${set.kg}" ${noWeight ? "disabled" : ""} placeholder="—" aria-label="Carga da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="kg">
+        return `<div class="sets-grid set-row ${set.done ? "set-done" : ""}"><b>${String(i + 1).padStart(2, "0")}</b><div class="load-cell"><div class="weight-stepper"><button type="button" class="weight-step" data-action="step-load" data-direction="-1" data-id="${id}" data-index="${i}" aria-label="Diminuir carga da série ${i + 1} de ${e.name} em 0,5 kg" ${noWeight || set.kg === "" || Number(set.kg) <= 0 ? "disabled" : ""}>−</button><input type="number" inputmode="decimal" min="0" max="2000" step="0.5" value="${set.kg}" ${noWeight ? "disabled" : ""} placeholder="—" aria-label="Carga da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="kg"><button type="button" class="weight-step" data-action="step-load" data-direction="1" data-id="${id}" data-index="${i}" aria-label="Aumentar carga da série ${i + 1} de ${e.name} em 0,5 kg" ${noWeight || Number(set.kg) >= 2000 ? "disabled" : ""}>+</button></div>
         <div class="load-suggestion" data-index="${i}" data-empty="${!suggestion}" ${noWeight || !suggestion ? "hidden" : ""}>${suggestion ? `<button type="button" class="button load-apply" data-action="use-load" data-id="${id}" data-index="${i}" data-usable="${suggestion.usable}" ${set.done || noWeight || !suggestion.usable ? "disabled" : ""} aria-describedby="load-reason-${id}-${i}" aria-label="${suggestion.usable ? `${verb} ${weightText(suggestion.kg)} kg na série ${i + 1} de ${e.name}` : `Fora do limite: sugestão de ${weightText(suggestion.kg)} kg na série ${i + 1} de ${e.name}`}">${suggestion.usable ? `${verb} <strong>${weightText(suggestion.kg)} kg</strong>` : "Fora do limite"}</button>` : ""}</div></div>
         <input type="number" inputmode="numeric" min="0" max="1000" step="1" value="${set.reps}" placeholder="6–8" aria-label="Repetições da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="reps"><label class="check-label"><input type="checkbox" ${set.done ? "checked" : ""} aria-label="Concluir série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="done"><span aria-hidden="true">${icon("check")}</span></label></div>`;
       })
@@ -790,6 +801,23 @@ document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (!button) return;
   const action = button.dataset.action;
+  if (action === "step-load") {
+    const { id, index, direction } = button.dataset;
+    if (withoutWeight(data.sessions, selected, id)) return;
+    const input = $(
+      `[data-exercise="${id}"] [data-field="kg"][data-index="${index}"]`,
+    );
+    const current = Number.isFinite(input.valueAsNumber)
+      ? input.valueAsNumber
+      : 0;
+    const next =
+      Number(direction) > 0
+        ? (Math.floor(current * 2 + 1e-9) + 1) / 2
+        : (Math.ceil(current * 2 - 1e-9) - 1) / 2;
+    input.value = Math.max(0, Math.min(2000, next));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
   if (action === "use-load") {
     const id = button.dataset.id,
       index = Number(button.dataset.index);
@@ -812,7 +840,6 @@ document.addEventListener("click", (event) => {
       `[data-exercise="${id}"] [data-field="kg"][data-index="${index}"]`,
     );
     input.value = suggestion.kg;
-    input.focus({ preventScroll: true });
     persist("Carga sugerida aplicada. Ajuste ao peso disponível na academia.");
     syncStrength(id);
     motion.feedback(input);
@@ -947,6 +974,15 @@ document.addEventListener("change", async (event) => {
     return;
   }
   if (input.dataset.field) {
+    if (
+      input.dataset.field === "kg" &&
+      input.value !== "" &&
+      Number.isFinite(input.valueAsNumber) &&
+      input.valueAsNumber >= 0 &&
+      input.valueAsNumber <= 2000
+    ) {
+      input.value = roundLoadUp(input.valueAsNumber * 2) / 2;
+    }
     if (!input.checkValidity()) {
       input.reportValidity();
       return;

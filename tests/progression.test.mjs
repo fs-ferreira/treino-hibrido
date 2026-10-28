@@ -5,6 +5,7 @@ import { defaults, validateBackup, KEY, paceText } from "../lib/core.js";
 import {
   withoutWeight,
   loadSuggestions,
+  roundLoadUp,
   recommendPace,
   getRunPlan,
   nextPaceRevisions,
@@ -81,7 +82,7 @@ test("carga: cada série usa sua própria carga e atinge aumento com 8 ou mais r
   };
   assert.deepEqual(
     loadSuggestions(sessions, "2026-10-26", "pec-deck", 5).map((s) => s.kg),
-    [21, 18.9, 16.8],
+    [21, 19, 17],
   );
   sessions["2026-10-19"].sets["pec-deck"][1].reps = 7;
   assert.equal(
@@ -107,7 +108,7 @@ test("carga: pesquisa por posição pula séries incompletas e acha datas difere
   const result = loadSuggestions(sessions, "2026-10-26", "pec-deck", 5);
   assert.deepEqual(
     result.map((s) => s.kg),
-    [21, 10.5, 10.5],
+    [21, 11, 11],
   );
   assert.deepEqual(
     result.map((s) => s.date),
@@ -121,7 +122,7 @@ test("carga: sem peso, zero, valores vazios e falta de histórico não viram ref
   };
   assert.equal(
     loadSuggestions(sessions, "2026-10-26", "pec-deck", 5)[0].kg,
-    10.5,
+    11,
   );
   for (const kg of [0, "", NaN]) {
     sessions["2026-10-12"] = strength(series(kg));
@@ -137,11 +138,11 @@ test("carga: sem peso, zero, valores vazios e falta de histórico não viram ref
     null,
   ]);
 });
-test("carga: arredonda a centésimos e impede aplicar acima do limite do diário", () => {
+test("carga: arredonda para o próximo quilo inteiro e impede aplicar acima do limite do diário", () => {
   const sessions = { "2026-10-19": strength(series(12.75)) };
   assert.equal(
     loadSuggestions(sessions, "2026-10-26", "pec-deck", 2.5)[0].kg,
-    13.07,
+    14,
   );
   sessions["2026-10-19"] = strength(series(2000));
   assert.equal(
@@ -425,4 +426,27 @@ test("backup inválido rejeita progressão, modo e campos de corrida antes de su
     assert.throws(() => validateBackup(draft));
     assert.deepEqual(original, defaults());
   }
+});
+
+test("carga: arredonda toda fração para cima sem avançar inteiros por ruído numérico", () => {
+  for (const [value, expected] of [
+    [10.1, 11],
+    [10.5, 11],
+    [10.01, 11],
+    [10, 10],
+    [0, 0],
+    [2000, 2000],
+    [100 * 1.1, 110],
+  ])
+    assert.equal(roundLoadUp(value), expected);
+  const sessions = { "2026-10-19": strength(series(10.1, 7)) };
+  assert.equal(
+    loadSuggestions(sessions, "2026-10-26", "pec-deck", 5)[0].kg,
+    11,
+  );
+  assert.equal(
+    loadSuggestions(sessions, "2026-10-26", "pec-deck", 0)[0].kg,
+    11,
+  );
+  assert.equal(sessions["2026-10-19"].sets["pec-deck"][0].kg, 10.1);
 });

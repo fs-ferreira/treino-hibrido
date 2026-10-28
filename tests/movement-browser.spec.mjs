@@ -116,8 +116,8 @@ test("production guide player keeps pause, restart, steps and disposal", async (
       document.querySelector(".movement-guide"),
     );
   });
-  await page.locator('[data-motion="open"]').click();
-  await page.locator('[data-motion="play"]').click();
+  await expect(page.locator('[data-motion="pause"]')).toBeEnabled();
+  await expect(page.locator(".movement-guide .movement")).toHaveCount(0);
   await page.clock.runFor(1600);
   await page.locator('[data-motion="pause"]').click();
   const markup = await page.locator(".motion-stage").innerHTML();
@@ -129,8 +129,8 @@ test("production guide player keeps pause, restart, steps and disposal", async (
   await expect(page.locator(".motion-status")).toHaveText("Início");
   await page.locator('[data-motion="play"]').click();
   await page.clock.runFor(6200);
-  await expect(page.locator(".motion-status")).toContainText("Ciclo concluído");
-  await page.locator('[data-motion="play"]').click();
+  await expect(page.locator(".motion-status")).toContainText("Reproduzindo");
+  await expect(page.locator('[data-motion="pause"]')).toBeEnabled();
   await page.evaluate(() => window.disposePlayer());
   const closed = await page.locator(".motion-stage").innerHTML();
   await page.clock.runFor(2000);
@@ -142,7 +142,6 @@ test("production guide player keeps pause, restart, steps and disposal", async (
       document.querySelector(".movement-guide"),
     );
   });
-  await page.locator('[data-motion="open"]').click();
   await expect(page.locator(".motion-controls")).toBeHidden();
   await page.locator('[data-motion="middle"]').click();
   await expect(page.locator(".motion-status")).toHaveText("Meio");
@@ -182,4 +181,36 @@ test("single active scene calculation, SVG and layout stay below 16ms at p95", a
   );
   console.log("Movement performance", JSON.stringify(result));
   expect(result.p95).toBeLessThan(16);
+});
+
+test("all 21 exercise guides open with one automatically animated stage", async ({
+  page,
+}) => {
+  await page.clock.install();
+  for (const kind of kinds) {
+    await page.evaluate(async (kind) => {
+      window.disposePlayer?.();
+      const [{ illustration }, { exercises }, { createMovementPlayer }] =
+        await Promise.all([
+          import("/lib/diagrams.js"),
+          import("/lib/exercises.js"),
+          import("/lib/movement-player.js"),
+        ]);
+      document.body.innerHTML = illustration(
+        Object.values(exercises).find((e) => e.diagram === kind),
+      );
+      window.disposePlayer = createMovementPlayer(
+        document.querySelector(".movement-guide"),
+      );
+    }, kind);
+    await expect(
+      page.locator(".movement-guide svg.exercise-figure"),
+    ).toHaveCount(1);
+    await expect(page.locator('[data-motion="open"]')).toHaveCount(0);
+    await expect(page.locator('[data-motion="pause"]')).toBeEnabled();
+    const before = await page.locator(".motion-stage").innerHTML();
+    await page.clock.runFor(500);
+    expect(await page.locator(".motion-stage").innerHTML()).not.toBe(before);
+  }
+  await page.evaluate(() => window.disposePlayer());
 });
