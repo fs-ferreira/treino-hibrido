@@ -99,23 +99,61 @@ textarea::placeholder {
   font-size: 12px;
   line-height: 1.5;
 }
-.exercise-card summary {
-  gap: 16px;
+.exercise-card > summary {
+  gap: 14px;
+  padding: 15px 20px;
 }
 .exercise-number {
   flex-shrink: 0;
 }
 .exercise-name {
   min-width: 0;
+  gap: 3px;
+}
+.exercise-body {
+  padding-bottom: 14px;
 }
 .exercise-tools {
-  align-items: flex-start;
+  align-items: center;
+  margin: 8px 0 10px;
+  gap: 8px;
 }
-.exercise-tools > span {
-  line-height: 1.6;
+.exercise-tools .weight-toggle {
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.exercise-tools .weight-toggle input {
+  margin: 0;
+}
+.exercise-tools .exercise-guide {
+  padding: 8px;
+  border-color: transparent;
+  background: none;
+  color: var(--muted);
+  flex-shrink: 0;
+  gap: 6px;
 }
 .sets-grid {
-  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 48px;
+  grid-template-columns: 28px minmax(0, 1.2fr) minmax(0, 1fr) 44px;
+  margin-top: 0;
+  gap: 12px;
+}
+.set-row {
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid #ffffff0a;
+}
+.set-row > b {
+  padding-top: 15px;
+  font-variant-numeric: tabular-nums;
 }
 .sets-grid input {
   font-size: 16px;
@@ -124,26 +162,146 @@ textarea::placeholder {
 }
 .set-header {
   font-size: 11px;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
   line-height: 1.5;
+  margin: 0;
+  padding-bottom: 6px;
 }
 .check-label {
   width: 44px;
   min-height: 48px;
 }
-.load-suggestion {
-  padding-left: 0;
-  margin: 0 0 12px 44px;
-  padding: 12px;
-  background: #101216;
-  border-radius: 10px;
+.load-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
-.load-suggestion small {
+.load-cell > input {
+  flex: 1 1 90px;
+  width: 0;
+}
+.load-suggestion {
+  flex-shrink: 0;
+  display: flex;
+}
+.load-apply {
+  min-height: 44px;
+  padding: 6px 10px;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  border-color: #c3f96935;
+  color: #c8d5b7;
+  background: #c3f96906;
+  white-space: nowrap;
+}
+.load-apply strong {
+  color: var(--lime);
+  font-weight: 600;
+}
+.load-apply[data-usable="false"] {
+  white-space: normal;
+  max-width: 108px;
+}
+.exercise-side-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.exercise-history {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.exercise-history > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.exercise-history > summary > span {
+  flex: 1;
+  min-width: 0;
+}
+.exercise-history > summary > time {
+  font-size: 11px;
+  color: #8e9a86;
+  white-space: nowrap;
+}
+.exercise-history > summary > .icon {
+  width: 14px;
+  height: 14px;
+}
+.exercise-history[open] > summary > .icon {
+  transform: rotate(180deg);
+}
+.exercise-history-content {
+  padding: 2px 0 8px;
+}
+.exercise-history .previous {
+  margin: 0 0 12px;
+  line-height: 1.8;
+}
+.exercise-history .previous b {
+  font-weight: 500;
+  color: var(--text);
+}
+.load-reference {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.load-reference li {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #ffffff0a;
   font-size: 12px;
 }
-.load-suggestion span {
-  font-size: 13px;
-  line-height: 1.6;
+.load-reference li > b {
+  font-weight: 500;
+  color: var(--muted);
+}
+.load-reference li > div {
+  min-width: 0;
+}
+.load-reference strong {
+  color: var(--lime);
+  font-weight: 600;
+}
+.load-reference small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.without-weight .load-reference {
+  display: none;
+}
+.weight-help {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+.exercise-card > summary:focus-visible,
+.exercise-history > summary:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+.exercise-card button:focus-visible,
+.exercise-card input:not([type="checkbox"]):focus-visible,
+.exercise-card .weight-toggle input:focus-visible,
+.exercise-card .check-label input:focus-visible + span {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
 }
 .session-bottom p {
   font-size: 12px;
@@ -654,9 +812,9 @@ dialog > div > p,
   .setup-banner p {
     font-size: 14px;
   }
-  .exercise-card summary {
-    padding: 18px 14px;
-    gap: 12px;
+  .exercise-card > summary {
+    padding: 14px;
+    gap: 10px;
   }
   .exercise-name b {
     font-size: 15px;
@@ -675,9 +833,6 @@ dialog > div > p,
   .exercise-tools {
     flex-wrap: wrap;
   }
-  .exercise-tools > span {
-    flex: 1 1 160px;
-  }
   .sets-grid {
     grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 44px;
     gap: 8px;
@@ -690,12 +845,34 @@ dialog > div > p,
   .set-header {
     font-size: 10px;
   }
+  .load-cell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .load-cell > input {
+    flex: 0 0 auto;
+    width: 100%;
+  }
   .load-suggestion {
-    margin-left: 0;
+    width: 100%;
   }
-  .load-suggestion span {
-    font-size: 13px;
+  .load-apply {
+    width: 100%;
+    padding: 6px;
+    white-space: normal;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: 1px 4px;
   }
+  .load-apply strong {
+    white-space: nowrap;
+  }
+  .load-apply[data-usable="false"] {
+    max-width: none;
+  }
+
   .session-bottom p {
     font-size: 12px;
   }

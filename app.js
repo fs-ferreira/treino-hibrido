@@ -317,6 +317,7 @@ function syncStrength(id) {
     const badge = card.querySelector(".exercise-check");
     badge.classList.toggle("complete", complete === 3);
     badge.innerHTML = complete === 3 ? icon("check") : `${complete}/3`;
+    badge.setAttribute("aria-label", `${complete} de 3 séries concluídas`);
     card.querySelectorAll('[data-field="done"]').forEach((input) => {
       input
         .closest(".sets-grid")
@@ -329,7 +330,8 @@ function syncStrength(id) {
     card.querySelectorAll('[data-field="kg"]').forEach((input) => {
       input.disabled = noWeight;
     });
-    card.querySelectorAll(".load-suggestion").forEach((hint, index) => {
+    card.querySelectorAll(".load-suggestion").forEach((hint) => {
+      const index = Number(hint.dataset.index);
       hint.hidden = noWeight || hint.dataset.empty === "true";
       const use = hint.querySelector("button");
       if (use)
@@ -508,6 +510,19 @@ function strengthView(type) {
     total = count(selected);
   return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/21 séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / 21})"></span></div><p class="section-hint">Abra um exercício para registrar as séries. Toque em “Como fazer” para ver o guia.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><p><span class="status-dot"></span> ${storageProblem ? "Confira o aviso de armazenamento" : "Alterações salvas neste navegador"}</p><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
 }
+function loadSuggestionReason(suggestion) {
+  if (suggestion.percent)
+    return `+${weightText(suggestion.percent)}% por atingir 8 repetições`;
+  return suggestion.reps < 8
+    ? "Manter: ainda abaixo de 8 repetições"
+    : "Manter: progressão em 0%";
+}
+function exerciseHistory(id, previous, suggestions) {
+  return `<details class="exercise-history"><summary><span>Histórico e sugestões</span>${previous ? `<time datetime="${previous.date}">${shortDate(previous.date)}</time>` : ""}${icon("chevron-down")}</summary>
+    <div class="exercise-history-content">${previous ? `<p class="previous"><b>Última sessão · ${shortDate(previous.date)}</b><br>${setHistoryText(previous.sets, Boolean(data.sessions[previous.date].withoutWeight?.[id]))}</p>` : '<p class="previous">Sem registros anteriores.</p>'}
+    <ol class="load-reference">${suggestions.map((suggestion, i) => (suggestion ? `<li><b>${String(i + 1).padStart(2, "0")}</b><div id="load-reason-${id}-${i}"><span><strong>${weightText(suggestion.kg)} kg</strong> · ${loadSuggestionReason(suggestion)}</span><small>Referência · ${shortDate(suggestion.date)} · ${weightText(suggestion.previousKg)} kg × ${suggestion.reps}${!suggestion.usable ? " · acima do limite de 2000 kg" : ""}</small></div></li>` : "")).join("")}</ol>
+    <p class="weight-help" id="weight-help-${id}">Sem peso adicional vale para as três séries. Registre apenas as repetições; as cargas digitadas são preservadas.</p></div></details>`;
+}
 function exerciseCard(id, index, s) {
   const e = exercises[id],
     sets = s?.sets[id] || emptySets(),
@@ -521,19 +536,19 @@ function exerciseCard(id, index, s) {
     ),
     complete = sets.filter((x) => x.done).length;
   return `<details class="exercise-card ${noWeight ? "without-weight" : ""}" data-exercise="${id}" ${expanded.has(id) ? "open" : ""}>
-    <summary><span class="exercise-number">${String(index + 1).padStart(2, "0")}</span><span class="exercise-name"><b>${e.name}</b><small>${e.muscles} <span>· 3 × 6–8</span></small></span><span class="exercise-check ${complete === 3 ? "complete" : ""}">${complete === 3 ? icon("check") : `${complete}/3`}</span><span class="chevron">${icon("chevron-down")}</span></summary>
-    <div class="exercise-body"><div class="exercise-tools"><span>${e.variant}</span><button class="button small" data-action="guide" data-id="${id}">Como fazer ${arrow}</button></div>
-    ${previous ? `<p class="previous">Última sessão · ${shortDate(previous.date)}: ${setHistoryText(previous.sets, Boolean(data.sessions[previous.date].withoutWeight?.[id]))}</p>` : '<p class="previous">Seu primeiro registro. Comece com uma carga que permita controlar o movimento.</p>'}
-    <label class="pace-toggle weight-toggle"><input type="checkbox" data-without-weight="${id}" ${noWeight ? "checked" : ""}><span>Sem peso adicional<small>Vale para as três séries. Registre apenas as repetições.</small></span></label>
-    <div class="sets-grid set-header"><span>SÉRIE</span><span>CARGA (KG)</span><span>REPETIÇÕES</span><span>FEITA</span></div>
+    <summary><span class="exercise-number">${String(index + 1).padStart(2, "0")}</span><span class="exercise-name"><b>${e.name}</b><small>${e.muscles} <span>· 3 × 6–8</span></small></span><span class="exercise-check ${complete === 3 ? "complete" : ""}" aria-label="${complete} de 3 séries concluídas">${complete === 3 ? icon("check") : `${complete}/3`}</span><span class="chevron">${icon("chevron-down")}</span></summary>
+    <div class="exercise-body"><div class="exercise-tools"><label class="pace-toggle weight-toggle"><input type="checkbox" data-without-weight="${id}" aria-describedby="weight-help-${id}" ${noWeight ? "checked" : ""}><span>Sem peso adicional</span></label><button class="button quiet small exercise-guide" data-action="guide" data-id="${id}" aria-label="Como fazer ${e.name}">Como fazer ${arrow}</button></div>
+    <div class="sets-grid set-header" aria-hidden="true"><span>Série</span><span>Carga (kg)</span><span>Reps</span><span>Feita</span></div>
     ${sets
       .map((set, i) => {
         const suggestion = suggestions[i];
-        return `<div class="sets-grid ${set.done ? "set-done" : ""}"><b>${String(i + 1).padStart(2, "0")}</b><input type="number" inputmode="decimal" min="0" max="2000" step="0.01" value="${set.kg}" ${noWeight ? "disabled" : ""} placeholder="—" aria-label="Carga da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="kg"><input type="number" inputmode="numeric" min="0" max="1000" step="1" value="${set.reps}" placeholder="6–8" aria-label="Repetições da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="reps"><label class="check-label"><input type="checkbox" ${set.done ? "checked" : ""} aria-label="Concluir série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="done"><span aria-hidden="true">${icon("check")}</span></label></div>
-      <div class="load-suggestion" data-index="${i}" data-empty="${!suggestion}" ${noWeight || !suggestion ? "hidden" : ""}>${suggestion ? `<div><small>Referência · ${shortDate(suggestion.date)} · ${weightText(suggestion.previousKg)} kg × ${suggestion.reps}</small><span>${suggestion.percent ? `Sugestão <strong>${weightText(suggestion.kg)} kg</strong> · +${weightText(suggestion.percent)}% por atingir 8 repetições` : `Manter <strong>${weightText(suggestion.kg)} kg</strong> · ${suggestion.reps < 8 ? "ainda abaixo de 8 repetições" : "progressão em 0%"}`}${!suggestion.usable ? " · acima do limite de registro" : ""}</span></div><button type="button" class="button quiet small" data-action="use-load" data-id="${id}" data-index="${i}" data-usable="${suggestion.usable}" ${set.done || noWeight || !suggestion.usable ? "disabled" : ""} aria-label="Usar carga sugerida na série ${i + 1} de ${e.name}">Usar</button>` : ""}</div>`;
+        const verb = suggestion?.percent ? "Usar" : "Manter";
+        return `<div class="sets-grid set-row ${set.done ? "set-done" : ""}"><b>${String(i + 1).padStart(2, "0")}</b><div class="load-cell"><input type="number" inputmode="decimal" min="0" max="2000" step="0.01" value="${set.kg}" ${noWeight ? "disabled" : ""} placeholder="—" aria-label="Carga da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="kg">
+        <div class="load-suggestion" data-index="${i}" data-empty="${!suggestion}" ${noWeight || !suggestion ? "hidden" : ""}>${suggestion ? `<button type="button" class="button load-apply" data-action="use-load" data-id="${id}" data-index="${i}" data-usable="${suggestion.usable}" ${set.done || noWeight || !suggestion.usable ? "disabled" : ""} aria-describedby="load-reason-${id}-${i}" aria-label="${suggestion.usable ? `${verb} ${weightText(suggestion.kg)} kg na série ${i + 1} de ${e.name}` : `Fora do limite: sugestão de ${weightText(suggestion.kg)} kg na série ${i + 1} de ${e.name}`}">${suggestion.usable ? `${verb} <strong>${weightText(suggestion.kg)} kg</strong>` : "Fora do limite"}</button>` : ""}</div></div>
+        <input type="number" inputmode="numeric" min="0" max="1000" step="1" value="${set.reps}" placeholder="6–8" aria-label="Repetições da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="reps"><label class="check-label"><input type="checkbox" ${set.done ? "checked" : ""} aria-label="Concluir série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="done"><span aria-hidden="true">${icon("check")}</span></label></div>`;
       })
       .join("")}
-    ${["single-rdl", "bulgarian", "leg-curl", "leg-extension"].includes(id) ? '<p class="caption">Uma série corresponde à execução nos dois lados. Registre a carga usada por lado.</p>' : ""}</div></details>`;
+    ${["single-rdl", "bulgarian", "leg-curl", "leg-extension"].includes(id) ? '<p class="exercise-side-note">Carga por lado · complete os dois lados</p>' : ""}${exerciseHistory(id, previous, suggestions)}</div></details>`;
 }
 function longRangeText(pace) {
   return pace
