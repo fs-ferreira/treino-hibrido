@@ -352,15 +352,18 @@ function controllerFixture(commit = () => true) {
     },
     commits: () => commits,
     submit(id) {
-      listeners.get("submit")({ target: forms[id], preventDefault() {} });
+      return listeners.get("submit")({
+        target: forms[id],
+        preventDefault() {},
+      });
     },
   };
 }
 
-test("controller: falha ao salvar conserva rascunho, ajustes e mensagem, sem confirmação de sucesso", () => {
+test("controller: falha ao salvar conserva rascunho, ajustes e mensagem, sem confirmação de sucesso", async () => {
   const f = controllerFixture(() => false);
   f.forms.progressao.elements.loadProgression.value = "8.5";
-  f.submit("progressao");
+  await f.submit("progressao");
   assert.equal(f.saved.loadProgression, 5);
   assert.equal(f.commits(), 1);
   assert.match(
@@ -378,14 +381,14 @@ test("controller: falha ao salvar conserva rascunho, ajustes e mensagem, sem con
   assert.equal(f.saved.loadProgression, 5);
 });
 
-test("controller: salvar somente uma categoria preserva o outro formulário e seu rascunho inválido", () => {
+test("controller: salvar somente uma categoria preserva o outro formulário e seu rascunho inválido", async () => {
   const f = controllerFixture();
   f.forms.corrida.elements.easyPace.value = "6:00";
-  f.submit("corrida");
+  await f.submit("corrida");
   assert.equal(f.commits(), 0);
   assert.equal(f.forms.corrida.elements.hardPace.attrs["aria-invalid"], "true");
   f.forms.progressao.elements.loadProgression.value = "7.5";
-  f.submit("progressao");
+  await f.submit("progressao");
   assert.equal(f.commits(), 1);
   assert.equal(f.saved.loadProgression, 7.5);
   assert.equal(f.saved.easyPace, "");
@@ -398,14 +401,14 @@ test("controller: salvar somente uma categoria preserva o outro formulário e se
   );
   assert.equal(
     f.forms.progressao.querySelector("[data-settings-status]").textContent,
-    "Salvo neste navegador",
+    "Salvo na nuvem",
   );
 });
 
-test("controller: reset após substituição do diário invalida rascunhos e mensagens anteriores", () => {
+test("controller: reset após substituição do diário invalida rascunhos e mensagens anteriores", async () => {
   const f = controllerFixture();
   f.forms.corrida.elements.easyPace.value = "6:00";
-  f.submit("corrida");
+  await f.submit("corrida");
   f.controller.reset();
   f.controller.unmount();
   f.remount();

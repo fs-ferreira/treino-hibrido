@@ -1216,3 +1216,106 @@ dialog > div > p,
     margin-top: 10px;
   }
 }
+
+.account-gate {
+  max-width: 460px;
+  margin: min(14vh, 100px) auto;
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.account-gate h1 {
+  font-size: 42px;
+  margin: 0;
+}
+.account-gate p {
+  line-height: 1.6;
+}
+.account-gate small {
+  color: var(--muted);
+}
+.account-gate button {
+  min-height: 44px;
+}
+.account-gate #account-recovery {
+  display: grid;
+  gap: 10px;
+}
+.account-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.account-tools .local-pill {
+  white-space: normal;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+[data-sync-status][data-state="local"],
+[data-sync-status][data-state="unavailable"] {
+  color: #e3bc7a;
+}
+[data-sync-status][data-state="memory"],
+[data-sync-status][data-state="blocked"] {
+  color: #f3a29c;
+}
+.account-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.account-menu > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+.account-menu > div {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: min(300px, calc(100vw - 40px));
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  z-index: 25;
+  display: grid;
+  gap: 12px;
+  box-shadow: 0 12px 40px #0008;
+}
+.account-menu span,
+.account-menu p {
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+#logout-panel {
+  display: grid;
+  gap: 10px;
+}
+.account-menu button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .account-tools {
+    gap: 8px;
+  }
+  .account-tools .local-pill {
+    max-width: 150px;
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+  .account-tools .local-pill::before {
+    display: none;
+  }
+  .topbar {
+    height: auto;
+    min-height: 52px;
+    gap: 8px;
+  }
+}

@@ -11,7 +11,11 @@ const mime = {
   ".json": "application/json",
 };
 http
-  .createServer((req, res) => {
+  .createServer(async (req, res) => {
+    if (req.url.startsWith("/api/")) {
+      const { handler } = await import("../server/runtime.js");
+      return handler(req, res);
+    }
     const url = new URL(req.url, "http://localhost");
     let relative = decodeURIComponent(url.pathname).replace(
       /^\/treino-hibrido\//,
@@ -19,7 +23,21 @@ http
     );
     if (relative === "/") relative = "/index.html";
     const file = path.resolve(root, "." + relative);
-    if (!file.startsWith(root + path.sep) || relative.includes("/.")) {
+    const normalized = path.relative(root, file).split(path.sep).join("/");
+    const allowed =
+      [
+        "index.html",
+        "app.js",
+        "bootstrap.js",
+        "styles.css",
+        "scripts/movement-lab-ui.js",
+        "scripts/movement-lab-examples.js",
+      ].includes(normalized) || /^(assets|lib|test-results)\//.test(normalized);
+    if (
+      !file.startsWith(root + path.sep) ||
+      relative.includes("/.") ||
+      !allowed
+    ) {
       res.writeHead(403);
       return res.end();
     }

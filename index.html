@@ -17,11 +17,52 @@
     <link rel="stylesheet" href="assets/movement.css" />
     <link rel="stylesheet" href="assets/interface-motion.css?v=1.6.0" />
     <link rel="stylesheet" href="assets/plans.css?v=1.7.2" />
-    <link rel="stylesheet" href="assets/ux.css?v=1.7.9" />
+    <link rel="stylesheet" href="assets/ux.css?v=2.0.0" />
   </head>
   <body>
     <a class="skip" href="#main">Pular para o conteúdo</a>
-    <div class="shell">
+    <section
+      id="account-gate"
+      class="account-gate"
+      aria-labelledby="account-title"
+    >
+      <img src="assets/brand-mark.svg" width="48" height="48" alt="" />
+      <p class="eyebrow">SEU DIÁRIO, COM VOCÊ</p>
+      <h1 id="account-title">HÍBRIDO<span class="accent">.</span></h1>
+      <p id="account-message" role="status">Conectando ao seu diário…</p>
+      <button
+        id="google-login"
+        class="button primary"
+        data-account-action="login"
+      >
+        Entrar com Google
+      </button>
+      <button
+        id="account-retry"
+        class="button quiet"
+        data-account-action="retry"
+        hidden
+      >
+        Tentar conectar novamente
+      </button>
+      <button
+        id="pending-export"
+        class="button quiet"
+        data-account-action="export"
+        hidden
+      >
+        Exportar alterações locais
+      </button>
+      <div id="account-recovery" hidden>
+        <button id="pending-resume" class="button" data-account-action="resume">
+          Enviar alterações desta conta</button
+        ><button class="button quiet" data-account-action="discard">
+          Descartar pendências e usar a nuvem
+        </button>
+      </div>
+      <small>Acesso restrito às contas autorizadas.</small>
+    </section>
+    <div class="shell" hidden>
       <aside class="sidebar">
         <a class="brand" href="#hoje" aria-label="Híbrido — início"
           ><img
@@ -47,15 +88,49 @@
           </div>
         </nav>
         <div class="side-bottom">
-          <span class="status-dot"></span> Seu diário, neste navegador<small
+          <span class="status-dot"></span> Seu diário, salvo na nuvem<small
             >Força e resistência.<br />Uma semana de cada vez.</small
           ><span class="edition">HYBRID TRAINING / 01</span>
         </div>
       </aside>
       <div class="workspace">
         <header class="topbar">
-          <span id="top-date"></span
-          ><span class="local-pill"><i></i> DADOS LOCAIS</span>
+          <span id="top-date"></span>
+          <div class="account-tools">
+            <span class="local-pill" data-sync-status role="status"
+              >Conectando…</span
+            >
+            <details class="account-menu">
+              <summary>Conta</summary>
+              <div>
+                <strong id="account-name"></strong
+                ><span id="account-email"></span
+                ><button class="button quiet" data-account-action="logout">
+                  Sair da conta
+                </button>
+                <div id="logout-panel" hidden>
+                  <p>
+                    Há alterações pendentes. Você pode exportá-las antes de
+                    sair.
+                  </p>
+                  <button class="button" data-account-action="export">
+                    Exportar pendências</button
+                  ><button
+                    class="button danger"
+                    data-account-action="discard-logout"
+                  >
+                    Descartar pendências e sair</button
+                  ><button
+                    class="button quiet"
+                    data-account-action="cancel-logout"
+                  >
+                    Continuar no app
+                  </button>
+                </div>
+                <p id="account-action-error" role="alert"></p>
+              </div>
+            </details>
+          </div>
         </header>
         <main id="main" tabindex="-1"></main>
         <footer>
@@ -71,6 +146,6 @@
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
     <noscript>Ative o JavaScript para usar seu diário de treinos.</noscript>
-    <script type="module" src="app.js?v=1.7.10"></script>
+    <script type="module" src="bootstrap.js?v=2.0.0"></script>
   </body>
 </html>

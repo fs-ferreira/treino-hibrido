@@ -184,10 +184,10 @@ test("apply one suggestion, keep manual values, focus, scroll and completion", a
   );
   await field(card, "done", 1).uncheck();
   await expect(use(card, 1)).toBeEnabled();
-  const saved = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)),
-    KEY,
+  await expect(page.locator(".topbar [data-sync-status]")).toHaveText(
+    "Salvo na nuvem",
   );
+  const saved = page.cloudFixture.data;
   expect(saved.sessions[CARD_DATE].sets[CARD_ID][0]).toEqual({
     kg: 14.5,
     reps: 7,
