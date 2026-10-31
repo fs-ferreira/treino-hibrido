@@ -111,10 +111,14 @@ test("PostgreSQL: isolation, session activation, receipts, generation and atomic
   );
   assert.equal(Object.keys((await service.read(a)).sessions).length, 0);
   // A full 10 MB transfer is chunked; a failed final validation rolls back.
-  const base = JSON.stringify({ ...defaults(), padding: "" });
+  const largeDiary = {
+    ...defaults(),
+    sessions: { "2026-10-29": data(), "2026-10-30": data() },
+  };
+  const base = JSON.stringify({ ...largeDiary, padding: "" });
   const large = Buffer.from(
     JSON.stringify({
-      ...defaults(),
+      ...largeDiary,
       padding: "x".repeat(10_000_000 - Buffer.byteLength(base)),
     }),
   );
@@ -136,6 +140,7 @@ test("PostgreSQL: isolation, session activation, receipts, generation and atomic
     generation: restored.generation,
     operationId: randomUUID(),
   });
+  assert.equal(Object.keys((await service.read(a)).sessions).length, 2);
   await service.save(a, "/sessions/2026-10-31", {
     ...body,
     generation: largeResult.generation,

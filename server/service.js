@@ -318,11 +318,10 @@ export function createDiaryService({ pool, config }) {
         await c.query("DELETE FROM workout_sessions WHERE user_id=$1", [
           actor.userId,
         ]);
-        for (const [date, session] of Object.entries(data.sessions))
-          await c.query(
-            "INSERT INTO workout_sessions(user_id,date,payload) VALUES($1,$2,$3)",
-            [actor.userId, date, JSON.stringify(session)],
-          );
+        await c.query(
+          "INSERT INTO workout_sessions(user_id,date,payload) SELECT $1, entry.key::date, entry.value FROM jsonb_each($2::jsonb) AS entry",
+          [actor.userId, JSON.stringify(data.sessions)],
+        );
         await c.query(
           "UPDATE diaries SET settings=$2,generation=$3 WHERE user_id=$1",
           [actor.userId, JSON.stringify(data.settings), randomUUID()],
