@@ -18,6 +18,14 @@ export function createAuth(pool, config) {
         clientSecret: config.googleSecret,
         prompt: "select_account",
         scope: ["openid", "email", "profile"],
+        mapProfileToUser(profile) {
+          // Check the current verified provider claim on returning logins too.
+          assertAllowed({
+            email: profile.email,
+            emailVerified: profile.email_verified,
+          });
+          return {};
+        },
       },
     },
     session: {

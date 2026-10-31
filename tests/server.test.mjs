@@ -226,6 +226,17 @@ test("PostgreSQL: isolation, session activation, receipts, generation and atomic
   assert.match(cookies, /HttpOnly/i);
   assert.match(cookies, /SameSite=Lax/i);
   const context = await auth.$context;
+  const checkProfile = context.options.socialProviders.google.mapProfileToUser;
+  assert.throws(() =>
+    checkProfile({ email: "a@example.test", email_verified: false }),
+  );
+  assert.throws(() =>
+    checkProfile({ email: "changed@example.test", email_verified: true }),
+  );
+  assert.deepEqual(
+    checkProfile({ email: "a@example.test", email_verified: true }),
+    {},
+  );
   await assert.rejects(
     context.internalAdapter.createUser({
       name: "Intruso",
