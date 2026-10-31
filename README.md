@@ -78,7 +78,9 @@ Backups incluem apenas configurações salvas. Restaurar um backup ou limpar o d
 
 ## Dados e backup
 
-Um perfil por navegador. Armazenamento em `localStorage`, chave `treino-hibrido:v1`; esquema versão 3. Diários e backups das versões 1 e 2 são migrados, preservando o texto da corrida recente como anotação e todas as sessões. Os novos campos são preenchidos pelo usuário, sem interpretar o texto antigo. Não há contas, analytics, GPS, cronômetro nem sincronização. Dados pessoais nunca são enviados ao repositório. A navegação a vídeos e fontes externas abre os respectivos sites somente quando o usuário clica.
+Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O esquema de backup continua na versão 3.
+
+A [configuração de Google, Neon e Vercel](docs/autenticacao-e-neon.md) descreve credenciais, migrações, fallback, sessão única e ativação da hospedagem. As credenciais reais devem ser cadastradas nos serviços, nunca no repositório.
 
 Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação abre um painel com seleção de JSON, validação e resumo de sessões, séries e corridas; somente o botão Restaurar backup confirma a substituição. Erros aparecem no painel. Cabeçalho e ações permanecem acessíveis enquanto o conteúdo rola. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação em um painel do app. Não há alert, confirm ou prompt nativos; Escape, cancelar ou fechar preserva o diário. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
 
@@ -94,9 +96,11 @@ Tab percorre os cinco destinos uma vez. Setas esquerda/direita movem o foco circ
 
 ## Publicar e atualizar
 
-Repositório público pessoal: `fs-ferreira/treino-hibrido`. GitHub Pages usa **GitHub Actions** como fonte. Cada push na branch `main` executa os testes e publica apenas HTML, CSS, JS e assets do app. Arquivos de teste e dados locais não integram o site. Assets usam caminhos relativos para funcionar sob `/treino-hibrido/`.
+O app autenticado será hospedado na Vercel, com API e frontend no mesmo domínio. `npm run build` prepara somente arquivos públicos em `dist`; funções Node ficam em `api/` e os módulos privados em `server/`.
 
-Para atualizar: editar, executar `npm test`, testar no navegador e enviar um commit para `main`. Acompanhar o workflow `Validate and deploy Pages`. Um deploy não altera o `localStorage` do usuário; futuras mudanças no esquema precisam de migração explícita.
+Enquanto Vercel, Neon e OAuth não estiverem configurados, o Pages existente permanece publicado. Após validar a nova hospedagem, configure a variável pública `APP_URL` do repositório para publicar uma página de transferência no endereço antigo. Ela permite baixar o diário local sem apagá-lo. O workflow valida o app; a publicação da página de transferência fica condicionada a essa variável.
+
+Execute `npm ci`, `npm test`, `npm run test:ui`, `npm run test:auth` e `npm run test:movements` antes de publicar. A configuração externa e o login Google real precisam ser validados separadamente.
 
 ## Estrutura
 
@@ -127,7 +131,7 @@ Para medir localmente, abra `http://127.0.0.1:4173/?motion-debug=1#hoje`. Um ind
 
 ## Ícones
 
-[Lucide](https://lucide.dev/guide/static) é distribuído localmente, sem CDN nem fonte de emoji. Licença ISC em `assets/lucide-LICENSE.txt`. Para regenerar os ícones: `npm ci` e `npm run icons`. As dependências são apenas de desenvolvimento; execução e publicação não exigem instalação ou build.
+[Lucide](https://lucide.dev/guide/static) é distribuído localmente, sem CDN nem fonte de emoji. Licença ISC em `assets/lucide-LICENSE.txt`. Para regenerar os ícones: `npm ci` e `npm run icons`. As funções de autenticação e persistência usam dependências de produção. Publicação exige instalação e build; os ícones continuam distribuídos localmente.
 
 ## Ilustrações e movimento
 

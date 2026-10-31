@@ -1,37 +1,58 @@
-name: Validate and deploy Pages
+name: Validate app and publish migration page
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
-  group: pages
+  group: validate-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-      - name: Validate calculations, backup and content
-        run: npm test
-      - name: Prepare static site
-        run: |
-          mkdir -p _site
-          cp index.html styles.css app.js _site/
-          cp -r assets lib _site/
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - run: npm run test:auth
+      - run: npm run test:movements
+  migration:
+    # Set this public repository variable ONLY after the Vercel app works.
+    # Otherwise the currently published Pages app remains untouched.
+    if: github.ref == 'refs/heads/main' && vars.APP_URL != ''
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node scripts/build-migration.mjs
+        env:
+          APP_URL: ${{ vars.APP_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
-      - name: Deploy
+      - name: Deploy migration page
         id: deployment
         uses: actions/deploy-pages@v4

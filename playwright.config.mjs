@@ -3,7 +3,11 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 export default defineConfig({
   testDir: "./tests",
-  testMatch: ["movement-browser.spec.mjs", "exercise-card-browser.spec.mjs"],
+  testMatch: [
+    "movement-browser.spec.mjs",
+    "exercise-card-browser.spec.mjs",
+    "auth-browser.spec.mjs",
+  ],
   workers: 1,
   timeout: 60000,
   outputDir: "test-results/browser",
@@ -26,6 +30,6 @@ export default defineConfig({
   webServer: {
     command: "node scripts/preview-movements.mjs && node scripts/serve.mjs",
     url: "http://127.0.0.1:4173/test-results/movements.html",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

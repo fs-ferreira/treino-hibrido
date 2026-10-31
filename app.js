@@ -1,5 +1,5 @@
+import { account } from "./lib/account.js";
 import {
-  KEY,
   defaults,
   parsePace,
   paceText,
@@ -31,7 +31,7 @@ import {
   settingsView,
   createSettingsController,
   settingsSections,
-} from "./lib/settings.js?v=1.7.1";
+} from "./lib/settings.js?v=2.0.0";
 import { createMobileNav } from "./lib/mobile-nav.js?v=1.7.3";
 import { illustration } from "./lib/diagrams.js?v=1.7.5";
 import { createMovementPlayer } from "./lib/movement-player.js?v=1.7.5";
@@ -72,9 +72,8 @@ const fullDate = (k) =>
     day: "numeric",
     month: "long",
   });
-let data = defaults(),
+let data = account.data ?? defaults(),
   storageProblem = "",
-  storageLocked = false,
   selected = dateKey(),
   week = weekStart(selected),
   expanded = new Set(),
@@ -118,24 +117,14 @@ const dialogs = createDialogController($("#guide-dialog"), motion, {
 let currentRoute = routeFromHash();
 const routePositions = new Map();
 history.scrollRestoration = "manual";
-try {
-  const saved = localStorage.getItem(KEY);
-  if (saved) data = validateBackup(JSON.parse(saved));
-} catch (error) {
-  storageLocked = true;
-  storageProblem =
-    "Não foi possível ler o diário salvo. Seus dados não serão sobrescritos. Exporte uma cópia em Configurações → Dados antes de limpar o armazenamento.";
-}
 const settingsUi = createSettingsController({
   getSettings: () => data.settings,
   navigate: (section) => navigateTo(`configuracoes/${section}`),
-  save(next) {
-    const previous = data.settings;
+  async save(next) {
     data.settings = next;
-    if (persist("Ajustes salvos neste navegador.")) return true;
-    data.settings = previous;
-    return false;
+    return persist("Ajustes salvos na nuvem.");
   },
+  getSaveMessage: () => account.status.message,
 });
 fetch("./assets/references.json")
   .then((r) => {
@@ -152,25 +141,19 @@ function notify(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 4000);
 }
-function persist(message) {
-  if (storageLocked) {
-    notify(storageProblem);
-    return false;
-  }
+async function persist(message) {
+  if (account.blocked) return false;
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
-    storageProblem = "";
-    if (message) notify(message);
-    return true;
-  } catch {
-    storageProblem =
-      "O navegador não conseguiu salvar. Os dados continuam nesta aba; exporte um backup antes de sair.";
-    notify(storageProblem);
-    if (!$("#storage-alert"))
-      main.insertAdjacentHTML(
-        "afterbegin",
-        `<div class="notice" id="storage-alert" role="alert">${storageProblem}</div>`,
-      );
+    const result = await account.remote.save(data);
+    storageProblem = result.saved === "memory" ? account.status.message : "";
+    if (message)
+      notify(result.saved === "cloud" ? message : account.status.message);
+    return ["cloud", "local"].includes(result.saved);
+  } catch (error) {
+    notify(
+      error.message ||
+        "Não foi possível salvar. Exporte uma cópia antes de sair.",
+    );
     return false;
   }
 }
@@ -418,6 +401,7 @@ function updateTitle(route) {
   document.title = `${title} · HÍBRIDO`;
 }
 function render() {
+  if (account.blocked) return;
   settingsUi.unmount();
   accordions.finish();
   motion.finishAll();
@@ -519,7 +503,7 @@ function strengthView(type) {
   const w = workouts[type],
     s = data.sessions[selected],
     total = count(selected);
-  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/21 séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / 21})"></span></div><p class="section-hint">Abra um exercício para registrar as séries. Toque em “Como fazer” para ver o guia.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><p><span class="status-dot"></span> ${storageProblem ? "Confira o aviso de armazenamento" : "Alterações salvas neste navegador"}</p><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
+  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/21 séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / 21})"></span></div><p class="section-hint">Abra um exercício para registrar as séries. Toque em “Como fazer” para ver o guia.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><p><span class="status-dot"></span> <span data-sync-status>${escape(account.status.message)}</span></p><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
 }
 function loadSuggestionReason(suggestion) {
   if (suggestion.percent)
@@ -703,7 +687,7 @@ function importDialog() {
     <label class="import-dropzone" for="import-file"><span class="import-symbol" aria-hidden="true">${icon("arrow-up")}</span><strong>Escolher arquivo JSON</strong><small>Até 10 MB · versões 1, 2 e 3</small><input id="import-file" type="file" accept="application/json,.json" aria-label="Escolher arquivo JSON"></label>
     <p id="import-file-name" class="import-file-name">Nenhum arquivo selecionado</p><p id="import-file-status" class="caption" role="status">A seleção do arquivo ainda não altera seu diário.</p>
     <p id="import-error" class="form-error" role="alert"></p><section id="import-summary" class="import-summary" aria-label="Resumo do backup" aria-live="polite" hidden></section>
-    <p class="import-warning">Restaurar substitui os registros e as configurações deste app neste navegador. Exporte uma cópia do diário atual se quiser guardá-lo.</p>
+    <p class="import-warning">Restaurar substitui os registros e as configurações da sua conta na nuvem. Requer conexão. Exporte uma cópia do diário atual se quiser guardá-lo.</p>
     <div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Cancelar</button><button class="button primary" data-action="restore-backup" disabled>Restaurar backup ${icon("check")}</button></div>`,
     true,
   );
@@ -711,25 +695,21 @@ function importDialog() {
 function clearDialog() {
   const entries = Object.values(data.sessions),
     total = entries.length;
-  pendingConfirmation = () => {
+  pendingConfirmation = async () => {
     try {
-      localStorage.removeItem(KEY);
-      data = defaults();
+      await account.remote.replace(null);
       settingsUi.reset();
-      storageLocked = false;
-      storageProblem = "";
       expanded.clear();
       render();
-      dialogReturnFocus = main;
-      notify("Dados do app apagados.");
-    } catch {
+      notify("Diário apagado da conta.");
+    } catch (error) {
       notify(
-        "O navegador não permitiu limpar o armazenamento. Seus dados foram preservados.",
+        error.message || "Não foi possível limpar. O diário foi preservado.",
       );
     }
   };
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">ARMAZENAMENTO LOCAL</span><button class="close-button" data-action="close-dialog" aria-label="Fechar confirmação">${icon("x")}</button></div><h2 id="guide-title">Limpar este diário?</h2><p class="muted">${total ? `${total} ${total === 1 ? "sessão registrada será apagada" : "sessões registradas serão apagadas"}` : "As configurações deste app serão apagadas"}, junto com os paces e as preferências salvas neste navegador.</p><p class="import-warning">Essa ação não pode ser desfeita pelo app. Guarde um backup antes de continuar.</p><div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Manter meu diário</button><button class="button danger" data-action="confirm-action">Apagar dados deste app</button></div>`,
+    `<div class="dialog-top"><span class="eyebrow">SEU DIÁRIO NA NUVEM</span><button class="close-button" data-action="close-dialog" aria-label="Fechar confirmação">${icon("x")}</button></div><h2 id="guide-title">Limpar este diário?</h2><p class="muted">${total ? `${total} ${total === 1 ? "sessão registrada será apagada" : "sessões registradas serão apagadas"}` : "As configurações deste app serão apagadas"}, junto com os paces e as preferências salvas na sua conta.</p><p class="import-warning">Requer conexão. Essa ação não pode ser desfeita pelo app. Guarde um backup antes de continuar.</p><div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Manter meu diário</button><button class="button danger" data-action="confirm-action">Apagar dados deste app</button></div>`,
     true,
   );
 }
@@ -768,6 +748,7 @@ function sources() {
   );
 }
 document.addEventListener("click", (event) => {
+  if (account.blocked) return;
   const summary = event.target.closest(
     "details[data-exercise] > summary, details[data-plan-day] > summary",
   );
@@ -903,14 +884,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "export") {
-    let text;
-    if (storageLocked) {
-      try {
-        text = localStorage.getItem(KEY) || JSON.stringify(data);
-      } catch {
-        text = JSON.stringify(data);
-      }
-    } else text = JSON.stringify(data, null, 2);
+    const text = JSON.stringify(data, null, 2);
     const blob = new Blob([text], { type: "application/json" }),
       url = URL.createObjectURL(blob),
       a = document.createElement("a");
@@ -925,20 +899,17 @@ document.addEventListener("click", (event) => {
   if (action === "restore-backup") {
     const imported = pendingImport;
     if (!imported) return;
-    dialogs.close(() => {
+    dialogs.close(async () => {
       try {
-        localStorage.setItem(KEY, JSON.stringify(imported));
-        data = imported;
+        await account.remote.replace(imported);
         settingsUi.reset();
-        storageLocked = false;
-        storageProblem = "";
         expanded.clear();
         render();
-        dialogReturnFocus = $('[data-action="import"]') ?? main;
-        notify("Backup restaurado com sucesso.");
-      } catch {
+        notify("Backup restaurado na nuvem.");
+      } catch (error) {
         notify(
-          "O navegador não conseguiu restaurar o backup. O diário anterior foi preservado.",
+          error.message ||
+            "Não foi possível restaurar. Confira seu diário na nuvem antes de tentar novamente.",
         );
       }
     });
@@ -962,6 +933,7 @@ document.addEventListener(
   true,
 );
 document.addEventListener("change", async (event) => {
+  if (account.blocked) return;
   const input = event.target;
   if (input.closest("[data-settings-form]")) return;
   if (input.dataset.withoutWeight) {
@@ -1043,6 +1015,7 @@ document.addEventListener("change", async (event) => {
   }
 });
 document.addEventListener("input", (event) => {
+  if (account.blocked) return;
   const input = event.target;
   if (input.closest("[data-settings-form]")) return;
   if (input.id === "long-minutes" && !input.disabled) {
@@ -1078,6 +1051,10 @@ document.addEventListener("input", (event) => {
   }
 });
 document.addEventListener("submit", (event) => {
+  if (account.blocked) {
+    event.preventDefault();
+    return;
+  }
   event.preventDefault();
   const form = event.target,
     values = Object.fromEntries(new FormData(form));
@@ -1137,6 +1114,7 @@ document.addEventListener("submit", (event) => {
   }
 });
 function handleLocation() {
+  if (account.blocked) return;
   if (location.hash === "#main") return;
   applyNavigation(routeFromHash(), { session: location.hash === "#session" });
 }
@@ -1163,5 +1141,19 @@ document.addEventListener("focusout", (event) => {
     if (seconds) event.target.value = durationText(seconds);
   }
 });
+account.update = (next, force = false) => {
+  if (account.blocked) return;
+  const changed = JSON.stringify(data) !== JSON.stringify(next);
+  data = next;
+  if (changed || force) render();
+};
+account.lock = () => {
+  disposeMovement();
+  dialogs.close();
+  settingsUi.reset();
+  data = defaults();
+  account.data = null;
+  main.replaceChildren();
+};
 render();
 if (location.hash === "#session") scrollToSession();
