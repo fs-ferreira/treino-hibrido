@@ -1,6 +1,6 @@
 # Google, Neon e Vercel
 
-O diário exige login Google e limita o acesso a `ALLOWED_GOOGLE_EMAILS`. A aplicação atual em GitHub Pages permanece publicada até o novo endereço funcionar. O código não cria automaticamente contas nos serviços nem contém credenciais reais.
+O diário exige login Google e limita o acesso a `ALLOWED_GOOGLE_EMAILS`. A hospedagem e o deploy são exclusivos da Vercel. O código não cria automaticamente contas nos serviços nem contém credenciais reais.
 
 ## Preparar os serviços
 
@@ -10,7 +10,7 @@ O diário exige login Google e limita o acesso a `ALLOWED_GOOGLE_EMAILS`. A apli
 4. Cadastre no ambiente protegido da Vercel: `DATABASE_URL`, `BETTER_AUTH_SECRET` (gerado com pelo menos 32 bytes aleatórios), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_AUTH_URL` (origem HTTPS, sem caminho) e `ALLOWED_GOOGLE_EMAILS` (e-mails separados por vírgulas). Use o tipo Secret para credenciais e lista autorizada. Não use prefixos públicos, não cole valores em issues/PRs e não os adicione ao código.
 5. Para migrações, forneça `DATABASE_URL_UNPOOLED` num terminal seguro ou gerenciador de segredos; execute `npm run db:migrate`. Localmente, `node --env-file-if-exists=.env.local` carrega o arquivo ignorado pelo Git. Não use credenciais de produção em previews. As migrações são transacionais e registradas em `schema_migrations`, sem DDL durante requisições. Para execução, prefira um papel limitado a CRUD, com permissões necessárias nas tabelas de auth e do diário; reserve DDL ao papel de migração.
 6. Faça deploy de homologação com origem e cliente OAuth próprios. Teste login autorizado/bloqueado, um segundo login invalidando o anterior, registro e recarga, queda de conexão, logout e importação. Só depois publique produção. URLs aleatórias de preview não são liberadas por wildcard no OAuth ou nas origens confiáveis.
-7. Após validar a produção, defina a variável **pública do repositório** `APP_URL` para a origem HTTPS oficial e execute o workflow `Validate app and publish migration page`. Ele substituirá o Pages pela página de exportação/transferência. Sem `APP_URL`, o job de publicação é pulado e o Pages atual fica intacto. Não coloque credenciais do banco ou do Google no GitHub para esse workflow.
+7. Após validar a produção, mantenha a integração do repositório com a Vercel para os próximos deploys. O workflow `Validate app` executa somente testes e build; não publica no GitHub Pages.
 
 O fluxo real de consentimento Google depende dessas configurações e deve ser conferido por uma pessoa com a conta autorizada. As dependências estão fixadas no lockfile. Não solicite nem guarde refresh tokens Google para o funcionamento offline do diário.
 
@@ -41,4 +41,4 @@ Limpar/restaurar exige conexão e uma fila sem pendências. Ambas trocam a gera�
 
 A API usa respostas `no-store`, SQL parametrizado e proteção de origem nas mutações. Erros internos não serializam exceções do banco/provedor; logs do Better Auth estão desabilitados. O servidor local bloqueia fontes privadas. Não registre tokens, corpos dos treinos, URLs de conexão ou cookies em logs.
 
-Para rollback, volte à versão anterior do app na Vercel preservando o banco. Não reverta migrações apagando dados. Mantenha o destino do Pages coerente com o endereço ativo e guarde backup antes de operações destrutivas. Nunca registre dados reais em fixtures ou capturas de teste.
+Para rollback, volte à versão anterior do app na Vercel preservando o banco. Não reverta migrações apagando dados. Guarde backup antes de operações destrutivas. Nunca registre dados reais em fixtures ou capturas de teste.
