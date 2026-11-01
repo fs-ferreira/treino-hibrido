@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="assets/movement.css" />
     <link rel="stylesheet" href="assets/interface-motion.css?v=1.6.0" />
     <link rel="stylesheet" href="assets/plans.css?v=1.7.2" />
-    <link rel="stylesheet" href="assets/ux.css?v=2.1.0" />
+    <link rel="stylesheet" href="assets/ux.css?v=2.2.0" />
     <link rel="stylesheet" href="assets/muscle-map.css?v=2.1.1" />
   </head>
   <body data-account-view="login">
@@ -152,7 +152,6 @@
           />
           HÍBRIDO<span class="brand-dot">.</span></a
         >
-        <div class="sidebar-caption">SEU PLANO. SEU RITMO.</div>
         <nav aria-label="Navegação principal">
           <div class="nav-track">
             <a href="#hoje" data-nav="hoje"><span>◈</span> Hoje</a
@@ -165,17 +164,16 @@
             >
           </div>
         </nav>
-        <div class="side-bottom">
-          <span class="status-dot"></span> Seu diário, salvo na nuvem<small
-            >Força e resistência.<br />Uma semana de cada vez.</small
-          ><span class="edition">HYBRID TRAINING / 01</span>
-        </div>
       </aside>
       <div class="workspace">
         <header class="topbar">
           <span id="top-date"></span>
           <div class="account-tools">
-            <span class="local-pill" data-sync-status role="status"
+            <span
+              class="local-pill sr-only"
+              data-sync-status
+              data-state="loading"
+              role="status"
               >Conectando…</span
             >
             <details class="account-menu">
@@ -212,8 +210,8 @@
         </header>
         <main id="main" tabindex="-1"></main>
         <footer>
-          HÍBRIDO <span>Feito para manter o movimento.</span
-          ><button class="text-button" data-action="sources">
+          HÍBRIDO
+          <button class="text-button" data-action="sources">
             Fontes e método ↗
           </button>
         </footer>
@@ -224,6 +222,6 @@
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
     <noscript>Ative o JavaScript para usar seu diário de treinos.</noscript>
-    <script type="module" src="bootstrap.js?v=2.1.0"></script>
+    <script type="module" src="bootstrap.js?v=2.2.0"></script>
   </body>
 </html>

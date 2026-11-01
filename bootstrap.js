@@ -36,8 +36,12 @@ function showGate({ retry = false, recovery = false } = {}) {
 function updateStatus(value) {
   account.status = value;
   for (const el of document.querySelectorAll("[data-sync-status]")) {
-    el.textContent = value.message;
+    if (el.textContent !== value.message) el.textContent = value.message;
     el.dataset.state = value.state;
+    el.classList.toggle(
+      "sr-only",
+      ["cloud", "loading", "saving"].includes(value.state),
+    );
   }
 }
 function download(value) {
@@ -59,7 +63,7 @@ async function mount() {
   skip.textContent = "Pular para o conteúdo";
   dismissNotification();
   if (!mounted) {
-    await import("./app.js?v=2.1.0");
+    await import("./app.js?v=2.2.0");
     mounted = true;
   } else account.update?.(account.data, true);
   document.querySelector("#account-name").textContent =

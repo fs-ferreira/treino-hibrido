@@ -324,12 +324,6 @@ em {
   flex: 0 0 auto;
   object-fit: contain;
 }
-.sidebar-caption {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  margin: 20px 0 55px;
-}
 nav {
   display: grid;
   gap: 9px;
@@ -359,12 +353,6 @@ nav a.active {
     color: var(--text);
   }
 }
-.side-bottom {
-  margin-top: auto;
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.8;
-}
 .status-dot,
 .local-pill i {
   width: 6px;
@@ -373,17 +361,6 @@ nav a.active {
   display: inline-block;
   border-radius: 50%;
   margin-right: 5px;
-}
-.side-bottom small {
-  display: block;
-  font-size: 13px;
-  line-height: 1.7;
-  margin: 25px 0;
-}
-.edition {
-  font-size: 8px;
-  letter-spacing: 1.8px;
-  opacity: 0.65;
 }
 .workspace {
   min-width: 0;
@@ -497,33 +474,6 @@ main {
   .text-button:hover {
     text-decoration: underline;
   }
-}
-.setup-banner {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: #c3f96908;
-  border: 1px solid #c3f96925;
-  border-radius: 12px;
-  padding: 17px 20px;
-  margin-bottom: 24px;
-}
-.setup-symbol {
-  font-size: 27px;
-  color: var(--lime);
-}
-.setup-banner strong {
-  font-size: 13px;
-}
-.setup-banner p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 3px 0 0;
-}
-.setup-banner .button {
-  margin-left: auto;
-  font-size: 11px;
-  padding: 10px 13px;
 }
 .dashboard-grid {
   display: grid;
@@ -651,20 +601,6 @@ main {
 .hero.run .orbit {
   border-color: #79dfe548;
 }
-.art-word {
-  position: absolute;
-  right: -10px;
-  top: 92px;
-  font-weight: 900;
-  font-style: italic;
-  color: #c3f9690d;
-  font-size: 105px;
-  letter-spacing: -10px;
-  transform: rotate(-90deg);
-}
-.hero.run .art-word {
-  color: #79dfe51a;
-}
 .art-cross {
   position: absolute;
   right: 52px;
@@ -673,14 +609,6 @@ main {
   color: var(--lime);
   font-weight: 200;
 }
-.art-caption {
-  position: absolute;
-  bottom: 22px;
-  right: 22px;
-  font-size: 8px;
-  letter-spacing: 2px;
-  color: var(--muted);
-}
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -688,10 +616,6 @@ main {
 }
 .week-summary {
   padding: 25px 23px;
-}
-.week-summary .eyebrow {
-  font-size: 8px;
-  letter-spacing: 1.6px;
 }
 .week-summary h2 {
   font-size: 23px;
@@ -1185,10 +1109,6 @@ footer {
   font-size: 10px;
   letter-spacing: 1px;
   color: var(--muted);
-}
-footer > span {
-  font-size: 10px;
-  letter-spacing: 0;
 }
 footer .text-button {
   margin-left: auto;
@@ -1801,10 +1721,6 @@ dialog > div > p {
   align-items: center;
   gap: 15px;
 }
-.guide-footer .caption {
-  flex-basis: 100%;
-  margin-top: 0;
-}
 .source-link {
   display: block;
   font-size: 12px;
@@ -1889,10 +1805,6 @@ dialog > div > p {
   .brand {
     font-size: 21px;
   }
-  .sidebar-caption {
-    font-size: 8px;
-    letter-spacing: 1px;
-  }
   .workspace {
     padding: 0 25px;
   }
@@ -1951,10 +1863,6 @@ dialog > div > p {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-  }
-  .sidebar-caption,
-  .side-bottom {
-    display: none;
   }
   .sidebar nav {
     display: flex;
@@ -2073,25 +1981,6 @@ dialog > div > p {
   main {
     padding-top: 26px;
     padding-bottom: 40px;
-  }
-  .setup-banner {
-    padding: 15px;
-    gap: 11px;
-    flex-wrap: wrap;
-  }
-  .setup-symbol {
-    display: none;
-  }
-  .setup-banner .button {
-    margin: 0;
-    width: 100%;
-    justify-content: space-between;
-  }
-  .setup-banner strong {
-    font-size: 12px;
-  }
-  .setup-banner p {
-    font-size: 11px;
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -2380,9 +2269,6 @@ dialog > div > p {
     margin-bottom: 76px;
     gap: 10px;
     font-size: 9px;
-  }
-  footer > span {
-    display: none;
   }
   dialog {
     padding: 21px;

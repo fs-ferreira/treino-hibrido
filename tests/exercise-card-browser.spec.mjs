@@ -59,7 +59,7 @@ for (const width of [320, 390, 768, 1440])
     );
     for (let i = 0; i < 3; i++) {
       await expect(field(card, "kg", i)).toHaveAccessibleName(
-        `Carga da série ${i + 1} de Mesa flexora unilateral`,
+        `Carga por lado (kg) da série ${i + 1} de Mesa flexora unilateral`,
       );
       await expect(field(card, "reps", i)).toHaveAccessibleName(
         `Repetições da série ${i + 1} de Mesa flexora unilateral`,
@@ -225,7 +225,12 @@ test("without additional weight preserves three loads and persists across reload
   }
   await card.locator(".exercise-history > summary").click();
   await expect(card.locator(".load-reference")).not.toBeVisible();
-  await expect(card.locator(".weight-help")).toBeVisible();
+  await expect(
+    card.getByRole("checkbox", { name: "Sem peso adicional", exact: true }),
+  ).toHaveAccessibleDescription(/três séries.*cargas digitadas/);
+  await expect(card.locator(`[id="weight-help-${CARD_ID}"]`)).toHaveClass(
+    "sr-only",
+  );
   await page.reload();
   card = page.locator(`[data-exercise="${CARD_ID}"]`);
   await card.locator(":scope > summary").click();
