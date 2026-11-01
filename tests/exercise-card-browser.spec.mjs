@@ -107,7 +107,13 @@ for (const width of [320, 390, 768, 1440])
       expect(Math.abs(button.y - input.y)).toBeLessThan(5);
     }
     const box = await card.boundingBox(),
-      reduction = 1 - box.height / baselineHeights[width];
+      entryBox = await card.locator(".exercise-entry").boundingBox(),
+      anatomyBox = await card.locator(".muscle-map").boundingBox(),
+      registrationHeight = box.height - (width < 1024 ? anatomyBox.height : 0),
+      reduction = 1 - registrationHeight / baselineHeights[width];
+    // Discount only the new visual when stacked. Desktop still compares the
+    // entire card, and mobile retains its header, spacing and form in the budget.
+    expect(anatomyBox.height).toBeLessThanOrEqual(285);
     expect(reduction).toBeGreaterThanOrEqual(width <= 600 ? 0.2 : 0.35);
     expect(
       await page.evaluate(
@@ -122,6 +128,9 @@ for (const width of [320, 390, 768, 1440])
           width,
           beforeHeight: baselineHeights[width],
           afterHeight: box.height,
+          entryHeight: entryBox.height,
+          anatomyHeight: anatomyBox.height,
+          registrationHeight,
           reduction,
         },
         null,

@@ -34,7 +34,7 @@ async function mount() {
   gate.hidden = true;
   shell.hidden = false;
   if (!mounted) {
-    await import("./app.js");
+    await import("./app.js?v=2.1.0");
     mounted = true;
   } else account.update?.(account.data, true);
   document.querySelector("#account-name").textContent =

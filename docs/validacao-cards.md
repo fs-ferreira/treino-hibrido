@@ -15,6 +15,8 @@ Capturas antes e depois usam o mesmo histórico sintético da mesa flexora unila
 
 As metas de redução mínima de 20% no celular e 35% no desktop foram atendidas. Os campos continuam com fonte de 16 px e pelo menos 48 px de altura. Botões, rótulos de conclusão, opção de peso e abertura do histórico mantêm áreas de toque de pelo menos 44 × 44 px. As capturas incluem a seção de histórico fechada e aberta, sem rolagem horizontal nas quatro larguras.
 
+Com a inclusão do [mapa muscular](mapa-muscular.md), as alturas desta tabela permanecem como registro da versão anterior. A regressão de compactação desconta apenas o novo bloco anatômico quando ele fica acima do formulário; o cabeçalho, os espaçamentos e os controles continuam no orçamento original. No desktop, a comparação ainda considera o card inteiro, pois o mapa fica ao lado do formulário. Há também limites para a altura do mapa. Os novos valores de card completo, formulário, mapa e altura usada na comparação ficam nos artefatos `layout-*.json` da suíte de interface.
+
 ## Estados e interações verificados
 
 Os cenários Playwright cobrem:

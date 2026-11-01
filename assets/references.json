@@ -1,6 +1,8 @@
 {
   "checkedOn": "2026-10-20",
   "illustrationsReviewedOn": "2026-10-21",
+  "muscleMapReviewedOn": "2026-11-01",
+  "muscleMapNotes": "Original schematic front/back SVG atlas, with explicit qualitative primary and secondary targets for all 21 variants. Source review, complementary references and simplifications are documented in docs/mapa-muscular.md. Colors express roles, not measured activation. Both sides are shown for unilateral exercises. Empty secondary lists mean no secondary target is highlighted, not physiological inactivity.",
   "illustrationNotes": "Original SVG poses reviewed individually against the linked professional instructions. Shared segment proportions, frontal depth projection, anatomical knee direction, mirrored soles, ankle/foot articulation, wrist/grip contacts and head/pelvis orientation are checked across the sequence. Individual findings and references are in docs/revisao-movimentos.md. Equipment is simplified. Standing calf raise uses a balance support instead of shoulder pads; reverse crunch is adapted to a bench; abdominal crunch shows stable feet. Figures and animation speed are didactic, not individual biomechanical measurements or a cadence prescription.",
   "notes": "Demo page means the professional source contains a named Vimeo/YouTube embed verified in page content. Automated fetching of some player endpoints was blocked; playback and embedding permission have not been tested. Prefer external page links. No media was copied.",
   "exercises": [
