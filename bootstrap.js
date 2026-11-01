@@ -59,7 +59,7 @@ async function mount() {
   skip.textContent = "Pular para o conteúdo";
   dismissNotification();
   if (!mounted) {
-    await import("./app.js");
+    await import("./app.js?v=2.1.0");
     mounted = true;
   } else account.update?.(account.data, true);
   document.querySelector("#account-name").textContent =
