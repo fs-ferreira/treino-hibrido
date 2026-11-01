@@ -1218,30 +1218,273 @@ dialog > div > p,
 }
 
 .account-gate {
-  max-width: 460px;
-  margin: min(14vh, 100px) auto;
-  padding: 28px 22px;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(48px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right)) max(48px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  background: var(--bg);
+}
+.login-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 17% 20%, #c3f96910, transparent 46%),
+    radial-gradient(ellipse at 88% 84%, #79dfe510, transparent 46%),
+    radial-gradient(ellipse at 50% 40%, #171e1b80, transparent 62%);
+}
+.login-orbit {
+  position: absolute;
+  width: clamp(440px, 65vw, 1100px);
+  aspect-ratio: 1;
+  border: 1px solid #c3f96916;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 64px #c3f96904,
+    0 0 0 65px #c3f96908,
+    0 0 0 128px #c3f96902,
+    0 0 0 129px #c3f96905;
+}
+.login-orbit-lime {
+  top: -44%;
+  left: -30%;
+}
+.login-orbit-cyan {
+  right: -33%;
+  bottom: -57%;
+  border-color: #79dfe51a;
+  box-shadow:
+    0 0 0 64px #79dfe503,
+    0 0 0 65px #79dfe509,
+    0 0 0 128px #79dfe502,
+    0 0 0 129px #79dfe505;
+}
+.login-content {
+  width: min(100%, 440px);
+  min-width: 0;
+}
+.login-card {
+  position: relative;
+  padding: 32px;
+  border: 1px solid #ffffff12;
+  border-radius: 24px;
+  background: linear-gradient(155deg, #1b201df2, #141719 52%, #15191c);
+  box-shadow:
+    0 24px 100px #0005,
+    0 1px 0 #ffffff05 inset;
+}
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 32px;
+  right: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #c3f96965, transparent);
+}
+.login-brand {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 48px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.7px;
+}
+.login-brand img {
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.login-intro .eyebrow {
+  color: #adb6ad;
+  font-size: 9px;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
 }
 .account-gate h1 {
-  font-size: 42px;
-  margin: 0;
+  font-size: clamp(32px, 6vw, 40px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -1.7px;
+  margin: 0 0 16px;
+}
+.account-gate h1 span {
+  color: var(--lime);
 }
 .account-gate p {
-  line-height: 1.6;
+  margin: 0;
+  line-height: 1.65;
 }
-.account-gate small {
+.account-gate #account-message {
   color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 32px;
 }
 .account-gate button {
-  min-height: 44px;
+  width: 100%;
+  min-height: 48px;
+  white-space: normal;
+  border-radius: 12px;
+}
+.account-gate .login-google {
+  position: relative;
+  gap: 12px;
+  min-height: 52px;
+  background: var(--lime);
+  border-color: var(--lime);
+  color: #17200d;
+  font-size: 14px;
+  box-shadow: 0 4px 20px #c3f9690a;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 120ms ease;
+}
+.login-google-mark {
+  padding: 2px;
+  box-sizing: content-box;
+  background: #fff;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.account-gate button:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 5px;
+  filter: none;
+}
+.account-gate button:disabled {
+  opacity: 0.65;
+}
+.login-spinner {
+  display: none;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 2px solid #17200d30;
+  border-top-color: currentColor;
+  border-radius: 50%;
+}
+.account-gate:is([data-state="checking"], [data-state="signing-in"])
+  .login-spinner {
+  display: block;
+  animation: login-spin 800ms linear infinite;
+}
+.account-gate:is([data-state="checking"], [data-state="signing-in"])
+  .login-google-mark {
+  display: none;
+}
+.login-progress {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.account-gate .login-secondary {
+  margin-top: 12px;
+  border-color: transparent;
+  color: #b6bdb9;
+  font-size: 12px;
+}
+.login-card-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #ffffff0c;
+  color: #a2aaa7;
+}
+.login-card-footer small {
+  font-size: 11px;
+}
+.login-card-footer svg {
+  flex-shrink: 0;
+}
+.account-gate .login-signature {
+  margin-top: 24px;
+  color: #949c96;
+  text-align: center;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1.7px;
+}
+.login-signature span {
+  color: #c3f96980;
+  margin: 0 8px;
 }
 .account-gate #account-recovery {
   display: grid;
   gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.login-recovery p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.login-recovery .button {
+  font-size: 12px;
+  padding-inline: 10px;
+}
+body[data-account-view="login"] #toast {
+  bottom: max(28px, env(safe-area-inset-bottom));
+  width: max-content;
+  max-width: min(440px, calc(100% - 36px));
+  border: 1px solid #f3a29c40;
+  background: #241e20;
+  color: #f2e9e8;
+  line-height: 1.6;
+}
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .account-gate .login-google:not(:disabled):hover {
+    background: #d0ff86;
+    box-shadow: 0 4px 24px #c3f96920;
+    transform: translateY(-1px);
+  }
+}
+@media (max-width: 600px) {
+  .login-card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+  .login-brand {
+    margin-bottom: 36px;
+  }
+  .account-gate .login-signature {
+    font-size: 7px;
+    letter-spacing: 1.2px;
+  }
+  .login-signature span {
+    margin-inline: 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-gate *,
+  .account-gate *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+  .account-gate .login-google:not(:disabled):hover {
+    transform: none;
+  }
 }
 .account-tools {
   display: flex;
