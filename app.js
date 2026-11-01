@@ -24,8 +24,9 @@ import {
   effortTarget,
 } from "./lib/progression.js?v=1.7.6";
 import { workouts, exercises } from "./lib/exercises.js";
+import { muscleMap, createMuscleMapController } from "./lib/muscle-map.js";
 import { runBlocksView } from "./lib/run-view.js?v=1.7.0";
-import { plansView } from "./lib/plans-view.js?v=1.7.0";
+import { plansView } from "./lib/plans-view.js?v=2.1.0";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.7.1";
 import {
   settingsView,
@@ -46,6 +47,7 @@ import {
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
+const muscleMaps = createMuscleMapController(main);
 const escape = (s) =>
   String(s ?? "").replace(
     /[&<>"']/g,
@@ -402,6 +404,7 @@ function updateTitle(route) {
 }
 function render() {
   if (account.blocked) return;
+  muscleMaps.reset();
   settingsUi.unmount();
   accordions.finish();
   motion.finishAll();
@@ -532,7 +535,7 @@ function exerciseCard(id, index, s) {
     complete = sets.filter((x) => x.done).length;
   return `<details class="exercise-card ${noWeight ? "without-weight" : ""}" data-exercise="${id}" ${expanded.has(id) ? "open" : ""}>
     <summary><span class="exercise-number">${String(index + 1).padStart(2, "0")}</span><span class="exercise-name"><b>${e.name}</b><small>${e.muscles} <span>· 3 × 6–8</span></small></span><span class="exercise-check ${complete === 3 ? "complete" : ""}" aria-label="${complete} de 3 séries concluídas">${complete === 3 ? icon("check") : `${complete}/3`}</span><span class="chevron">${icon("chevron-down")}</span></summary>
-    <div class="exercise-body"><div class="exercise-tools"><label class="pace-toggle weight-toggle"><input type="checkbox" data-without-weight="${id}" aria-describedby="weight-help-${id}" ${noWeight ? "checked" : ""}><span>Sem peso adicional</span></label><button class="button quiet small exercise-guide" data-action="guide" data-id="${id}" aria-label="Como fazer ${e.name}">Como fazer ${arrow}</button></div>
+    <div class="exercise-body"><div class="exercise-layout">${muscleMap(e)}<div class="exercise-entry"><div class="exercise-tools"><label class="pace-toggle weight-toggle"><input type="checkbox" data-without-weight="${id}" aria-describedby="weight-help-${id}" ${noWeight ? "checked" : ""}><span>Sem peso adicional</span></label><button class="button quiet small exercise-guide" data-action="guide" data-id="${id}" aria-label="Como fazer ${e.name}">Como fazer ${arrow}</button></div>
     <div class="sets-grid set-header" aria-hidden="true"><span>Série</span><span>Carga (kg)</span><span>Reps</span><span>Feita</span></div>
     ${sets
       .map((set, i) => {
@@ -543,7 +546,7 @@ function exerciseCard(id, index, s) {
         <span class="mobile-set-label load-label" aria-hidden="true">Carga (kg)</span><span class="mobile-set-label reps-label" aria-hidden="true">Reps</span><input type="number" inputmode="numeric" min="0" max="1000" step="1" value="${set.reps}" placeholder="6–8" aria-label="Repetições da série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="reps"><label class="check-label"><input type="checkbox" ${set.done ? "checked" : ""} aria-label="Concluir série ${i + 1} de ${e.name}" data-id="${id}" data-index="${i}" data-field="done"><span aria-hidden="true">${icon("check")}</span></label></div>`;
       })
       .join("")}
-    ${["single-rdl", "bulgarian", "leg-curl", "leg-extension"].includes(id) ? '<p class="exercise-side-note">Carga por lado · complete os dois lados</p>' : ""}${exerciseHistory(id, previous, suggestions)}</div></details>`;
+    ${["single-rdl", "bulgarian", "leg-curl", "leg-extension"].includes(id) ? '<p class="exercise-side-note">Carga por lado · complete os dois lados</p>' : ""}${exerciseHistory(id, previous, suggestions)}</div></div></div></details>`;
 }
 function longRangeText(pace) {
   return pace

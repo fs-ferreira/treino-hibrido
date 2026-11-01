@@ -49,6 +49,8 @@ Em cada exercício, **Sem peso adicional** vale para as três séries. Os campos
 
 Os cards priorizam carga, repetições e conclusão. A sugestão fica junto ao campo de carga no desktop e abaixo dele no celular. **Histórico e sugestões** reúne a última sessão, as referências e os motivos, recolhidos inicialmente. **Como fazer** mantém a variante e o guia completo. A [validação dos cards compactos](docs/validacao-cards.md) registra as comparações e os testes; execute `npm run test:ui` para repetir os cenários de navegador.
 
+Ao abrir um exercício, o mapa anatômico destaca os músculos principais em vermelho vivo e os secundários em vermelho escuro. Toque, cursor ou foco pelo teclado revelam seus nomes. Frente e costas aparecem conforme os alvos do exercício; o mesmo mapa está disponível nos dias expandidos de Treinos. O [cadastro e a validação do mapa muscular](docs/mapa-muscular.md) documentam os 21 exercícios e suas referências.
+
 Na corrida, o próximo treino equivalente usa o pace realizado e o esforço da última sessão elegível, separando **leve**, **longão** e **intervalado**. Leve e longão têm alvo 3–4/10; os blocos fortes têm alvo 7–8/10. Intervalados precisam de **pace médio dos blocos fortes** e **esforço dos blocos fortes**, ambos opcionais e preenchidos juntos. A média da sessão inteira não substitui esses dados. Esforço 0, sessões abertas, datas iguais/posteriores ao plano e dados ausentes não alimentam o ajuste.
 
 A política inicial é uma **heurística do aplicativo**, não uma fórmula fisiológica validada que converte esforço em velocidade. Como reforça o [CDC](https://www.cdc.gov/physical-activity-basics/measuring/), o esforço é relativo a cada pessoa:

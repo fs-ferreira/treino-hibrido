@@ -6,6 +6,7 @@ export default defineConfig({
   testMatch: [
     "movement-browser.spec.mjs",
     "exercise-card-browser.spec.mjs",
+    "muscle-map-browser.spec.mjs",
     "auth-browser.spec.mjs",
   ],
   workers: 1,
