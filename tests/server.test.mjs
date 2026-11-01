@@ -185,6 +185,8 @@ test("PostgreSQL: isolation, session activation, receipts, generation and atomic
         createHmac("sha256", config.secret).update("s2-token").digest("base64"),
     );
   const api = createApi({ auth, service, config });
+  const anonymous = await api(new Request(config.origin + "/api/me"));
+  assert.equal(anonymous.status, 401);
   const response = await api(
     new Request(config.origin + "/api/me", { headers: { cookie } }),
   );

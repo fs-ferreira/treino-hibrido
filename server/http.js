@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { unavailable } from "./diagnostics.js";
 import { ApiError } from "./service.js";
 const json = (value, status = 200) =>
   Response.json(value, {
@@ -112,15 +112,7 @@ export function createApi({ auth, service, config }) {
         );
       if (error instanceof SyntaxError)
         return reply({ code: "INVALID_JSON", message: "JSON inválido." }, 400);
-      // Never serialize database/provider exceptions or request bodies.
-      return reply(
-        {
-          code: "SERVICE_UNAVAILABLE",
-          message: "Serviço indisponível. Tente novamente.",
-          requestId: randomUUID(),
-        },
-        503,
-      );
+      return reply(unavailable(error), 503);
     }
   };
 }
@@ -172,17 +164,12 @@ export function nodeHandler(handle) {
       const cookies = response.headers.getSetCookie();
       if (cookies.length) res.setHeader("Set-Cookie", cookies);
       res.end(Buffer.from(await response.arrayBuffer()));
-    } catch {
+    } catch (error) {
       res.writeHead(503, {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
       });
-      res.end(
-        JSON.stringify({
-          code: "SERVICE_UNAVAILABLE",
-          message: "Serviço indisponível. Tente novamente.",
-        }),
-      );
+      res.end(JSON.stringify(unavailable(error)));
     }
   };
 }
