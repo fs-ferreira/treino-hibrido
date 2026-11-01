@@ -80,7 +80,7 @@ export function createDiaryService({ pool, config }) {
           fail(
             409,
             "OPERATION_REUSED",
-            "Identificador de operação já utilizado.",
+            "Não foi possível confirmar a alteração. Reconecte para conferir seu diário.",
           );
         return previous.result;
       }
@@ -237,7 +237,11 @@ export function createDiaryService({ pool, config }) {
     uploadPart: (actor, id, index, body) =>
       transaction(actor, async (c, d) => {
         if (!uuid(id) || !Number.isInteger(index))
-          fail(400, "INVALID_PART", "Parte inválida.");
+          fail(
+            400,
+            "INVALID_PART",
+            "Não foi possível enviar o backup. Tente importar o arquivo novamente.",
+          );
         const entry = (
           await c.query(
             "SELECT * FROM diary_imports WHERE id=$1 AND user_id=$2 AND expires_at > now()",
@@ -257,7 +261,11 @@ export function createDiaryService({ pool, config }) {
           index >= entry.part_count ||
           typeof body?.data !== "string"
         )
-          fail(400, "INVALID_PART", "Parte inválida.");
+          fail(
+            400,
+            "INVALID_PART",
+            "Não foi possível enviar o backup. Tente importar o arquivo novamente.",
+          );
         const buffer = Buffer.from(body.data, "base64");
         const expected =
           index === entry.part_count - 1
@@ -267,7 +275,11 @@ export function createDiaryService({ pool, config }) {
           buffer.length !== expected ||
           buffer.toString("base64") !== body.data
         )
-          fail(400, "INVALID_PART", "Tamanho de parte inválido.");
+          fail(
+            400,
+            "INVALID_PART",
+            "Não foi possível enviar o backup. Tente importar o arquivo novamente.",
+          );
         await c.query(
           "INSERT INTO import_parts(import_id,part_index,data) VALUES($1,$2,$3) ON CONFLICT(import_id,part_index) DO UPDATE SET data=EXCLUDED.data",
           [id, index, body.data],

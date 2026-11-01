@@ -72,7 +72,7 @@ As quatro abas são **Corrida**, **Progressão**, **Semana** e **Dados**. As tr�
 
 As edições não salvas ficam somente em memória. Trocar de categoria ou tela preserva a edição durante a visita; **recarregar a página ou fechar a aba perde essas alterações** e restaura os últimos valores salvos. Não há botão de descarte nem recuperação de rascunhos em `sessionStorage`.
 
-Somente **Salvar alterações** muda o planejamento. Cada categoria valida apenas seus campos; um pace incompleto não impede salvar a progressão. Erros aparecem nos campos e num resumo; o foco vai para o primeiro campo inválido. Falhas de gravação preservam a edição em memória e os ajustes anteriores. Uma confirmação persistente identifica o salvamento concluído.
+Somente **Salvar alterações** muda o planejamento. Cada categoria valida apenas seus campos; um pace incompleto não impede salvar a progressão. Erros aparecem nos campos e num resumo; o foco vai para o primeiro campo inválido. Falhas de gravação preservam a edição em memória e os ajustes anteriores. O salvamento manual confirmado na nuvem exibe uma confirmação por quatro segundos. Pendências de sincronização permanecem no cabeçalho; o sucesso automático não ocupa espaço visual.
 
 Os formulários continuam montados ao alternar categorias. Na barra de abas, setas movem o foco, Enter/Espaço ativam e Tab segue para o conteúdo. A barra tem rolagem horizontal finita em telas estreitas. As ações ficam aderentes quando há alterações e espaço disponível; em viewports curtas ou com teclado reduzindo a área visível, voltam ao fluxo normal.
 

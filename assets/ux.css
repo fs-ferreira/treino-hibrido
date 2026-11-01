@@ -207,12 +207,6 @@ textarea::placeholder {
   white-space: normal;
   max-width: 108px;
 }
-.exercise-side-note {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--muted);
-  margin: 8px 0 0;
-}
 .exercise-history {
   margin-top: 12px;
   border-top: 1px solid var(--line);
@@ -231,11 +225,6 @@ textarea::placeholder {
 .exercise-history > summary > span {
   flex: 1;
   min-width: 0;
-}
-.exercise-history > summary > time {
-  font-size: 11px;
-  color: #8e9a86;
-  white-space: nowrap;
 }
 .exercise-history > summary > .icon {
   width: 14px;
@@ -286,12 +275,6 @@ textarea::placeholder {
 }
 .without-weight .load-reference {
   display: none;
-}
-.weight-help {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--muted);
-  margin: 12px 0 0;
 }
 .exercise-card > summary:focus-visible,
 .exercise-history > summary:focus-visible {
@@ -800,20 +783,8 @@ dialog > div > p,
     opacity: 0.28;
     pointer-events: none;
   }
-  .hero-art .art-caption {
-    display: none;
-  }
-  .week-summary .eyebrow {
-    font-size: 10px;
-  }
   .split-stat {
     font-size: 12px;
-  }
-  .setup-banner {
-    padding: 20px;
-  }
-  .setup-banner p {
-    font-size: 14px;
   }
   .exercise-card > summary {
     padding: 14px;
@@ -1208,10 +1179,6 @@ dialog > div > p,
     background: var(--lime);
     border-color: var(--lime);
   }
-  .exercise-side-note {
-    margin-top: 4px;
-    font-size: 11px;
-  }
   .exercise-history {
     margin-top: 10px;
   }
@@ -1561,4 +1528,29 @@ body[data-account-view="login"] #toast {
     min-height: 52px;
     gap: 8px;
   }
+}
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (min-width: 851px) {
+  .sidebar > nav {
+    margin-top: 24px;
+  }
+}
+
+.settings-actions .settings-save {
+  margin-left: auto;
+}
+
+.session-bottom {
+  justify-content: flex-end;
 }

@@ -260,6 +260,7 @@ function controllerFixture(commit = () => true) {
     hidden: false,
     textContent: "",
     attrs: {},
+    classList: { toggle() {}, remove() {} },
     setAttribute(k, v) {
       this.attrs[k] = v;
     },
@@ -401,7 +402,7 @@ test("controller: salvar somente uma categoria preserva o outro formulário e se
   );
   assert.equal(
     f.forms.progressao.querySelector("[data-settings-status]").textContent,
-    "Salvo na nuvem",
+    "Sem alterações pendentes",
   );
 });
 

@@ -52,7 +52,7 @@ test("lista e detalhe consultam o plano sem criar sessões ou modificar configur
   const data = defaults(),
     original = JSON.stringify(data);
   const list = plansView(data.settings, resolveRoute("#treinos"));
-  assert.match(list, /ATIVO/);
+  assert.doesNotMatch(list, /ATIVO/);
   assert.match(list, /href="#treinos\/hibrido-3x3"/);
   data.settings.longMinutes = 75;
   data.settings.longDay = 0;
