@@ -1,6 +1,6 @@
 # Mapa muscular dos exercícios
 
-O mapa aparece dentro dos cards abertos da sessão e em cada exercício dos dias expandidos em Treinos. O nome continua no cabeçalho. A mesma anatomia SVG local é usada nos dois contextos, com vermelho `#EF4444` para os alvos principais, vermelho `#991B1B` para os secundários e cinza para as demais regiões. Frente e costas são selecionadas pelo menor conjunto que mostre todos os alvos; a frente vence os empates.
+O mapa aparece dentro dos cards abertos da sessão e em cada exercício dos dias expandidos em Treinos. O nome continua no cabeçalho. A mesma anatomia SVG local é usada nos dois contextos, com vermelho luminoso `#FF6B6B` para os alvos principais, vermelho escuro `#7F1D1D` para os secundários e cinza para as demais regiões. A razão de contraste entre os preenchimentos passou de 2,21:1 para 3,61:1; os contornos dos secundários preservam sua visibilidade no fundo escuro. Frente e costas são selecionadas pelo menor conjunto que mostre todos os alvos; a frente vence os empates.
 
 O mapa é estático. Cursor, toque e foco pelo teclado exibem o nome e a função do músculo na linha abaixo da legenda. Enter e Espaço selecionam ou desmarcam uma região; Escape, toque fora, saída do foco e fechamento do card limpam a indicação. As regiões bilaterais pertencem ao mesmo grupo interativo. A descrição do mapa lista os nomes e funções em texto acessível; o SVG mantém seus grupos navegáveis em vez de ocultá-los sob um `role="img"`.
 

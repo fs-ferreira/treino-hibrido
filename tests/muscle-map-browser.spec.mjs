@@ -40,7 +40,7 @@ for (const width of [320, 390, 768, 1024, 1440])
       await region(map, "hamstrings").evaluate(
         (el) => getComputedStyle(el).fill,
       ),
-    ).toBe("rgb(239, 68, 68)");
+    ).toBe("rgb(255, 107, 107)");
     await card.screenshot({
       path: testInfo.outputPath(`session-back-${width}.png`),
     });
@@ -51,7 +51,7 @@ for (const width of [320, 390, 768, 1024, 1440])
       await region(mapFor(page, "bulgarian"), "glutes").evaluate(
         (el) => getComputedStyle(el).fill,
       ),
-    ).toBe("rgb(153, 27, 27)");
+    ).toBe("rgb(127, 29, 29)");
     await compound.screenshot({
       path: testInfo.outputPath(`session-both-${width}.png`),
     });
