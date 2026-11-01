@@ -1,16 +1,37 @@
 import { account } from "./lib/account.js";
 import { apiRequest, createRemoteDiary } from "./lib/remote-diary.js";
+import { notify, dismissNotification } from "./lib/notifications.js";
 const gate = document.querySelector("#account-gate"),
-  shell = document.querySelector(".shell");
-const message = document.querySelector("#account-message");
+  shell = document.querySelector(".shell"),
+  googleLogin = document.querySelector("#google-login"),
+  loginLabel = document.querySelector("[data-login-label]"),
+  progress = document.querySelector("#account-progress"),
+  skip = document.querySelector(".skip");
+const accessError = "Não foi possível acessar. Tente novamente.",
+  actionError = "Não foi possível concluir. Tente novamente.";
 let mounted = false,
-  starting = false;
-function showGate(text) {
+  starting = false,
+  signingIn = false,
+  redirecting = false;
+function setAccessState(state) {
+  gate.dataset.state = state;
+  googleLogin.disabled = state !== "idle";
+  googleLogin.setAttribute("aria-busy", String(state !== "idle"));
+  loginLabel.textContent =
+    state === "signing-in" ? "Entrando…" : "Entrar com Google";
+  progress.textContent = state === "checking" ? "Preparando seu acesso…" : "";
+}
+function showGate({ retry = false, recovery = false } = {}) {
   account.blocked = true;
   shell.hidden = true;
   gate.hidden = false;
-  message.textContent = text;
+  document.body.dataset.accountView = "login";
+  skip.href = "#google-login";
+  skip.textContent = "Pular para o acesso";
+  document.querySelector("#account-retry").hidden = !retry;
+  document.querySelector("#account-recovery").hidden = !recovery;
   document.querySelector("#pending-export").hidden = !account.remote?.pending();
+  if (!signingIn) setAccessState("idle");
 }
 function updateStatus(value) {
   account.status = value;
@@ -33,6 +54,10 @@ async function mount() {
   account.blocked = false;
   gate.hidden = true;
   shell.hidden = false;
+  document.body.dataset.accountView = "diary";
+  skip.href = "#main";
+  skip.textContent = "Pular para o conteúdo";
+  dismissNotification();
   if (!mounted) {
     await import("./app.js");
     mounted = true;
@@ -43,20 +68,22 @@ async function mount() {
     account.identity.user.email;
   updateStatus(account.status);
 }
-async function start() {
-  if (starting) return;
+async function start({ initial = false } = {}) {
+  if (starting || signingIn) return;
   starting = true;
+  setAccessState("checking");
   try {
     account.remote?.stop();
     const remote = createRemoteDiary({
       onStatus(value) {
         if (account.remote === remote) updateStatus(value);
       },
-      onBlocked(error) {
+      onBlocked() {
         if (account.remote !== remote) return;
-        showGate(error.message);
-        document.querySelector("#account-retry").hidden = false;
+        showGate({ retry: true });
         account.lock?.();
+        notify(accessError);
+        if (!signingIn) googleLogin.focus({ preventScroll: true });
       },
       onData(data) {
         if (account.remote !== remote) return;
@@ -69,33 +96,30 @@ async function start() {
     account.identity = opened.identity;
     account.data = opened.data;
     if (opened.recovery) {
-      showGate(
-        "Encontramos alterações locais de uma sessão anterior. Exporte uma cópia e escolha como continuar.",
-      );
-      document.querySelector("#account-recovery").hidden = false;
+      showGate({ recovery: true });
       document.querySelector("#pending-resume").disabled =
         opened.recovery.generation !== opened.identity.generation;
     } else await mount();
   } catch (error) {
-    showGate(
-      error.status === 401
-        ? "Entre com sua conta Google autorizada para acessar seu diário."
-        : error.message || "Não foi possível conectar. Tente novamente.",
-    );
-    if (error.status !== 401)
-      document.querySelector("#account-retry").hidden = false;
+    showGate({ retry: error.status !== 401 });
+    account.lock?.();
+    if (!initial || error.status !== 401) notify(accessError);
   } finally {
     starting = false;
-    document.querySelector("#google-login").disabled = false;
+    setAccessState("idle");
+    if (!initial && !gate.hidden) googleLogin.focus({ preventScroll: true });
   }
 }
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-account-action]");
-  if (!button) return;
+  if (!button || button.disabled) return;
   const action = button.dataset.accountAction;
   try {
     if (action === "login") {
-      button.disabled = true;
+      if (starting || signingIn) return;
+      signingIn = true;
+      dismissNotification();
+      setAccessState("signing-in");
       const value = await apiRequest("/auth/sign-in/social", {
         method: "POST",
         body: { provider: "google" },
@@ -104,11 +128,14 @@ document.addEventListener("click", async (event) => {
       if (url.protocol !== "https:" || url.hostname !== "accounts.google.com")
         throw Error("Não foi possível iniciar o login.");
       location.assign(url.href);
+      redirecting = true;
     }
+    if (action !== "login") button.disabled = true;
     if (action === "retry") await start();
     if (action === "export") download(account.remote.recoveryData());
     if (action === "resume" || action === "discard") {
-      await account.remote.recover(action === "resume");
+      const result = await account.remote.recover(action === "resume");
+      if (result?.saved === "blocked") return;
       document.querySelector("#account-recovery").hidden = true;
       await mount();
     }
@@ -130,9 +157,15 @@ document.addEventListener("click", async (event) => {
     if (gate.hidden) {
       const el = document.querySelector("#account-action-error");
       el.textContent = error.message || "Não foi possível concluir.";
-    } else message.textContent = error.message || "Não foi possível concluir.";
+    } else notify(action === "login" ? accessError : actionError);
   } finally {
-    button.disabled = false;
+    if (action === "login") {
+      if (!redirecting) {
+        signingIn = false;
+        setAccessState("idle");
+        googleLogin.focus({ preventScroll: true });
+      }
+    } else button.disabled = false;
   }
 });
 window.addEventListener("online", () => {
@@ -144,9 +177,20 @@ document.addEventListener("visibilitychange", () => {
 setInterval(() => {
   if (!document.hidden && !account.blocked) void account.remote?.check();
 }, 15000);
-if (new URLSearchParams(location.search).has("authError")) {
-  showGate(
-    "Login não concluído ou conta não autorizada. Tente novamente com uma conta permitida.",
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    signingIn = redirecting = false;
+    setAccessState("idle");
+  }
+});
+const currentUrl = new URL(location.href);
+if (currentUrl.searchParams.has("authError")) {
+  showGate();
+  currentUrl.searchParams.delete("authError");
+  history.replaceState(
+    history.state,
+    "",
+    currentUrl.pathname + currentUrl.search + currentUrl.hash,
   );
-  history.replaceState(null, "", location.pathname + location.hash);
-} else void start();
+  notify(accessError);
+} else void start({ initial: true });

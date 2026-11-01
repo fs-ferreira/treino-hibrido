@@ -1,4 +1,5 @@
 import { account } from "./lib/account.js";
+import { notify } from "./lib/notifications.js";
 import {
   defaults,
   parsePace,
@@ -79,7 +80,6 @@ let data = account.data ?? defaults(),
   expanded = new Set(),
   expandedPlanDays = new Set([1]),
   references = {},
-  toastTimer,
   pendingConfirmation = null,
   pendingImport = null,
   importGeneration = 0,
@@ -135,12 +135,6 @@ fetch("./assets/references.json")
     references = Object.fromEntries(r.exercises.map((e) => [e.id, e]));
   })
   .catch(() => {});
-function notify(message) {
-  $("#toast").textContent = message;
-  $("#toast").classList.add("visible");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 4000);
-}
 async function persist(message) {
   if (account.blocked) return false;
   try {
