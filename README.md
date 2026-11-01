@@ -98,9 +98,9 @@ Tab percorre os cinco destinos uma vez. Setas esquerda/direita movem o foco circ
 
 ## Publicar e atualizar
 
-O app autenticado será hospedado na Vercel, com API e frontend no mesmo domínio. `npm run build` prepara somente arquivos públicos em `dist`; funções Node ficam em `api/` e os módulos privados em `server/`.
+O app autenticado é hospedado exclusivamente na Vercel, com API e frontend no mesmo domínio. `npm run build` prepara somente arquivos públicos em `dist`; funções Node ficam em `api/` e os módulos privados em `server/`.
 
-Enquanto Vercel, Neon e OAuth não estiverem configurados, o Pages existente permanece publicado. Após validar a nova hospedagem, configure a variável pública `APP_URL` do repositório para publicar uma página de transferência no endereço antigo. Ela permite baixar o diário local sem apagá-lo. O workflow valida o app; a publicação da página de transferência fica condicionada a essa variável.
+O workflow `Validate app` executa somente as validações de CI. O deploy é realizado pela integração do repositório com a Vercel, com produção na branch `main`. Não há publicação no GitHub Pages.
 
 Execute `npm ci`, `npm test`, `npm run test:ui`, `npm run test:auth` e `npm run test:movements` antes de publicar. A configuração externa e o login Google real precisam ser validados separadamente.
 
