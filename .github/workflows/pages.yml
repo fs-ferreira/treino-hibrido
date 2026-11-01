@@ -10,6 +10,16 @@ concurrency:
   group: validate-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  migration-cli:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/migrate-cli.test.mjs
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +39,7 @@ jobs:
     # Set this public repository variable ONLY after the Vercel app works.
     # Otherwise the currently published Pages app remains untouched.
     if: github.ref == 'refs/heads/main' && vars.APP_URL != ''
-    needs: validate
+    needs: [validate, migration-cli]
     runs-on: ubuntu-latest
     permissions:
       contents: read

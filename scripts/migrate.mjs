@@ -1,4 +1,5 @@
 import pg from "pg";
+import { pathToFileURL } from "node:url";
 import { readdir, readFile } from "node:fs/promises";
 export async function migrate(pool) {
   const c = await pool.connect();
@@ -39,7 +40,7 @@ export async function migrate(pool) {
 }
 if (
   process.argv[1] &&
-  import.meta.url === new URL(process.argv[1], "file:").href
+  import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   if (!process.env.DATABASE_URL_UNPOOLED) {
     console.error("Defina DATABASE_URL_UNPOOLED no ambiente seguro.");
@@ -47,8 +48,10 @@ if (
   }
   const pool = new pg.Pool({
     connectionString: process.env.DATABASE_URL_UNPOOLED,
+    connectionTimeoutMillis: 10000,
   });
   try {
+    console.log("Aplicando migrações…");
     await migrate(pool);
     console.log("Migrações aplicadas.");
   } catch {
