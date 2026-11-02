@@ -160,6 +160,11 @@
 .exercise-figure .figure-hand {
   stroke-width: 0.8;
 }
+.exercise-figure .figure-hand.is-moving {
+  fill: #799b69;
+  stroke: #c3f969;
+  stroke-width: 2;
+}
 .exercise-figure .trajectory {
   stroke: #79dfe5;
   stroke-width: 2;

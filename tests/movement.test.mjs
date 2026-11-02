@@ -30,8 +30,8 @@ const jointAngle = ([root, joint, end]) => {
     Math.PI
   );
 };
-test("21 movimentos: posições finitas, enquadradas e distintas em toda a sequência", () => {
-  assert.equal(Object.keys(movements).length, 21);
+test("23 movimentos: posições finitas, enquadradas e distintas em toda a sequência", () => {
+  assert.equal(Object.keys(movements).length, 23);
   for (const ex of Object.values(exercises)) {
     assert.equal(movements[ex.diagram].poses.length, 3);
     assert.notDeepEqual(rigAt(ex.diagram, 0), rigAt(ex.diagram, 1));

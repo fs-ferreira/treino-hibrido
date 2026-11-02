@@ -43,3 +43,8 @@ Revisão das posições inicial, intermediária e final e da interpolação dos 
 - Testes de reprodução, pausa, troca de etapa, encerramento do guia e movimento reduzido, além de revisão em desktop e largura de celular.
 
 Os testes verificam geometria e regressões. As figuras continuam sendo representações didáticas simplificadas, e não uma avaliação clínica ou uma medição biomecânica individual.
+
+## Antebraço — 02/11/2026
+
+- **Rosca inversa:** barra reta, pegada pronada com polegares envolvendo a barra, cotovelos junto ao tronco e punhos alinhados. [Referência de execução e demonstração](https://weighttraining.guide/exercises/barbell-reverse-curl/).
+- **Rosca de punho unilateral:** sentada, com um halter, palma para cima, antebraço apoiado na coxa e mão além do joelho; apenas o punho flexiona e retorna, sem soltar o halter nos dedos. A execução deve ser repetida no outro braço. [Referência de execução e demonstração](https://www.muscleandstrength.com/node/3859).

@@ -61,12 +61,12 @@ for (const width of [320, 390, 768, 1024, 1440])
     const dataBefore = structuredClone(page.cloudFixture.data);
     const writesBefore = page.cloudFixture.writes;
     await page.goto("/#treinos/hibrido-3x3");
-    await expect(page.locator(".plan-exercises .muscle-map")).toHaveCount(21);
+    await expect(page.locator(".plan-exercises .muscle-map")).toHaveCount(23);
     for (const day of [3, 5])
       await page.locator(`[data-plan-day="${day}"] > summary`).click();
     await expect(
       page.locator(".plan-exercises .muscle-map:visible"),
-    ).toHaveCount(21);
+    ).toHaveCount(23);
     const press = mapFor(page, "incline-press");
     await expect(press.locator("svg")).toHaveCount(2);
     await expect(

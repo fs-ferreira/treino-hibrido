@@ -48,7 +48,7 @@ Todos os exercícios unilaterais mostram os dois lados, coerentemente com a inst
 
 ## Validação
 
-`npm test` verifica cobertura dos 21 exercícios, identificadores e regiões válidas, seleção mínima de vistas, simetria bilateral, casos de panturrilha e abdômen e descrições independentes entre contextos. `npm run test:ui` inclui os cenários do mapa e a regressão dos cards existentes.
+`npm test` verifica cobertura dos 23 exercícios, identificadores e regiões válidas, seleção mínima de vistas, simetria bilateral, casos de panturrilha e abdômen e descrições independentes entre contextos. `npm run test:ui` inclui os cenários do mapa e a regressão dos cards existentes.
 
 A comparação de compactação desconta apenas o novo bloco anatômico quando ele fica acima do formulário, mantendo cabeçalho, espaçamentos e controles no orçamento original; no desktop, ainda considera o card inteiro. Limita também a altura do mapa e do card fechado. As larguras verificadas são 320, 390, 768, 1024 e 1440 px. As capturas de sessão posterior, sessão com duas vistas e catálogo ficam em `test-results/ui/`, junto das árvores acessíveis e traces das suítes existentes. Toque é exercitado em contexto mobile com dados sintéticos e API simulada, sem alterar um diário real.
 
@@ -64,3 +64,18 @@ Resultados da execução local: 132 testes Node, 22 testes de interface, 5 de au
 O bloco anatômico inclui figuras de 180 px, rótulos de vista, legenda e espaço reservado ao nome selecionado. No desktop, mapa e formulário ocupam colunas lado a lado; por isso suas alturas não se somam.
 
 A validação de navegador usa Chromium headless. Não substitui revisão em aparelho físico, Safari, VoiceOver ou TalkBack. Esta alteração não inclui publicação.
+
+## Exercícios de antebraço — 02/11/2026
+
+| Exercício | Principais | Secundários |
+| --- | --- | --- |
+| Rosca inversa com barra reta | Braquiorradial | Braquial, bíceps braquial |
+| Rosca de punho unilateral com halter | Flexores do punho | Flexores dos dedos (auxílio na preensão) |
+
+O atlas acrescenta regiões esquemáticas bilaterais no antebraço anterior e a porção visível do braquial junto ao bíceps. Flexores do punho representam principalmente flexor radial do carpo, flexor ulnar do carpo e palmar longo; a faixa dos flexores dos dedos representa os flexores extrínsecos superficial e profundo. As faixas separam funções didaticamente, sem representar camadas profundas como uma dissecação. A unilateral mantém ambos os lados no mapa porque a série deve ser realizada nos dois braços.
+
+- [Weight Training Guide — Barbell reverse curl](https://weighttraining.guide/exercises/barbell-reverse-curl/): pegada pronada, braquiorradial como alvo e braquial/bíceps como sinergistas.
+- [Muscle & Strength — One-Arm Seated Dumbbell Wrist Curl](https://www.muscleandstrength.com/node/3859): variante unilateral com palma para cima e movimento no punho; demonstração Vimeo disponível na página. A fonte agrupa os alvos como antebraço e não discrimina secundários.
+- [OpenStax — Muscles of the Pectoral Girdle and Upper Limbs](https://openstax.org/books/anatomy-and-physiology-2e/pages/11-5-muscles-of-the-pectoral-girdle-and-upper-limbs): ações dos flexores do carpo e dos flexores extrínsecos dos dedos. A separação principal/secundário da rosca de punho é uma seleção qualitativa do aplicativo para distinguir flexão do punho e preensão, sem porcentagens de ativação.
+
+Não há novos campos persistidos: registros, sincronização, progressão e backups seguem a versão 3.

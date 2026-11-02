@@ -231,14 +231,14 @@ test("backup recusa vínculo incompleto e data inexistente", () => {
   data.settings.recentRun = { km: 8, seconds: 2880, date: "2026-02-30" };
   assert.throws(() => validateBackup(data));
 });
-test("todos os 21 exercícios têm guia, esquema original e referências", () => {
+test("todos os 23 exercícios têm guia, esquema original e referências", () => {
   const raw = fs
     .readFileSync(new URL("../assets/references.json", import.meta.url), "utf8")
     .replace(/^\uFEFF/, "");
   const refs = JSON.parse(raw);
-  assert.equal(Object.keys(exercises).length, 21);
+  assert.equal(Object.keys(exercises).length, 23);
   for (const w of ["upper", "lower", "upper2"])
-    assert.equal(workouts[w].ids.length, 7);
+    assert.equal(workouts[w].ids.length, w === "lower" ? 7 : 8);
   for (const e of Object.values(exercises)) {
     for (const field of ["setup", "execution", "breathing", "mistakes"])
       assert.ok(e[field].length > 20);

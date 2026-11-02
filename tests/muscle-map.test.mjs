@@ -4,12 +4,12 @@ import { exercises } from "../lib/exercises.js";
 import { exerciseMuscles, muscles } from "../lib/muscle-data.js";
 import { muscleMap, muscleRegions, muscleViews } from "../lib/muscle-map.js";
 
-test("all 21 variants have explicit, disjoint targets with drawable regions", () => {
+test("all 23 variants have explicit, disjoint targets with drawable regions", () => {
   assert.deepEqual(
     Object.keys(exerciseMuscles).sort(),
     Object.keys(exercises).sort(),
   );
-  assert.equal(Object.keys(exerciseMuscles).length, 21);
+  assert.equal(Object.keys(exerciseMuscles).length, 23);
   for (const profile of Object.values(exerciseMuscles)) {
     assert.ok(profile.primary.length > 0);
     const active = [...profile.primary, ...profile.secondary];

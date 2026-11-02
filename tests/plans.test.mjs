@@ -11,7 +11,7 @@ import { resolveRoute, isAppHash, sections } from "../lib/routes.js";
 import { workouts } from "../lib/exercises.js";
 import { defaults, workoutFor, validateBackup } from "../lib/core.js";
 
-test("catálogo tem um plano ativo, os 21 exercícios e a divisão 3/3/1", () => {
+test("catálogo tem um plano ativo, os 23 exercícios e a divisão 3/3/1", () => {
   assert.equal(trainingPlans.length, 1);
   assert.equal(getActivePlan().id, "hibrido-3x3");
   assert.equal(getPlan("inexistente"), null);
@@ -25,8 +25,8 @@ test("catálogo tem um plano ativo, os 21 exercícios e a divisão 3/3/1", () =>
     ["upper", "interval", "lower", "easy", "upper2", "long", "rest"],
   );
   const ids = week.flatMap((d) => workouts[d.type].ids || []);
-  assert.equal(ids.length, 21);
-  assert.equal(new Set(ids).size, 21);
+  assert.equal(ids.length, 23);
+  assert.equal(new Set(ids).size, 23);
   assert.equal(week.filter((d) => workouts[d.type].kind === "run").length, 3);
   assert.ok(Object.isFrozen(getActivePlan().weekdays));
 });
@@ -58,7 +58,7 @@ test("lista e detalhe consultam o plano sem criar sessões ou modificar configur
   data.settings.longDay = 0;
   const detail = plansView(data.settings, resolveRoute("#treinos/hibrido-3x3"));
   assert.equal((detail.match(/data-plan-day=/g) || []).length, 7);
-  assert.equal((detail.match(/data-action="guide"/g) || []).length, 21);
+  assert.equal((detail.match(/data-action="guide"/g) || []).length, 23);
   assert.match(detail, /75 minutos/);
   assert.match(detail, /8 × \(3 \+ 1 min\)/);
   assert.match(detail, /data-open-today/);
