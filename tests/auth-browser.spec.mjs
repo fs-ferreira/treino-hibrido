@@ -181,7 +181,8 @@ test("authenticated opening waits for diary data and the application module", as
   await module.requested;
   await expect(page.locator("#auth-splash")).toBeVisible();
   await expect(page.locator(".shell")).toHaveAttribute("inert", "");
-  await expect(page.getByRole("main")).toHaveCount(0);
+  await expect(page.getByRole("main")).toHaveCount(1);
+  await expect(page.getByRole("main")).toHaveAttribute("id", "auth-splash");
   module.release();
   await expectDiaryReady(page);
   await expect(
@@ -513,14 +514,14 @@ test("writes go to the server, fallback survives a reload, and recovers without 
   const handle = await kg.elementHandle();
   await kg.fill("15.5");
   await kg.blur();
-  await expect(page.locator(".topbar [data-sync-status]")).toHaveText(
-    "Salvo na nuvem",
+  await expect(page.locator("[data-sync-status]")).toHaveText("Salvo na nuvem");
+  expect(cloud.data.sessions[CARD_DATE].workouts[0].sets[CARD_ID][0].kg).toBe(
+    15.5,
   );
-  expect(cloud.data.sessions[CARD_DATE].sets[CARD_ID][0].kg).toBe(15.5);
   cloud.fail = true;
   await kg.fill("16");
   await kg.blur();
-  await expect(page.locator(".topbar [data-sync-status]")).toContainText(
+  await expect(page.locator("[data-sync-status]")).toContainText(
     "sincronização pendente",
   );
   expect(await kg.evaluate((el, old) => el === old, handle)).toBe(true);
@@ -529,10 +530,10 @@ test("writes go to the server, fallback survives a reload, and recovers without 
   const reopened = page.locator(`[data-exercise="${CARD_ID}"]`);
   await reopened.locator(":scope > summary").click();
   await expect(reopened.locator('[data-field="kg"]').first()).toHaveValue("16");
-  await expect(page.locator(".topbar [data-sync-status]")).toHaveText(
-    "Salvo na nuvem",
+  await expect(page.locator("[data-sync-status]")).toHaveText("Salvo na nuvem");
+  expect(cloud.data.sessions[CARD_DATE].workouts[0].sets[CARD_ID][0].kg).toBe(
+    16,
   );
-  expect(cloud.data.sessions[CARD_DATE].sets[CARD_ID][0].kg).toBe(16);
 });
 test("revoked session blocks editing and removes rendered private data", async ({
   page,
@@ -565,9 +566,7 @@ test("background session checks keep the diary interactive without a splash", as
     page.getByRole("heading", { name: /Sua evolução/ }),
   ).toBeVisible();
   pending.release({ status: 503, json: { message: technicalMessage } });
-  await expect(page.locator(".topbar [data-sync-status]")).toContainText(
-    "Sem conexão",
-  );
+  await expect(page.locator("[data-sync-status]")).toContainText("Sem conexão");
   await expectDiaryReady(page);
 });
 
@@ -673,7 +672,7 @@ test("logout with pending changes keeps choices and export outside the splash", 
   cloud.fail = true;
   await input.fill("18");
   await input.blur();
-  await expect(page.locator(".topbar [data-sync-status]")).toContainText(
+  await expect(page.locator("[data-sync-status]")).toContainText(
     "sincronização pendente",
   );
   await page.locator(".account-menu > summary").click();
@@ -764,9 +763,7 @@ test("settings drafts stay local until Save and survive typing during the reques
     .click();
   await input.fill("8");
   release();
-  await expect(page.locator(".topbar [data-sync-status]")).toHaveText(
-    "Salvo na nuvem",
-  );
+  await expect(page.locator("[data-sync-status]")).toHaveText("Salvo na nuvem");
   await expect(input).toHaveValue("8");
   await expect(
     page.locator('[data-settings-form="progressao"] [data-settings-status]'),

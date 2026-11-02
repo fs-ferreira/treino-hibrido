@@ -107,7 +107,7 @@ test("reverse curl keeps elbows and body fixed with a pronated, connected bar", 
 });
 
 test("new exercise records round-trip in v3 backups and use existing progression", () => {
-  const data = defaults();
+  const data = { ...defaults(), version: 3 };
   const legacy = {
     type: "upper",
     done: true,
@@ -137,8 +137,17 @@ test("new exercise records round-trip in v3 backups and use existing progression
     assert.equal(loadSuggestions(data.sessions, "2026-11-09", id, 5)[0].kg, 6);
   }
   const restored = validateBackup(JSON.parse(JSON.stringify(data)));
-  assert.equal(restored.version, 3);
-  assert.deepEqual(restored.sessions, data.sessions);
-  assert.deepEqual(restored.sessions["2026-10-26"], legacy);
-  assert.equal(restored.sessions["2026-10-26"].sets["reverse-curl"], undefined);
+  assert.equal(restored.version, 4);
+  for (const [date, entry] of Object.entries(data.sessions)) {
+    const { id, ...item } = restored.sessions[date].workouts[0];
+    assert.deepEqual(item, entry);
+  }
+  assert.deepEqual(restored.sessions["2026-10-26"].workouts[0], {
+    id: "legacy-2026-10-26",
+    ...legacy,
+  });
+  assert.equal(
+    restored.sessions["2026-10-26"].workouts[0].sets["reverse-curl"],
+    undefined,
+  );
 });

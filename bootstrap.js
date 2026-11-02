@@ -13,6 +13,8 @@ const gate = document.querySelector("#account-gate"),
   motion = createMotion();
 const accessError = "Não foi possível acessar. Tente novamente.",
   actionError = "Não foi possível concluir. Tente novamente.";
+const loginTitle = document.querySelector("#account-title").innerHTML;
+const loginMessage = document.querySelector("#account-message").textContent;
 let mounted = false,
   appLoad,
   appLoadFailed = false,
@@ -66,6 +68,14 @@ function prepareGate({ retry = false, recovery = false } = {}) {
   shell.hidden = true;
   setCovered(shell, true);
   gate.hidden = false;
+  googleLogin.hidden = recovery;
+  gate.dataset.recovery = String(recovery);
+  document.querySelector("#account-title").innerHTML = recovery
+    ? "Recuperar alterações"
+    : loginTitle;
+  document.querySelector("#account-message").textContent = recovery
+    ? "Revise as alterações deste dispositivo para continuar."
+    : loginMessage;
   skip.href = "#google-login";
   skip.textContent = "Pular para o acesso";
   document.querySelector("#account-retry").hidden = !retry;
@@ -108,17 +118,36 @@ function blockAccess() {
   settleView("login", googleLogin);
   notify(accessError);
 }
+let pendingNotice = null;
 function updateStatus(value) {
   account.status = value;
+  const notice = ["local", "memory", "unavailable"].includes(value.state);
+  if (notice) pendingNotice = value;
+  else if (["cloud", "blocked", "recovery"].includes(value.state))
+    pendingNotice = null;
+  const displayed =
+    pendingNotice && ["loading", "saving"].includes(value.state)
+      ? pendingNotice
+      : value;
   for (const el of document.querySelectorAll("[data-sync-status]")) {
-    if (el.textContent !== value.message) el.textContent = value.message;
-    el.dataset.state = value.state;
+    if (el.textContent !== displayed.message)
+      el.textContent = displayed.message;
+    el.dataset.state = displayed.state;
     el.classList.toggle(
       "sr-only",
-      ["cloud", "loading", "saving"].includes(value.state),
+      ["cloud", "loading", "saving"].includes(displayed.state),
     );
   }
 }
+const syncElement = document.querySelector("[data-sync-status]");
+new ResizeObserver(() =>
+  document.documentElement.style.setProperty(
+    "--sync-height",
+    syncElement.classList.contains("sr-only")
+      ? "0px"
+      : `${syncElement.getBoundingClientRect().height}px`,
+  ),
+).observe(syncElement);
 function download(value) {
   const url = URL.createObjectURL(
       new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }),
@@ -140,7 +169,7 @@ async function mount(value) {
   skip.href = "#main";
   skip.textContent = "Pular para o conteúdo";
   if (!mounted) {
-    appLoad ??= import("./app.js?v=2.2.0").catch((error) => {
+    appLoad ??= import("./app.js?v=4.0.0").catch((error) => {
       appLoadFailed = true;
       throw error;
     });
@@ -195,7 +224,18 @@ async function start({ initial = false, force = false } = {}) {
       prepareGate({ recovery: true });
       document.querySelector("#pending-resume").disabled =
         opened.recovery.generation !== opened.identity.generation;
-      await reveal(value, "login", initial ? null : googleLogin);
+      const incompatible =
+        opened.recovery.generation !== opened.identity.generation;
+      document.querySelector("#recovery-explanation").textContent = incompatible
+        ? "O diário da conta foi substituído. Estas alterações não podem ser reaplicadas diretamente. Baixe uma cópia para recuperá-las por importação antes de descartar."
+        : "Estas alterações ainda não foram enviadas. Continue com elas ou baixe uma cópia antes de descartá-las.";
+      await reveal(
+        value,
+        "login",
+        document.querySelector(
+          incompatible ? "#pending-export" : "#pending-resume",
+        ),
+      );
     } else await mount(value);
   } catch (error) {
     if (!isCurrent(value)) return;

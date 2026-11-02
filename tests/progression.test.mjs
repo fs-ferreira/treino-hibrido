@@ -54,7 +54,7 @@ test("pace derivado fora da faixa suspende a estimativa sem gerar distância inv
   assert.equal(plan.blocks[0].km, null);
 });
 test("backup rejeita plano com referência futura ou pace incoerente", () => {
-  const data = defaults();
+  const data = { ...defaults(), version: 3 };
   Object.assign(data.settings, settings());
   data.sessions["2026-10-15"] = run("easy", 6);
   const plan = getRunPlan(
@@ -362,7 +362,7 @@ test("plano salvo conserva paces e duração apesar de configurações e histór
   assert.deepEqual(current.blocks, original.blocks);
   assert.equal(current.total.minutes, 60);
 });
-test("backups v1/v2 migram para v3 sem transformar zero em sem peso nem inventar blocos", () => {
+test("backups v1/v2 migram para v4 sem transformar zero em sem peso nem inventar blocos", () => {
   const old = defaults();
   old.version = 2;
   delete old.settings.loadProgression;
@@ -373,16 +373,20 @@ test("backups v1/v2 migram para v3 sem transformar zero em sem peso nem inventar
     "2026-10-20": run("interval"),
   };
   const copy = validateBackup(old);
-  assert.equal(copy.version, 3);
+  assert.equal(copy.version, 4);
   assert.equal(KEY, "treino-hibrido:v1");
   assert.equal(copy.settings.loadProgression, 5);
   assert.equal(copy.settings.paceProgression, false);
   assert.equal(withoutWeight(copy.sessions, "2026-10-19", "pec-deck"), false);
-  assert.equal(copy.sessions["2026-10-20"].run.hardPace, undefined);
-  assert.deepEqual(copy.sessions, old.sessions);
+  assert.equal(copy.sessions["2026-10-20"].workouts[0].run.hardPace, undefined);
+  for (const [date, entry] of Object.entries(old.sessions)) {
+    const { id, ...restored } = copy.sessions[date].workouts[0];
+    assert.equal(id, `legacy-${date}`);
+    assert.deepEqual(restored, entry);
+  }
 });
 test("backup v3 restaura cargas retidas, modos, referências e planejamento sem perder precisão", () => {
-  const data = defaults();
+  const data = { ...defaults(), version: 3 };
   Object.assign(data.settings, settings(), {
     loadProgression: 2.5,
     paceProgression: true,
@@ -395,10 +399,15 @@ test("backup v3 restaura cargas retidas, modos, referências e planejamento sem 
     plan,
     paceRevision: 0,
   });
-  assert.deepEqual(validateBackup(JSON.parse(JSON.stringify(data))), data);
+  const restored = validateBackup(JSON.parse(JSON.stringify(data)));
+  assert.deepEqual(restored.settings, data.settings);
+  for (const [date, entry] of Object.entries(data.sessions)) {
+    const { id, ...item } = restored.sessions[date].workouts[0];
+    assert.deepEqual(item, entry);
+  }
 });
 test("backup inválido rejeita progressão, modo e campos de corrida antes de substituir dados", () => {
-  const original = defaults();
+  const original = { ...defaults(), version: 3 };
   const invalid = [
     (d) => (d.settings.loadProgression = 10.5),
     (d) => (d.settings.loadProgression = 2.3),
@@ -424,7 +433,7 @@ test("backup inválido rejeita progressão, modo e campos de corrida antes de su
     const draft = structuredClone(original);
     mutate(draft);
     assert.throws(() => validateBackup(draft));
-    assert.deepEqual(original, defaults());
+    assert.deepEqual(original, { ...defaults(), version: 3 });
   }
 });
 

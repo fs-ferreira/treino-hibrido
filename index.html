@@ -24,10 +24,15 @@
     <link rel="stylesheet" href="assets/interface-motion.css?v=1.6.0" />
     <link rel="stylesheet" href="assets/plans.css?v=1.7.2" />
     <link rel="stylesheet" href="assets/ux.css?v=2.3.0" />
-    <link rel="stylesheet" href="assets/muscle-map.css?v=2.1.1" />
+    <link rel="stylesheet" href="assets/muscle-map.css?v=4.0.0" />
   </head>
   <body data-account-view="loading">
-    <div id="auth-splash" class="auth-splash">
+    <div
+      id="auth-splash"
+      role="main"
+      aria-label="Abrindo Híbrido"
+      class="auth-splash"
+    >
       <div class="auth-splash-mark" aria-hidden="true">
         <img
           src="assets/brand-mark.svg"
@@ -50,6 +55,7 @@
       >Pular para o acesso</a
     >
     <section
+      role="main"
       id="account-gate"
       class="account-gate"
       aria-labelledby="account-title"
@@ -128,7 +134,9 @@
             <p>
               Você tem alterações neste dispositivo. Escolha como continuar.
             </p>
+            <p id="recovery-explanation"></p>
             <button
+              aria-describedby="recovery-explanation"
               id="pending-resume"
               class="button"
               data-account-action="resume"
@@ -183,29 +191,47 @@
           HÍBRIDO<span class="brand-dot">.</span></a
         >
         <nav aria-label="Navegação principal">
+          <button
+            class="nav-step"
+            data-nav-step="-1"
+            aria-label="Exibir destino anterior"
+          >
+            ←
+          </button>
           <div class="nav-track">
             <a href="#hoje" data-nav="hoje"><span>◈</span> Hoje</a
-            ><a href="#semana" data-nav="semana"><span>▦</span> Semana</a
             ><a href="#treinos" data-nav="treinos"><span></span> Treinos</a
             ><a href="#historico" data-nav="historico"
               ><span>↗</span> Histórico</a
-            ><a href="#configuracoes" data-nav="configuracoes"
-              ><span>⚙</span> Configurações</a
+            ><a
+              href="#configuracoes"
+              data-nav="configuracoes"
+              aria-label="Configurações"
+              ><span>⚙</span><span class="nav-full-name">Configurações</span
+              ><span class="nav-short-name" aria-hidden="true">Config.</span></a
             >
           </div>
+          <button
+            class="nav-step"
+            data-nav-step="1"
+            aria-label="Exibir próximo destino"
+          >
+            →
+          </button>
         </nav>
       </aside>
       <div class="workspace">
+        <span
+          class="local-pill sync-banner sr-only"
+          data-sync-status
+          data-state="loading"
+          role="status"
+          >Conectando…</span
+        >
+
         <header class="topbar">
           <span id="top-date"></span>
           <div class="account-tools">
-            <span
-              class="local-pill sr-only"
-              data-sync-status
-              data-state="loading"
-              role="status"
-              >Conectando…</span
-            >
             <details class="account-menu">
               <summary>Conta</summary>
               <div>
@@ -259,6 +285,6 @@
       </style>
       Ative o JavaScript para usar seu diário de treinos.
     </noscript>
-    <script type="module" src="bootstrap.js?v=2.3.0"></script>
+    <script type="module" src="bootstrap.js?v=4.0.0"></script>
   </body>
 </html>

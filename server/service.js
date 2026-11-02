@@ -1,5 +1,13 @@
 import { randomUUID, createHash } from "node:crypto";
-import { defaults, validateBackup, validDate } from "../lib/core.js";
+import {
+  defaults,
+  validateBackup,
+  validDate,
+  VERSION,
+  normalizeStoredDay,
+  scheduledWorkouts,
+  workoutStarted,
+} from "../lib/core.js";
 import { allowedEmail } from "./config.js";
 export class ApiError extends Error {
   constructor(status, code, message) {
@@ -133,9 +141,11 @@ export function createDiaryService({ pool, config }) {
       }
       return {
         ...meta(d),
-        version: 3,
+        version: VERSION,
         settings: d.settings ?? defaults().settings,
-        sessions: Object.fromEntries(selected.map((r) => [r.date, r.payload])),
+        sessions: Object.fromEntries(
+          selected.map((r) => [r.date, normalizeStoredDay(r.date, r.payload)]),
+        ),
         nextCursor:
           selected.length < rows.length ? selected.at(-1)?.date : null,
       };
@@ -144,7 +154,11 @@ export function createDiaryService({ pool, config }) {
   const checkSessionSizes = (data) => {
     for (const value of Object.values(data.sessions))
       if (Buffer.byteLength(JSON.stringify(value)) > PART_SIZE)
-        fail(413, "SESSION_TOO_LARGE", "Um treino excede o limite de 1 MiB.");
+        fail(
+          413,
+          "SESSION_TOO_LARGE",
+          "Os treinos de um dia excedem o limite de 1 MiB.",
+        );
   };
   return {
     me: (actor) =>
@@ -156,7 +170,7 @@ export function createDiaryService({ pool, config }) {
       })),
     read,
     save: (actor, path, body) =>
-      mutation(actor, path, body, async (c) => {
+      mutation(actor, path, body, async (c, d) => {
         if (path === "/settings") {
           const settings = clean({
             ...defaults(),
@@ -167,17 +181,116 @@ export function createDiaryService({ pool, config }) {
             JSON.stringify(settings),
           ]);
         } else {
-          const date = path.split("/")[2];
-          if (!validDate(date)) fail(400, "INVALID_DATE", "Data inválida.");
-          const data = clean({
+          let changes = path === "/days" ? body.value : null;
+          const legacyDate = path.split("/")[2];
+          if (path !== "/days" && !validDate(legacyDate))
+            fail(400, "INVALID_DATE", "Data inválida.");
+          if (
+            path === "/days" &&
+            (!changes ||
+              typeof changes !== "object" ||
+              Array.isArray(changes) ||
+              Object.keys(changes).length < 1 ||
+              Object.keys(changes).length > 2 ||
+              Object.keys(changes).some((date) => !validDate(date)))
+          )
+            fail(422, "INVALID_DATA", "Escolha um ou dois dias válidos.");
+          const dates = path === "/days" ? Object.keys(changes) : [legacyDate];
+          const rows = (
+            await c.query(
+              "SELECT date::text, payload FROM workout_sessions WHERE user_id=$1 AND date IN ($2::date,$3::date)",
+              [actor.userId, dates[0], dates[1] ?? dates[0]],
+            )
+          ).rows;
+          const before = {
             ...defaults(),
-            sessions: { [date]: body.value },
+            settings: d.settings ?? defaults().settings,
+            sessions: Object.fromEntries(
+              rows.map((r) => [r.date, normalizeStoredDay(r.date, r.payload)]),
+            ),
+          };
+          if (path !== "/days") {
+            const legacy = clean({
+                ...defaults(),
+                version: 3,
+                sessions: { [legacyDate]: body.value },
+              }).sessions[legacyDate],
+              day = structuredClone(
+                before.sessions[legacyDate] ?? { workouts: [] },
+              );
+            for (const item of legacy.workouts) {
+              const index = day.workouts.findIndex((s) => s.id === item.id);
+              if (index < 0) day.workouts.push(item);
+              else day.workouts[index] = item;
+            }
+            changes = { [legacyDate]: day };
+          }
+          const data = clean({
+            ...before,
+            sessions: { ...before.sessions, ...changes },
           });
-          checkSessionSizes(data);
-          await c.query(
-            "INSERT INTO workout_sessions(user_id,date,payload) VALUES($1,$2,$3) ON CONFLICT(user_id,date) DO UPDATE SET payload=EXCLUDED.payload",
-            [actor.userId, date, JSON.stringify(data.sessions[date])],
+          checkSessionSizes({ sessions: changes });
+          const incomingIds = Object.values(data.sessions).flatMap((day) =>
+            day.workouts.map((item) => item.id),
           );
+          if (incomingIds.length) {
+            const duplicates = await c.query(
+              `SELECT date::text FROM workout_sessions WHERE user_id=$1 AND date NOT IN ($2::date,$3::date) AND (EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(payload->'workouts','[]'::jsonb)) item WHERE item->>'id' IN (SELECT jsonb_array_elements_text($4::jsonb))) OR (payload ? 'type' AND ('legacy-' || date::text) IN (SELECT jsonb_array_elements_text($4::jsonb)))) LIMIT 1`,
+              [
+                actor.userId,
+                dates[0],
+                dates[1] ?? dates[0],
+                JSON.stringify(incomingIds),
+              ],
+            );
+            if (duplicates.rows.length)
+              fail(
+                422,
+                "INVALID_DATA",
+                "Um treino já pertence a outra data. Mova a origem e o destino juntos.",
+              );
+          }
+          const afterItems = new Map(
+            Object.entries(data.sessions).flatMap(([date, day]) =>
+              day.workouts.map((item) => [item.id, { date, item }]),
+            ),
+          );
+          for (const [date, day] of Object.entries(before.sessions))
+            for (const item of day.workouts) {
+              const next = afterItems.get(item.id);
+              if (
+                workoutStarted(item) &&
+                (!next || next.date !== date || next.item.type !== item.type)
+              )
+                fail(
+                  409,
+                  "WORKOUT_STARTED",
+                  "Treinos com registros devem permanecer na data original.",
+                );
+              if (next && next.date !== date && workoutStarted(next.item))
+                fail(
+                  409,
+                  "WORKOUT_STARTED",
+                  "Somente treinos sem registros podem ser movidos.",
+                );
+            }
+          // Defaults are virtual until a day is edited. A move must preserve its stable identity.
+          for (const date of Object.keys(changes))
+            if (!before.sessions[date])
+              for (const item of scheduledWorkouts(before, date)) {
+                const next = afterItems.get(item.id);
+                if (next && next.date !== date && workoutStarted(next.item))
+                  fail(
+                    409,
+                    "WORKOUT_STARTED",
+                    "Somente treinos sem registros podem ser movidos.",
+                  );
+              }
+          for (const date of Object.keys(changes))
+            await c.query(
+              "INSERT INTO workout_sessions(user_id,date,payload) VALUES($1,$2,$3) ON CONFLICT(user_id,date) DO UPDATE SET payload=EXCLUDED.payload",
+              [actor.userId, date, JSON.stringify(data.sessions[date])],
+            );
         }
         return {};
       }),

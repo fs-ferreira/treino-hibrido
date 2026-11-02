@@ -1,6 +1,19 @@
-import { defaults } from "../../lib/core.js";
+import {
+  defaults,
+  validateBackup,
+  normalizeStoredDay,
+} from "../../lib/core.js";
 export async function mockCloud(page, initial = defaults()) {
-  let data = structuredClone(initial),
+  let data = validateBackup({
+      ...structuredClone(initial),
+      version: 4,
+      sessions: Object.fromEntries(
+        Object.entries(initial.sessions).map(([date, day]) => [
+          date,
+          normalizeStoredDay(date, day),
+        ]),
+      ),
+    }),
     generation = "test-generation";
   const operations = new Set();
   const state = {
@@ -54,7 +67,11 @@ export async function mockCloud(page, initial = defaults()) {
         operations.add(body.operationId);
         state.writes++;
         if (path === "/settings") data.settings = body.value;
-        else data.sessions[path.split("/")[2]] = body.value;
+        else if (path === "/days") Object.assign(data.sessions, body.value);
+        else {
+          const date = path.split("/")[2];
+          data.sessions[date] = normalizeStoredDay(date, body.value);
+        }
       }
       return send({ generation, revision: state.writes });
     }

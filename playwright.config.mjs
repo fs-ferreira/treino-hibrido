@@ -7,6 +7,7 @@ export default defineConfig({
     "movement-browser.spec.mjs",
     "exercise-card-browser.spec.mjs",
     "forearm-browser.spec.mjs",
+    "flexible-browser.spec.mjs",
     "muscle-map-browser.spec.mjs",
     "text-browser.spec.mjs",
     "auth-browser.spec.mjs",
