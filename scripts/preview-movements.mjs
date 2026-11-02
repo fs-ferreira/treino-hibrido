@@ -28,6 +28,6 @@ fs.writeFileSync(
         `<figure data-object-example="${id}">${drawObjectDemo(evaluateObjectDemo(id, 0.5), `example-${id}`, { anchors: true })}<figcaption>${label}</figcaption></figure>`,
     )
     .join("")}</div>
-<h2>21 exercícios — início, meio e final</h2>${list.map((e) => `<section class="lab-review" id="${e.id}" data-review-kind="${e.diagram}"><h3>${e.name}</h3><article>${[0, 0.5, 1].map((t, i) => `<figure>${drawMovement(e.diagram, t, `qa-${e.id}-${i}`, ["Início", "Meio", "Final"][i])}<figcaption>${["Início", "Meio", "Final"][i]}</figcaption></figure>`).join("")}</article></section>`).join("")}</main><script type="module" src="../scripts/movement-lab-ui.js"></script></body></html>`,
+<h2>${list.length} exercícios — início, meio e final</h2>${list.map((e) => `<section class="lab-review" id="${e.id}" data-review-kind="${e.diagram}"><h3>${e.name}</h3><article>${[0, 0.5, 1].map((t, i) => `<figure>${drawMovement(e.diagram, t, `qa-${e.id}-${i}`, ["Início", "Meio", "Final"][i])}<figcaption>${["Início", "Meio", "Final"][i]}</figcaption></figure>`).join("")}</article></section>`).join("")}</main><script type="module" src="../scripts/movement-lab-ui.js"></script></body></html>`,
 );
 console.log("Galeria: http://127.0.0.1:4173/test-results/movements.html");

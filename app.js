@@ -163,6 +163,7 @@ function session(key = selected) {
     run: null,
   });
 }
+const strengthSetCount = (type) => workouts[type].ids.length * 3;
 const emptySets = () =>
   Array.from({ length: 3 }, () => ({ kg: "", reps: "", done: false }));
 function exerciseSession(id) {
@@ -282,9 +283,10 @@ function syncTodayStatus() {
 function syncStrength(id) {
   if (!$(".progress-line")) return;
   const s = data.sessions[selected],
-    total = count(selected);
-  $(".count-pill").textContent = `${total}/21 séries`;
-  $(".progress-line span").style.transform = `scaleX(${total / 21})`;
+    total = count(selected),
+    planned = strengthSetCount(getType(selected));
+  $(".count-pill").textContent = `${total}/${planned} séries`;
+  $(".progress-line span").style.transform = `scaleX(${total / planned})`;
   const button = $('[data-action="finish-strength"]');
   button.classList.toggle("quiet", Boolean(s?.done));
   button.classList.toggle("primary", !s?.done);
@@ -458,7 +460,7 @@ function sessionStatus(key) {
 function heroView() {
   const type = getType(selected),
     w = workouts[type];
-  return `<section class="hero ${w.kind}"><div class="hero-copy">${w.kind === "run" ? "" : tag(w.tag, w.kind)}<span class="session-state">${sessionStatus(selected).label}</span><p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? "<div><b>07</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>" : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (data.sessions[selected]?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${sessionStatus(selected).action} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-cross">+</span></div></section>`;
+  return `<section class="hero ${w.kind}"><div class="hero-copy">${w.kind === "run" ? "" : tag(w.tag, w.kind)}<span class="session-state">${sessionStatus(selected).label}</span><p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? `<div><b>${String(w.ids.length).padStart(2, "0")}</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>` : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (data.sessions[selected]?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${sessionStatus(selected).action} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-cross">+</span></div></section>`;
 }
 function todayView() {
   const type = getType(selected),
@@ -489,8 +491,9 @@ function sessionView(type) {
 function strengthView(type) {
   const w = workouts[type],
     s = data.sessions[selected],
-    total = count(selected);
-  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/21 séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / 21})"></span></div><p class="section-hint">3 séries de 6–8 repetições.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
+    total = count(selected),
+    planned = strengthSetCount(getType(selected));
+  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/${planned} séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / planned})"></span></div><p class="section-hint">3 séries de 6–8 repetições.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
 }
 function loadSuggestionReason(suggestion) {
   if (suggestion.percent)
@@ -517,9 +520,13 @@ function exerciseCard(id, index, s) {
       data.settings.loadProgression,
     ),
     complete = sets.filter((x) => x.done).length,
-    perSide = ["single-rdl", "bulgarian", "leg-curl", "leg-extension"].includes(
-      id,
-    ),
+    perSide = [
+      "single-rdl",
+      "bulgarian",
+      "leg-curl",
+      "leg-extension",
+      "wrist-curl",
+    ].includes(id),
     loadLabel = perSide ? "Carga por lado (kg)" : "Carga (kg)";
   return `<details class="exercise-card ${noWeight ? "without-weight" : ""}" data-exercise="${id}" ${expanded.has(id) ? "open" : ""}>
     <summary><span class="exercise-number">${String(index + 1).padStart(2, "0")}</span><span class="exercise-name"><b>${e.name}</b><small>${e.muscles}</small></span><span class="exercise-check ${complete === 3 ? "complete" : ""}" aria-label="${complete} de 3 séries concluídas">${complete === 3 ? icon("check") : `${complete}/3`}</span><span class="chevron">${icon("chevron-down")}</span></summary>
@@ -598,7 +605,7 @@ function calendarView() {
       const type = getType(key),
         w = workouts[type],
         s = data.sessions[key];
-      return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""}><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${key === dateKey() || key === selected ? `<span class="day-context">${key === dateKey() ? "Hoje" : "Dia selecionado"}</span>` : ""}${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? "7 exercícios · 3 × 6–8" : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
+      return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""}><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${key === dateKey() || key === selected ? `<span class="day-context">${key === dateKey() ? "Hoje" : "Dia selecionado"}</span>` : ""}${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? `${w.ids.length} exercícios · 3 × 6–8` : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
     })
     .join("")}</div>`;
 }
@@ -671,10 +678,11 @@ function openDialog(html, compact = false) {
 }
 function confirmSession(onConfirm) {
   const completed = count(selected),
-    name = workouts[getType(selected)].name;
+    name = workouts[getType(selected)].name,
+    planned = strengthSetCount(getType(selected));
   pendingConfirmation = onConfirm;
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">FECHAR O TREINO</span><button class="close-button" data-action="close-dialog" aria-label="Fechar confirmação">${icon("x")}</button></div><div class="confirm-symbol">${icon("circle-check")}</div><h2 id="guide-title">Concluir sessão?</h2><p class="muted">${name} · ${shortDate(selected)}</p><div class="confirm-progress"><strong>${completed}<span>/21</span></strong><span>séries marcadas</span></div>${completed < 21 ? "<p>Você ainda tem séries não marcadas. Pode voltar ao treino ou concluir com os registros atuais.</p>" : ""}<div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Voltar ao treino</button><button class="button primary" data-action="confirm-session">Concluir sessão ${icon("check")}</button></div>`,
+    `<div class="dialog-top"><span class="eyebrow">FECHAR O TREINO</span><button class="close-button" data-action="close-dialog" aria-label="Fechar confirmação">${icon("x")}</button></div><div class="confirm-symbol">${icon("circle-check")}</div><h2 id="guide-title">Concluir sessão?</h2><p class="muted">${name} · ${shortDate(selected)}</p><div class="confirm-progress"><strong>${completed}<span>/${planned}</span></strong><span>séries marcadas</span></div>${completed < planned ? "<p>Você ainda tem séries não marcadas. Pode voltar ao treino ou concluir com os registros atuais.</p>" : ""}<div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Voltar ao treino</button><button class="button primary" data-action="confirm-session">Concluir sessão ${icon("check")}</button></div>`,
     true,
   );
 }

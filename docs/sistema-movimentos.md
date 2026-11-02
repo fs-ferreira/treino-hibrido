@@ -1,6 +1,6 @@
 # Corpo e equipamentos articulados
 
-O catálogo inteiro de 21 exercícios usa `evaluateMovement(kind, t)`. A função recebe uma fase finita (0–1; valores fora da faixa são limitados) e devolve uma cena determinística: corpo, equipamentos, conexões, cabos e diagnósticos. Nenhum resultado depende do quadro anterior. Não há motor físico, dependência de execução, mudança no diário ou no esquema de backup.
+O catálogo inteiro de 23 exercícios usa `evaluateMovement(kind, t)`. A função recebe uma fase finita (0–1; valores fora da faixa são limitados) e devolve uma cena determinística: corpo, equipamentos, conexões, cabos e diagnósticos. Nenhum resultado depende do quadro anterior. Não há motor físico, dependência de execução, mudança no diário ou no esquema de backup.
 
 ## Modelo e fluxo
 
@@ -83,4 +83,12 @@ Referências de arquitetura: [OpenSim — componentes, corpos e articulações](
 
 ## Reprodução nos guias
 
-Os 21 guias mostram uma única cena animada, iniciada automaticamente ao abrir. O movimento repete ciclos de ida e volta de seis segundos. Pausar e selecionar uma etapa interrompem a reprodução; fechar o guia ou ocultar a aba também a interrompe. Com movimento reduzido, o guia oferece a seleção de Início, Meio e Final sem reprodução automática. Os quadros separados e o botão intermediário “Ver movimento” foram removidos.
+Os 23 guias mostram uma única cena animada, iniciada automaticamente ao abrir. O movimento repete ciclos de ida e volta de seis segundos. Pausar e selecionar uma etapa interrompem a reprodução; fechar o guia ou ocultar a aba também a interrompe. Com movimento reduzido, o guia oferece a seleção de Início, Meio e Final sem reprodução automática. Os quadros separados e o botão intermediário “Ver movimento” foram removidos.
+
+## Rosca inversa e rosca de punho
+
+`reverse-curl` usa barra reta rígida com duas pegadas pronadas e cotovelos fixos. `wrist-curl` usa um único halter na mão próxima, antebraço apoiado na coxa e mão livre além do joelho. Tronco, ombros, cotovelos, pernas e mão de descanso permanecem estáveis.
+
+As poses podem declarar `wristFlexion: [nearDegrees, farDegrees]`, com zero por padrão. A rotação é aplicada à mão em torno do eixo transversal da pegada, sem mover o punho nem alongar o antebraço. Na rosca de punho, a normal da palma permanece voltada para cima e o eixo do halter atravessa a mão; na inversa, as âncoras da barra invertem a normal da palma mantendo o eixo da pegada. A demonstração unilateral percorre de 30° de extensão a 35° de flexão; o limite ilustrativo específico é 40°, sem ampliar os limites dos movimentos anteriores. `loadHand` no preset seleciona a mão de um halter único; o padrão continua sendo a mão distante usada no RDL. O contato do antebraço é medido contra o plano fixo da superfície da coxa.
+
+O contorno destaca somente a mão ativa na rosca de punho; o guia e a descrição acessível orientam repetir do outro lado. Reprodução, pausa, reinício, ciclo de seis segundos e movimento reduzido usam o mesmo player dos outros exercícios.

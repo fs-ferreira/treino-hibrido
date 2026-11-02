@@ -36,7 +36,7 @@ test("every catalog exercise uses the composed scene, with defined joints and co
   }
 });
 
-test("101 phases of all 21 scenes satisfy lengths, grips, contacts and limits", () => {
+test("101 phases of all 23 scenes satisfy lengths, grips, contacts and limits", () => {
   for (const kind of kinds) {
     const initial = evaluateMovement(kind, 0),
       dimensions = new Map(initial.entities.map((e) => [e.id, e.dimensions]));

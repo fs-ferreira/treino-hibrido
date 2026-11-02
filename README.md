@@ -29,7 +29,7 @@ Os testes verificam cálculos, calendário, backups, guias, progressão, movimen
 5. Em Treinos, consulte o plano ativo e sua divisão em sete dias. Abra os dias para ver exercícios, guias e etapas das corridas. O catálogo é apenas para consulta; os resultados continuam sendo registrados nas sessões.
 6. Consulte Histórico, organizado por mês, e exporte periodicamente um backup em **Configurações → Dados**.
 
-O app preserva os 21 exercícios, 3 séries de 6–8 repetições e a distribuição semanal das imagens do post de @thalleshirakawa. Variantes adotadas são indicadas nos guias. Ilustrações SVG são originais e esquemáticas; os vídeos externos mostram o movimento com mais detalhe.
+O app reúne os 21 exercícios das imagens do post de @thalleshirakawa e dois exercícios adicionais de antebraço: rosca inversa após a rosca na polia no Upper e rosca de punho unilateral com halter após a Scott no Upper 2. São 23 exercícios, com 8/7/8 por sessão de musculação e 3 séries de 6–8 repetições; na rosca de punho, complete cada série nos dois braços e registre a carga por lado. A distribuição semanal é preservada. Variantes adotadas são indicadas nos guias. Ilustrações SVG são originais e esquemáticas; os vídeos externos mostram o movimento com mais detalhe.
 
 ## Cálculos e fontes
 
@@ -49,7 +49,7 @@ Em cada exercício, **Sem peso adicional** vale para as três séries. Os campos
 
 Os cards priorizam carga, repetições e conclusão. A sugestão fica junto ao campo de carga no desktop e abaixo dele no celular. **Histórico e sugestões** reúne a última sessão, as referências e os motivos, recolhidos inicialmente. **Como fazer** mantém a variante e o guia completo. A [validação dos cards compactos](docs/validacao-cards.md) registra as comparações e os testes; execute `npm run test:ui` para repetir os cenários de navegador.
 
-Ao abrir um exercício, o mapa anatômico destaca os músculos principais em vermelho vivo e os secundários em vermelho escuro. Toque, cursor ou foco pelo teclado revelam seus nomes. Frente e costas aparecem conforme os alvos do exercício; o mesmo mapa está disponível nos dias expandidos de Treinos. O [cadastro e a validação do mapa muscular](docs/mapa-muscular.md) documentam os 21 exercícios e suas referências.
+Ao abrir um exercício, o mapa anatômico destaca os músculos principais em vermelho vivo e os secundários em vermelho escuro. Toque, cursor ou foco pelo teclado revelam seus nomes. Frente e costas aparecem conforme os alvos do exercício; o mesmo mapa está disponível nos dias expandidos de Treinos. O [cadastro e a validação do mapa muscular](docs/mapa-muscular.md) documentam os 23 exercícios e suas referências.
 
 Na corrida, o próximo treino equivalente usa o pace realizado e o esforço da última sessão elegível, separando **leve**, **longão** e **intervalado**. Leve e longão têm alvo 3–4/10; os blocos fortes têm alvo 7–8/10. Intervalados precisam de **pace médio dos blocos fortes** e **esforço dos blocos fortes**, ambos opcionais e preenchidos juntos. A média da sessão inteira não substitui esses dados. Esforço 0, sessões abertas, datas iguais/posteriores ao plano e dados ausentes não alimentam o ajuste.
 
@@ -137,15 +137,15 @@ Para medir localmente, abra `http://127.0.0.1:4173/?motion-debug=1#hoje`. Um ind
 
 ## Ilustrações e movimento
 
-Os 21 guias têm desenhos SVG originais com silhueta, articulações, apoios, cargas e setas. Cada guia mostra uma única demonstração animada, sem quadros estáticos duplicados. O contorno destaca a região que se move, não uma representação de ativação muscular.
+Os 23 guias têm desenhos SVG originais com silhueta, articulações, apoios, cargas e setas. Cada guia mostra uma única demonstração animada, sem quadros estáticos duplicados. O contorno destaca a região que se move, não uma representação de ativação muscular.
 
 Ao abrir o guia, o movimento começa automaticamente e repete a ida e volta em ciclos de cerca de seis segundos. Use Pausar, Reproduzir e Reiniciar ou escolha Início, Meio e Final para inspecionar uma posição; a velocidade é ilustrativa. Com `prefers-reduced-motion`, os controles de reprodução são substituídos pela seleção de etapas. Fechar o guia ou ocultar a aba interrompe a reprodução.
 
-Os 21 movimentos usam uma cena articulada em 3D projetada em SVG. Corpo, halteres, barras, bancos, alavancas, polias e cabos têm dimensões e pontos de conexão próprios. Barras preservam a distância entre pegadas; cabos conservam seu comprimento e movimentam os pesos; os rolos e as alavancas giram em torno de eixos fixos. A panturrilha sentada mantém o contato da almofada com a coxa sem alterar o raio da alavanca.
+Os 23 movimentos usam uma cena articulada em 3D projetada em SVG. Corpo, halteres, barras, bancos, alavancas, polias e cabos têm dimensões e pontos de conexão próprios. Barras preservam a distância entre pegadas; cabos conservam seu comprimento e movimentam os pesos; os rolos e as alavancas giram em torno de eixos fixos. A panturrilha sentada mantém o contato da almofada com a coxa sem alterar o raio da alavanca.
 
 As poses compartilham as mesmas proporções de braços e pernas e uma coluna lombar/torácica articulada. Contatos usam cinemática inversa com verificação de alcance e tratamento de direções degeneradas. Punhos e palmas têm orientação própria, incluindo rotação axial do antebraço. Vistas frontais projetam a profundidade dos membros, incluindo a flexão dos joelhos para a frente. Nas panturrilhas, os dedos permanecem apoiados enquanto o calcanhar sobe. Os equipamentos são formas simplificadas e podem diferir da máquina da academia. As referências de cada guia continuam disponíveis para consultar a execução.
 
-A [revisão individual dos 21 exercícios](docs/revisao-movimentos.md) descreve as inconsistências corrigidas e suas referências. `lib/movement-anatomy.js` reúne as proporções e articulações; `lib/movement-rig.js` calcula as poses; `lib/movement-renderer.js` desenha os SVGs preservando o estilo visual.
+A [revisão individual dos exercícios](docs/revisao-movimentos.md) descreve as inconsistências corrigidas e suas referências. `lib/movement-anatomy.js` reúne as proporções e articulações; `lib/movement-rig.js` calcula as poses; `lib/movement-renderer.js` desenha os SVGs preservando o estilo visual.
 
 Para revisão visual, execute `npm run preview:movements` e abra `http://127.0.0.1:4173/test-results/movements.html` com o servidor local iniciado. A galeria permite inspecionar objetos e mecanismos isolados, corpo sem equipamentos e os 21 exercícios conectados, com seleção de fase, reprodução, eixos e pontos de conexão. Ela fica em diretório ignorado pelo Git e não é publicada.
 

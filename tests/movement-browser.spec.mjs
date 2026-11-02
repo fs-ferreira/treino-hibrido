@@ -1,34 +1,13 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
-const kinds = [
-  "lateral",
-  "incline",
-  "bentrow",
-  "extension",
-  "pulldown",
-  "pushdown",
-  "calfseated",
-  "hinge",
-  "split",
-  "fly",
-  "cablefly",
-  "row",
-  "curl",
-  "preacher",
-  "legcurl",
-  "adductor",
-  "calf",
-  "press",
-  "overhead",
-  "crunch",
-  "reverse",
-];
+import { exercises } from "../lib/exercises.js";
+const kinds = Object.values(exercises).map((exercise) => exercise.diagram);
 test.beforeEach(async ({ page }) => {
   await page.goto("/test-results/movements.html");
   await page.waitForFunction(() => Boolean(window.movementLab));
 });
 for (const width of [390, 1280])
-  test(`21 triptychs and continuous cycles at ${width}px`, async ({
+  test(`23 triptychs and continuous cycles at ${width}px`, async ({
     page,
   }, testInfo) => {
     test.setTimeout(120000);
@@ -183,7 +162,7 @@ test("single active scene calculation, SVG and layout stay below 16ms at p95", a
   expect(result.p95).toBeLessThan(16);
 });
 
-test("all 21 exercise guides open with one automatically animated stage", async ({
+test("all 23 exercise guides open with one automatically animated stage", async ({
   page,
 }) => {
   await page.clock.install();

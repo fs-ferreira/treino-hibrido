@@ -364,7 +364,7 @@ for (const width of [320, 390, 768, 1440])
     }
   });
 
-test("catalogue guidance belongs to Lower; all guides retain execution and accessible external links", async ({
+test("catalogue guidance covers unilateral days; all guides retain execution and accessible external links", async ({
   page,
 }) => {
   const references = page.waitForResponse((response) =>
@@ -376,7 +376,7 @@ test("catalogue guidance belongs to Lower; all guides retain execution and acces
     const item = page.locator(`[data-plan-day="${day}"]`);
     if ((await item.getAttribute("open")) === null)
       await item.locator(":scope > summary").click();
-    if (day === 3)
+    if (day === 3 || day === 5)
       await expect(item).toContainText(
         "Nos unilaterais, complete os dois lados.",
       );
