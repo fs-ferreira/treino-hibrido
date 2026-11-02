@@ -12,21 +12,51 @@
       content="Seu plano de musculação e corrida, organizado em um diário pessoal."
     />
     <title>HÍBRIDO — Seu ritmo. Sua evolução.</title>
+    <style>
+      html,
+      body {
+        background: #0c0d0f;
+      }
+    </style>
     <link rel="icon" href="assets/brand-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css?v=1.7.4" />
     <link rel="stylesheet" href="assets/movement.css" />
     <link rel="stylesheet" href="assets/interface-motion.css?v=1.6.0" />
     <link rel="stylesheet" href="assets/plans.css?v=1.7.2" />
-    <link rel="stylesheet" href="assets/ux.css?v=2.2.0" />
+    <link rel="stylesheet" href="assets/ux.css?v=2.3.0" />
     <link rel="stylesheet" href="assets/muscle-map.css?v=2.1.1" />
   </head>
-  <body data-account-view="login">
-    <a class="skip" href="#google-login">Pular para o acesso</a>
+  <body data-account-view="loading">
+    <div id="auth-splash" class="auth-splash">
+      <div class="auth-splash-mark" aria-hidden="true">
+        <img
+          src="assets/brand-mark.svg"
+          width="64"
+          height="64"
+          alt=""
+          fetchpriority="high"
+        />
+      </div>
+      <span
+        id="auth-splash-status"
+        class="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        >Preparando seu acesso…</span
+      >
+    </div>
+    <a class="skip" href="#google-login" inert aria-hidden="true"
+      >Pular para o acesso</a
+    >
     <section
       id="account-gate"
       class="account-gate"
       aria-labelledby="account-title"
       data-state="checking"
+      hidden
+      inert
+      aria-hidden="true"
     >
       <div class="login-backdrop" aria-hidden="true">
         <span class="login-orbit login-orbit-lime"></span>
@@ -140,7 +170,7 @@
         </p>
       </div>
     </section>
-    <div class="shell" hidden>
+    <div class="shell" hidden inert aria-hidden="true">
       <aside class="sidebar">
         <a class="brand" href="#hoje" aria-label="Híbrido — início"
           ><img
@@ -221,7 +251,14 @@
       <div id="guide-content"></div>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
-    <noscript>Ative o JavaScript para usar seu diário de treinos.</noscript>
-    <script type="module" src="bootstrap.js?v=2.2.0"></script>
+    <noscript>
+      <style>
+        .auth-splash {
+          display: none;
+        }
+      </style>
+      Ative o JavaScript para usar seu diário de treinos.
+    </noscript>
+    <script type="module" src="bootstrap.js?v=2.3.0"></script>
   </body>
 </html>
