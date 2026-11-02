@@ -18,7 +18,11 @@ async function navigate(page, hash) {
   await page.evaluate((value) => {
     location.hash = value;
   }, hash);
-  await expect(page).toHaveURL(new RegExp(`#${hash}$`));
+  await expect(page).toHaveURL(
+    hash === "hoje" || hash === "semana"
+      ? /#hoje(?:\/.*)?$/
+      : new RegExp(`#${hash}$`),
+  );
   const title = hash.startsWith("configuracoes/")
     ? {
         corrida: "Corrida",
@@ -28,7 +32,7 @@ async function navigate(page, hash) {
       }[hash.split("/")[1]] + " · Configurações"
     : {
         hoje: "Hoje",
-        semana: "Semana",
+        semana: "Hoje",
         treinos: "Treinos",
         historico: "Histórico",
       }[hash] || "Treino Híbrido";

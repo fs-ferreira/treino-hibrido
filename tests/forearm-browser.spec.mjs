@@ -50,6 +50,8 @@ for (const width of [390, 1280])
       const card = page.locator(`[data-exercise="${exercise.id}"]`);
       await card.locator(":scope > summary").click();
       const map = card.locator(".muscle-map");
+      if (width < 1024)
+        await card.locator(".muscle-disclosure>summary").click();
       const primary = map.locator(`[data-muscle="${exercise.primary}"]`);
       await primary.focus();
       await expect(map.locator('[role="status"]')).toContainText("Principal");
@@ -88,7 +90,10 @@ for (const width of [390, 1280])
       await expect(page.locator(".count-pill")).toHaveText("1/24 séries");
       await expect
         .poll(
-          () => cloud.data.sessions[exercise.date]?.sets?.[exercise.id]?.[0],
+          () =>
+            cloud.data.sessions[exercise.date]?.workouts[0]?.sets?.[
+              exercise.id
+            ]?.[0],
         )
         .toEqual({ kg: 5, reps: 8, done: true });
       await page.reload();
@@ -102,16 +107,8 @@ for (const width of [390, 1280])
       await page.evaluate(() => {
         location.hash = "semana";
       });
-      for (const [type, count] of [
-        ["Upper", 8],
-        ["Lower", 7],
-        ["Upper 2", 8],
-      ])
-        await expect(
-          page.locator(".calendar-card").filter({
-            has: page.getByRole("heading", { name: type, exact: true }),
-          }),
-        ).toContainText(`${count} exercícios · 3 × 6–8`);
+      await expect(page.locator("#week-navigation")).toBeVisible();
+      await expect(page.locator('[data-nav="semana"]')).toHaveCount(0);
       await page.evaluate(() => {
         location.hash = "treinos/hibrido-3x3";
       });
@@ -122,6 +119,12 @@ for (const width of [390, 1280])
       if ((await day.getAttribute("open")) === null)
         await day.locator(":scope > summary").click();
       await expect(day.locator(".plan-day-meta")).toHaveText("8 exercícios");
+      if (width < 1024)
+        await day
+          .locator(
+            `[data-muscle-disclosure="plan-muscles-${exercise.id}"]>summary`,
+          )
+          .click();
       await expect(
         day.locator(`[data-muscle-map="${exercise.id}"]`),
       ).toBeVisible();
@@ -163,7 +166,10 @@ test("existing completed sessions stay completed; progress and confirmation acco
     /Reabrir sessão/,
   );
   expect(cloud.writes).toBe(0);
-  expect(cloud.data.sessions["2026-11-02"]).toEqual(legacy);
+  expect(cloud.data.sessions["2026-11-02"].workouts[0]).toEqual({
+    id: "legacy-2026-11-02",
+    ...legacy,
+  });
   await page.locator('[data-action="finish-strength"]').click();
   const card = page.locator('[data-exercise="reverse-curl"]');
   await card.locator(":scope > summary").click();
@@ -189,5 +195,7 @@ test("existing completed sessions stay completed; progress and confirmation acco
     "séries não marcadas",
   );
   await page.locator('[data-action="confirm-session"]').click();
-  await expect.poll(() => cloud.data.sessions["2026-11-02"].done).toBe(true);
+  await expect
+    .poll(() => cloud.data.sessions["2026-11-02"].workouts[0].done)
+    .toBe(true);
 });

@@ -18,6 +18,7 @@ for (const width of [320, 390, 768, 1024, 1440])
     page.on("pageerror", (error) => errors.push(error.message));
     const card = await openExerciseCard(page);
     const map = mapFor(page, "leg-curl");
+    if (width < 1024) await card.locator(".muscle-disclosure>summary").click();
     await expect(map).toHaveAccessibleName(
       "Músculos de Mesa flexora unilateral",
     );
@@ -29,7 +30,7 @@ for (const width of [320, 390, 768, 1024, 1440])
     const mapBox = await map.boundingBox(),
       entryBox = await card.locator(".exercise-entry").boundingBox();
     if (width < 1024)
-      expect(mapBox.y + mapBox.height).toBeLessThanOrEqual(entryBox.y);
+      expect(entryBox.y + entryBox.height).toBeLessThanOrEqual(mapBox.y);
     else expect(mapBox.x + mapBox.width).toBeLessThanOrEqual(entryBox.x);
     expect(
       await map
@@ -46,6 +47,8 @@ for (const width of [320, 390, 768, 1024, 1440])
     });
     const compound = page.locator('[data-exercise="bulgarian"]');
     await compound.locator(":scope > summary").click();
+    if (width < 1024)
+      await compound.locator(".muscle-disclosure>summary").click();
     await expect(mapFor(page, "bulgarian").locator("svg")).toHaveCount(2);
     expect(
       await region(mapFor(page, "bulgarian"), "glutes").evaluate(
@@ -64,6 +67,11 @@ for (const width of [320, 390, 768, 1024, 1440])
     await expect(page.locator(".plan-exercises .muscle-map")).toHaveCount(23);
     for (const day of [3, 5])
       await page.locator(`[data-plan-day="${day}"] > summary`).click();
+    if (width < 1024)
+      for (const el of await page
+        .locator(".plan-exercises .muscle-disclosure>summary")
+        .all())
+        await el.click();
     await expect(
       page.locator(".plan-exercises .muscle-map:visible"),
     ).toHaveCount(23);
@@ -140,12 +148,13 @@ test("touch selection is local, dismissible and preserves form nodes and saved v
     const input = card.locator('[data-field="kg"]').first();
     await input.fill("25.5");
     await input.blur();
-    await expect(page.locator(".topbar [data-sync-status]")).toHaveText(
+    await expect(page.locator("[data-sync-status]")).toHaveText(
       "Salvo na nuvem",
     );
     const node = await input.elementHandle(),
       writes = page.cloudFixture.writes;
     const map = mapFor(page, "leg-curl");
+    await card.locator(".muscle-disclosure>summary").click();
     await leftPath(map, "hamstrings").tap();
     await expect(map.getByRole("status")).toHaveText(
       "Isquiotibiais · Principal",
@@ -159,6 +168,7 @@ test("touch selection is local, dismissible and preserves form nodes and saved v
     const calfCard = page.locator('[data-exercise="seated-calf"]');
     await calfCard.locator(":scope > summary").tap();
     const calf = mapFor(page, "seated-calf");
+    await calfCard.locator(".muscle-disclosure>summary").click();
     await leftPath(calf, "gastrocnemius").tap();
     await expect(calf.getByRole("status")).toHaveText(
       "Gastrocnêmio · Secundário",
@@ -176,6 +186,7 @@ test("touch selection is local, dismissible and preserves form nodes and saved v
     await expect(map.getByRole("status")).toBeEmpty();
     await page.reload();
     await card.locator(":scope > summary").tap();
+    await card.locator(".muscle-disclosure>summary").tap();
     await expect(input).toHaveValue("25.5");
     await expect(map.getByRole("status")).toBeEmpty();
   } finally {

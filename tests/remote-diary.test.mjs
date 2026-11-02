@@ -1,18 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaults } from "../lib/core.js";
+import { defaults, normalizeStoredDay, moveWorkout } from "../lib/core.js";
 import { createRemoteDiary, RemoteError } from "../lib/remote-diary.js";
 const workout = (n) => ({
-  type: "upper",
-  done: false,
-  sets: {
-    fly: [
-      { kg: n, reps: 8, done: true },
-      { kg: "", reps: "", done: false },
-      { kg: "", reps: "", done: false },
-    ],
-  },
-  run: null,
+  workouts: [
+    {
+      id: "legacy-2026-10-31",
+      type: "upper",
+      done: false,
+      sets: {
+        fly: [
+          { kg: n, reps: 8, done: true },
+          { kg: "", reps: "", done: false },
+          { kg: "", reps: "", done: false },
+        ],
+      },
+      run: null,
+    },
+  ],
 });
 function setup() {
   let data = defaults(),
@@ -48,7 +53,19 @@ function setup() {
       if (intercept) await intercept();
       if (!applied.has(options.body.operationId)) {
         if (path === "/settings") data.settings = options.body.value;
-        else data.sessions[path.split("/")[2]] = options.body.value;
+        else if (path === "/days")
+          Object.assign(data.sessions, options.body.value);
+        else {
+          const date = path.split("/")[2],
+            incoming = normalizeStoredDay(date, options.body.value),
+            day = data.sessions[date] ?? { workouts: [] };
+          for (const item of incoming.workouts) {
+            const i = day.workouts.findIndex((s) => s.id === item.id);
+            if (i < 0) day.workouts.push(item);
+            else day.workouts[i] = item;
+          }
+          data.sessions[date] = day;
+        }
         applied.add(options.body.operationId);
       }
       if (broken) throw Error("lost response");
@@ -186,7 +203,7 @@ test("new edits during a write are not acknowledged by the earlier response", as
   release();
   await Promise.all([first, second]);
   assert.equal(f.attempts.length, 2);
-  assert.equal(f.data.sessions["2026-10-31"].sets.fly[0].kg, 11);
+  assert.equal(f.data.sessions["2026-10-31"].workouts[0].sets.fly[0].kg, 11);
   assert.equal(f.entry, null);
 });
 test("reload replays owned journal and a new session requires explicit recovery", async () => {
@@ -257,6 +274,96 @@ test("receipt replay reconciles actual cloud data instead of restoring an old co
   f.broken = false;
   await sync.resume();
   assert.equal(f.applied.size, 1);
-  assert.equal(f.updates.at(-1).sessions["2026-10-31"].sets.fly[0].kg, 20);
+  assert.equal(
+    f.updates.at(-1).sessions["2026-10-31"].workouts[0].sets.fly[0].kg,
+    20,
+  );
   assert.equal(f.entry, null);
+});
+
+test("a queued two-day move survives a lost commit response and later edits", async () => {
+  const f = setup();
+  const initial = defaults();
+  initial.sessions["2026-10-31"] = {
+    workouts: [
+      { id: "move-fixture", type: "upper", done: false, sets: {}, run: null },
+    ],
+  };
+  f.data = initial;
+  const remote = f.make(),
+    opened = await remote.open();
+  f.broken = true;
+  moveWorkout(opened.data, "2026-10-31", "2026-11-01", "move-fixture");
+  assert.equal((await remote.save(opened.data)).saved, "local");
+  const first = structuredClone(f.entry.operations[0]);
+  assert.equal(first.path, "/days");
+  assert.equal(Object.keys(first.value).length, 2);
+  opened.data.sessions["2026-11-01"].workouts[0].sets.fly = [
+    { kg: 12, reps: 8, done: true },
+    { kg: "", reps: "", done: false },
+    { kg: "", reps: "", done: false },
+  ];
+  await remote.save(opened.data);
+  assert.deepEqual(f.entry.operations[0], first);
+  assert.equal(f.entry.operations.length, 2);
+  f.broken = false;
+  await remote.check();
+  assert.deepEqual(f.data.sessions["2026-10-31"].workouts, []);
+  assert.equal(f.data.sessions["2026-11-01"].workouts[0].sets.fly[0].kg, 12);
+  assert.equal(f.applied.size, 2);
+  assert.equal(f.entry, null);
+  remote.stop();
+});
+
+test("legacy pending operations keep their receipts and merge without replacing sibling workouts", async () => {
+  const f = setup(),
+    date = "2026-10-31",
+    legacy = workout(10).workouts[0];
+  const { id, ...raw } = legacy;
+  const data = defaults();
+  data.sessions[date] = {
+    workouts: [
+      { ...legacy, sets: {} },
+      {
+        id: "sibling",
+        type: "easy",
+        done: true,
+        sets: {},
+        run: { minutes: 30, km: 5, rpe: 4, notes: "preserve" },
+      },
+    ],
+  };
+  f.data = data;
+  const operation = {
+    id: crypto.randomUUID(),
+    path: "/sessions/" + date,
+    value: raw,
+    sending: true,
+  };
+  await f.journal.put("u", {
+    sessionId: "s",
+    generation: "g",
+    snapshot: { ...defaults(), version: 3, sessions: { [date]: raw } },
+    operations: [operation],
+    blocked: false,
+  });
+  f.broken = true;
+  const remote = f.make(),
+    opened = await remote.open();
+  await remote.save(opened.data);
+  assert.deepEqual(f.entry.operations[0], operation);
+  assert.equal(opened.data.sessions[date].workouts.length, 2);
+  f.broken = false;
+  await remote.check();
+  assert.equal(f.data.sessions[date].workouts.length, 2);
+  assert.equal(
+    f.data.sessions[date].workouts.find((s) => s.id === "sibling").run.notes,
+    "preserve",
+  );
+  assert.equal(
+    f.data.sessions[date].workouts.find((s) => s.id === id).sets.fly[0].kg,
+    10,
+  );
+  assert.equal(f.applied.size, 1);
+  remote.stop();
 });

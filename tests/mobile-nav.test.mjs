@@ -59,29 +59,32 @@ function setup(options = {}) {
     releasePointerCapture() {},
   });
   const root = events({ classList: classes(), ownerDocument: doc });
-  const links = ["hoje", "semana", "treinos", "historico", "configuracoes"].map(
-    (route) => ({
-      dataset: { nav: route },
-      style: {},
-      classList: classes(),
-      attrs: {},
-      setAttribute(k, v) {
-        this.attrs[k] = v;
-      },
-      removeAttribute(k) {
-        delete this.attrs[k];
-      },
-      closest() {
-        return this;
-      },
-      focus() {
-        doc.activeElement = this;
-        root.emit("focusin", { target: this });
-      },
-    }),
-  );
+  const routes =
+    options.count === 4
+      ? ["hoje", "treinos", "historico", "configuracoes"]
+      : ["hoje", "semana", "treinos", "historico", "configuracoes"];
+  const links = routes.map((route) => ({
+    dataset: { nav: route },
+    style: {},
+    classList: classes(),
+    attrs: {},
+    setAttribute(k, v) {
+      this.attrs[k] = v;
+    },
+    removeAttribute(k) {
+      delete this.attrs[k];
+    },
+    closest() {
+      return this;
+    },
+    focus() {
+      doc.activeElement = this;
+      root.emit("focusin", { target: this });
+    },
+  }));
   root.querySelector = () => track;
-  root.querySelectorAll = () => links;
+  root.querySelectorAll = (selector) =>
+    selector === "[data-nav]" ? links : [];
   const nav = createMobileNav(root, {
     window: win,
     document: doc,
@@ -560,4 +563,20 @@ test("inércia: movimento reduzido e cancelamento dispensam a continuação; pre
   assert.equal(t.frames.size, 0);
   assert.equal(Number.isInteger(t.nav.position), true);
   t.nav.dispose();
+});
+
+test("four destinations retain three full targets and wrap only outside the track", () => {
+  for (const width of [224, 302, 600])
+    for (let position = 0; position < 4; position++) {
+      const positions = navPositions(width, position, 4);
+      assert.equal(
+        positions.filter((p) => p.x >= 0 && p.x + p.width <= width).length,
+        3,
+      );
+      const hidden = positions.find((p) => p.x < 0 || p.x + p.width > width);
+      assert.ok(hidden.x + hidden.width <= 0 || hidden.x >= width);
+    }
+  const f = setup({ count: 4 });
+  assert.equal(f.nav.enabled, true);
+  f.nav.dispose();
 });

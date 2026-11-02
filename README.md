@@ -1,8 +1,8 @@
 # HÍBRIDO
 
-Diário pessoal de musculação e corrida, em português. HTML, CSS e JavaScript nativos, sem dependências de execução e sem backend.
+Diário pessoal de musculação e corrida, em português, com interface em HTML/CSS/JavaScript, login Google e persistência no Neon pela API da Vercel.
 
-**Site:** https://fs-ferreira.github.io/treino-hibrido/
+**Produção:** deployment da branch `main` na Vercel. O endereço antigo do GitHub Pages serve apenas à exportação legada.
 
 ## Executar localmente
 
@@ -18,13 +18,13 @@ Abra http://127.0.0.1:4173. Use um servidor HTTP: módulos JavaScript não funci
 npm test
 ```
 
-Os testes verificam cálculos, calendário, backups, guias, progressão, movimentos da interface, cenas articuladas dos exercícios, catálogo de treinos, navegação circular e configurações por categoria, incluindo falhas ao salvar e edições temporárias em memória.
+Os testes verificam cálculos, programação de vários treinos, remanejamentos atômicos, migração de backups, recuperação de operações antigas, guias, progressão, movimentos, catálogo, navegação circular, filtros e configurações. A [validação da versão 4](docs/validacao-ux-v4.md) documenta o alcance e os limites.
 
 ## Como usar
 
 1. Abra **Configurações → Corrida** e informe os paces com a máscara automática (digite `600` para `6:00`). O pace de caminhada é opcional. Registre a maior corrida recente em distância, tempo e data; o pace médio aparece automaticamente. A opção de usar esse pace como moderado-forte bloqueia o campo manual; desmarcar restaura o valor manual anterior. Use **Salvar alterações** para aplicar.
 2. Em **Configurações → Semana**, escolha sábado ou domingo para o longão e a duração entre 60 e 90 minutos. Em **Progressão**, ajuste as sugestões de carga e ritmo. Cada categoria tem seu próprio salvamento.
-3. Em Hoje ou Semana, abra uma sessão. Na musculação, registre carga e repetições de cada série; em Como fazer, consulte o guia ilustrado e a demonstração externa.
+3. Em **Hoje**, navegue entre semanas e datas. Adicione treinos sem substituir os existentes; mova somente treinos ainda não iniciados. Uma data sem treinos fica em descanso. Cada treino tem seus próprios registros e conclusão. Na musculação, registre as séries e consulte **Como fazer** quando necessário.
 4. Depois da corrida, registre duração, distância, esforço e observações.
 5. Em Treinos, consulte o plano ativo e sua divisão em sete dias. Abra os dias para ver exercícios, guias e etapas das corridas. O catálogo é apenas para consulta; os resultados continuam sendo registrados nas sessões.
 6. Consulte Histórico, organizado por mês, e exporte periodicamente um backup em **Configurações → Dados**.
@@ -49,7 +49,7 @@ Em cada exercício, **Sem peso adicional** vale para as três séries. Os campos
 
 Os cards priorizam carga, repetições e conclusão. A sugestão fica junto ao campo de carga no desktop e abaixo dele no celular. **Histórico e sugestões** reúne a última sessão, as referências e os motivos, recolhidos inicialmente. **Como fazer** mantém a variante e o guia completo. A [validação dos cards compactos](docs/validacao-cards.md) registra as comparações e os testes; execute `npm run test:ui` para repetir os cenários de navegador.
 
-Ao abrir um exercício, o mapa anatômico destaca os músculos principais em vermelho vivo e os secundários em vermelho escuro. Toque, cursor ou foco pelo teclado revelam seus nomes. Frente e costas aparecem conforme os alvos do exercício; o mesmo mapa está disponível nos dias expandidos de Treinos. O [cadastro e a validação do mapa muscular](docs/mapa-muscular.md) documentam os 23 exercícios e suas referências.
+Abaixo de 1024 px, **Mapa muscular** fica recolhido após os campos; no desktop, a anatomia aparece ao lado do registro. O mapa destaca os músculos principais em vermelho vivo e os secundários em vermelho escuro. Toque, cursor ou foco pelo teclado revelam seus nomes. Frente e costas aparecem conforme os alvos do exercício; o mesmo mapa está disponível nos dias expandidos de Treinos. O [cadastro e a validação do mapa muscular](docs/mapa-muscular.md) documentam os 23 exercícios e suas referências.
 
 Na corrida, o próximo treino equivalente usa o pace realizado e o esforço da última sessão elegível, separando **leve**, **longão** e **intervalado**. Leve e longão têm alvo 3–4/10; os blocos fortes têm alvo 7–8/10. Intervalados precisam de **pace médio dos blocos fortes** e **esforço dos blocos fortes**, ambos opcionais e preenchidos juntos. A média da sessão inteira não substitui esses dados. Esforço 0, sessões abertas, datas iguais/posteriores ao plano e dados ausentes não alimentam o ajuste.
 
@@ -62,7 +62,7 @@ A política inicial é uma **heurística do aplicativo**, não uma fórmula fisi
 
 Exemplo: 8:00/km com esforço 6 e teto 4 resulta em `480 × 1,05 = 504`, ou **8:24/km**. Com progressão, `480 × 1,025 = 492`, ou **8:12/km**. Arredondar apenas o pace final para segundos inteiros. Abrir telas ou semanas sem novos registros não acumula ajustes. Volume, recuperação e caminhada não aumentam automaticamente; no intervalado, somente os blocos fortes recebem a adaptação. Um ritmo forte que deixe de ser mais rápido que a recuperação fica sem estimativa até recalibrar os paces.
 
-Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 3 preservam essas informações.
+Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 4 preservam essas informações e vários treinos por data; versões 1, 2 e 3 continuam importáveis.
 
 Para usar apenas a musculação, é possível salvar Progressão sem preencher Corrida. Se começar a preencher um par de paces ou uma corrida recente, complete os respectivos campos antes de salvar essa categoria.
 
@@ -76,25 +76,29 @@ Somente **Salvar alterações** muda o planejamento. Cada categoria valida apena
 
 Os formulários continuam montados ao alternar categorias. Na barra de abas, setas movem o foco, Enter/Espaço ativam e Tab segue para o conteúdo. A barra tem rolagem horizontal finita em telas estreitas. As ações ficam aderentes quando há alterações e espaço disponível; em viewports curtas ou com teclado reduzindo a área visível, voltam ao fluxo normal.
 
-Backups incluem apenas configurações salvas. Restaurar um backup ou limpar o diário após confirmação invalida as edições anteriores. Nenhuma mudança no esquema versão 3.
+Backups incluem apenas configurações salvas. Restaurar um backup ou limpar o diário após confirmação invalida as edições anteriores. O [formato versão 4](docs/formato-diario-v4.md) preserva as configurações salvas e a programação por data; rascunhos em memória não entram no arquivo.
 
 ## Dados e backup
 
-Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O esquema de backup continua na versão 3.
+Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O backup é versão 4, com importação das versões anteriores. Novas gravações usam `X-Hibrido-Data-Version: 4`; abas antigas devem ser recarregadas.
 
 A [configuração de Google, Neon e Vercel](docs/autenticacao-e-neon.md) descreve credenciais, migrações, fallback, sessão única e ativação da hospedagem. As credenciais reais devem ser cadastradas nos serviços, nunca no repositório.
 
-Backup JSON contém configurações e sessões por data local `AAAA-MM-DD`, com tipo de treino, conclusão, séries e registro de corrida. A importação abre um painel com seleção de JSON, validação e resumo de sessões, séries e corridas; somente o botão Restaurar backup confirma a substituição. Erros aparecem no painel. Cabeçalho e ações permanecem acessíveis enquanto o conteúdo rola. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação em um painel do app. Não há alert, confirm ou prompt nativos; Escape, cancelar ou fechar preserva o diário. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
+Backup JSON contém configurações e dias por data local `AAAA-MM-DD`; cada dia guarda uma lista ordenada de treinos com identidade, tipo, conclusão, séries e corrida. Uma lista vazia registra descanso explícito. A importação abre um painel com seleção de JSON, validação e resumo de sessões, séries e corridas; somente o botão Restaurar backup confirma a substituição. Erros aparecem no painel. Cabeçalho e ações permanecem acessíveis enquanto o conteúdo rola. Arquivos inválidos preservam os dados atuais. O navegador pode apagar o armazenamento; mantenha cópias exportadas. Limpar os dados exige confirmação em um painel do app. Não há alert, confirm ou prompt nativos; Escape, cancelar ou fechar preserva o diário. Se o armazenamento falhar, o app informa a limitação e permite exportar os dados da aba.
 
 A [validação de progressão e painéis](docs/validacao-progressao.md) registra os testes dessa funcionalidade. A [validação de Treinos e navegação](docs/validacao-treinos.md) cobre a versão 1.6.0. A [validação de Configurações e UX](docs/validacao-ux.md) detalha as versões 1.7.0 e 1.7.1 e as limitações dos testes de dispositivo.
 
 ## Treinos e navegação
 
-O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O esquema local permanece na versão 3.
+O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O diário utiliza o formato 4; consultar o plano continua sem criar registros.
 
-Em telas de até 600 px, arraste o menu inferior para revelar os destinos nos dois sentidos. O gesto de um dedo que começa sobre o menu fica reservado às opções, mesmo com desvio vertical inicial; a página continua rolando normalmente fora dessa faixa. O zoom com dois dedos permanece permitido pelo navegador. Ele mostra três opções completas e partes das vizinhas, usando os mesmos cinco links, sem cópias. Ao soltar um arraste rápido, o menu continua por uma distância curta e desacelera até encaixar em cerca de 320–460 ms. Segurar antes de soltar evita o impulso; um novo toque interrompe o movimento imediatamente. A continuação é limitada a 1,5 espaçamento entre itens. Arrastar não troca de tela; toque para navegar. O destino aberto fica destacado mesmo quando outra opção está no centro. Acima de 600 px, o menu mantém a navegação convencional.
+O menu tem quatro destinos: **Hoje, Treinos, Histórico e Configurações**. Semana foi incorporada a Hoje; `#semana` continua como atalho. A categoria Semana de Configurações foi preservada. `#hoje/AAAA-MM-DD/ID` identifica a data e o treino; recarga e histórico do navegador mantêm esse contexto. Tocar Hoje no menu volta à data atual.
 
-Tab percorre os cinco destinos uma vez. Setas esquerda/direita movem o foco circularmente; Enter abre a tela. O item focado fica visível. Com movimento reduzido, o encaixe é imediato; sem suporte a Pointer Events, o app oferece o menu convencional com rolagem horizontal. Lista e detalhe preservam suas posições de rolagem em memória, incluindo navegação pelo histórico do navegador.
+Até 600 px, o menu circular mostra três destinos completos, sem clones. Arraste ou use os botões anterior/próximo para revelar o quarto; revelar não navega. Setas, Home/End e Tab continuam disponíveis, com foco visível e movimento reduzido. O gesto iniciado nos botões não aciona o arraste. Acima desse breakpoint, a navegação permanece convencional.
+
+Rascunhos de corrida vivem em memória por data/treino. Navegar entre telas, datas e treinos os preserva; recarregar ou fechar perde o que não foi salvo. O app avisa enquanto houver rascunho. O sucesso automático permanece acessível sem cápsula visual; pendências/falhas usam um único aviso aderente. Configurações confirma salvamento manual na nuvem por quatro segundos.
+
+O Histórico agrupa os treinos por data, filtra período/tipo/exercício e apresenta 20 por vez. Comparações de intervalado separam a sessão completa dos blocos fortes; uma seleção de exercício alinha suas três séries. Totais refletem o recorte e não incluem treinos apenas programados.
 
 ## Publicar e atualizar
 
@@ -108,7 +112,7 @@ Execute `npm ci`, `npm test`, `npm run test:ui`, `npm run test:auth` e `npm run 
 
 - `app.js`: interface, formulários, navegação e persistência.
 - `lib/motion.js`: transições canceláveis, acordeões e ciclo de vida dos painéis.
-- `lib/mobile-nav.js`: menu circular com cinco links, gestos, teclado e encaixe cancelável.
+- `lib/mobile-nav.js`: menu circular com quatro links, gestos, teclado e encaixe cancelável.
 - `lib/plans.js`, `lib/plans-view.js`, `lib/routes.js`: catálogo estático, consulta dos sete dias e rotas de lista/detalhe.
 - `lib/settings.js`: catálogo das categorias, formulários, validação independente e edições temporárias em memória.
 - `lib/run-view.js`: etapas da corrida, com os oito ciclos do intervalado agrupados para consulta.

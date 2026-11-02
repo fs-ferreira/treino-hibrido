@@ -1,4 +1,6 @@
 :root {
+  --control-border: #737e8b;
+  --sync-height: 0px;
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
@@ -6,7 +8,7 @@
   --nav-reserve: 0px;
 }
 html {
-  scroll-padding-top: 84px;
+  scroll-padding-top: calc(84px + var(--sync-height));
   scroll-padding-bottom: 180px;
 }
 :where(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
@@ -1603,4 +1605,461 @@ body[data-account-view="login"] #toast {
 
 .session-bottom {
   justify-content: flex-end;
+}
+
+/* Daily workouts and contextual data — version 4. */
+input:not([type="checkbox"]):not([type="range"]),
+select,
+textarea,
+.exercise-card .sets-grid input:not([type="checkbox"]),
+.weight-step {
+  border-color: var(--control-border);
+}
+:where(input, select, textarea):focus-visible {
+  border-color: var(--lime);
+}
+.nav-step,
+.nav-short-name {
+  display: none;
+}
+.nav-full-name {
+  display: inline !important;
+}
+.sidebar nav a .nav-full-name,
+.sidebar nav a .nav-short-name {
+  width: auto;
+  font-size: inherit;
+}
+.sync-banner:not(.sr-only) {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: block;
+  width: 100%;
+  max-width: none;
+  padding: 10px 20px;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--control-border);
+  border-radius: 0;
+  background: #23231d;
+  color: #f4d39d;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
+  box-sizing: border-box;
+}
+.sync-banner:not(.sr-only)::before {
+  display: none;
+}
+.sync-banner[data-state="memory"] {
+  background: #302021;
+  color: #ffd0cc;
+}
+#week-navigation,
+#session {
+  scroll-margin-top: calc(84px + var(--sync-height));
+}
+.week-controls {
+  flex-wrap: wrap;
+}
+.week-controls h2 {
+  font-size: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.day small {
+  font-size: 10px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.week-strip {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.week-strip .day {
+  min-width: 0;
+  padding-inline: 3px;
+}
+.week-strip .day small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.day-workouts {
+  margin-block: 28px;
+}
+.day-workouts .section-title {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.day-workout-list {
+  display: grid;
+  gap: 10px;
+}
+.day-workout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  min-width: 0;
+}
+.day-workout.is-selected {
+  border-color: var(--lime);
+}
+.workout-select {
+  background: none;
+  border: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  min-height: 52px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.workout-select > b {
+  font-size: 15px;
+}
+.workout-select > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.workout-select .icon {
+  width: 15px;
+  height: 15px;
+}
+.day-workout .text-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.day-workout button:focus-visible,
+.nav-step:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+.muscle-disclosure {
+  min-width: 0;
+}
+.muscle-disclosure > summary {
+  cursor: pointer;
+  padding: 12px 0;
+  min-height: 44px;
+  font-size: 13px;
+  display: list-item;
+  color: var(--muted);
+}
+.muscle-disclosure .muscle-map {
+  margin: 0;
+}
+.series-history {
+  padding: 0;
+  margin: 8px 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.series-history li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.series-history li > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.series-history li > b {
+  font-size: 13px;
+  font-weight: 500;
+}
+.history-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+.history-filters label {
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+}
+.history-filters input,
+.history-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+}
+.history-filters > p {
+  grid-column: 1/-1;
+}
+.history-date {
+  font-size: 18px;
+  text-transform: capitalize;
+  margin-top: 30px;
+}
+.history-more {
+  margin-top: 24px;
+}
+.history-comparison {
+  margin-top: 16px;
+}
+.history-comparison > summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.comparison-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.comparison-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.comparison-scroll caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 16px 0;
+}
+.comparison-scroll th,
+.comparison-scroll td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  vertical-align: top;
+}
+.comparison-scroll td {
+  color: var(--muted);
+}
+.history-sets section {
+  border-top: 1px solid var(--line);
+  padding-block: 12px;
+}
+.history-sets h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.backup-settings > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+.backup-settings dt,
+.backup-settings dd {
+  margin: 0;
+  font-size: 13px;
+}
+.backup-settings dd {
+  color: var(--muted);
+}
+#import-summary {
+  margin-bottom: 20px;
+}
+#guide-content .import-warning {
+  border: 1px solid #b7915c;
+  border-radius: 8px;
+  padding: 14px;
+  margin: 18px 0;
+}
+#add-workout-form,
+#move-workout-form {
+  margin-top: 20px;
+}
+#add-workout-form label,
+#move-workout-form label {
+  display: grid;
+  gap: 8px;
+}
+#add-workout-form .dialog-actions,
+#move-workout-form .dialog-actions {
+  margin-top: 24px;
+}
+.account-gate #account-recovery {
+  margin-top: 18px;
+}
+.account-gate[data-recovery="true"] .login-intro {
+  margin-bottom: 8px;
+}
+@media (max-width: 1023px) {
+  .exercise-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .exercise-layout > .exercise-entry {
+    order: 0;
+    width: 100%;
+  }
+  .exercise-layout > .muscle-disclosure {
+    order: 1;
+    width: 100%;
+    border-top: 1px solid var(--line);
+    margin-top: 12px;
+  }
+  .plan-exercises .muscle-disclosure {
+    grid-column: 2/-1;
+  }
+}
+@media (min-width: 1024px) {
+  .muscle-disclosure > summary {
+    display: none;
+  }
+  .exercise-layout > .muscle-disclosure {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .exercise-layout > .exercise-entry {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .plan-exercises .muscle-disclosure {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .plan-exercises .muscle-map {
+    grid-column: auto;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar nav.is-circular {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    padding-inline: 4px;
+    gap: 0;
+  }
+  .nav-step {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .nav-step .icon {
+    width: 18px;
+    height: 18px;
+  }
+  .sidebar .nav-full-name {
+    display: none !important;
+  }
+  .sidebar .nav-short-name {
+    display: inline;
+  }
+  .sidebar nav.is-circular .nav-track {
+    width: 100%;
+    min-width: 0;
+  }
+  .sidebar nav.is-circular a {
+    font-size: 10px;
+  }
+  .sidebar nav a .nav-full-name,
+  .sidebar nav a .nav-short-name {
+    font-size: 10px;
+  }
+  .workout-select {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .workout-select > b {
+    width: 100%;
+  }
+  .workout-select > span {
+    font-size: 11px;
+  }
+  .day-workouts .button {
+    padding: 10px 12px;
+  }
+  .week-controls {
+    gap: 8px;
+  }
+  .week-controls h2 {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+  }
+  .week-controls .button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+  .exercise-comparison thead {
+    position: absolute;
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .exercise-comparison tbody,
+  .exercise-comparison tr,
+  .exercise-comparison td,
+  .exercise-comparison th {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .exercise-comparison tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--control-border);
+  }
+  .exercise-comparison td {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .exercise-comparison td::before {
+    content: attr(data-label);
+    color: var(--text);
+  }
+  .history-comparison th,
+  .history-comparison td {
+    padding: 10px 4px;
+    font-size: 12px;
+  }
+}
+.settings-tabs {
+  top: var(--sync-height);
+}
+.dialog-actions.import-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.import-actions .import-action-warning {
+  grid-column: 1/-1;
+  order: 0;
+  color: #f4d39d;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+.import-actions .quiet {
+  order: 1;
+}
+.import-actions .primary {
+  order: 2;
+}
+@media (max-width: 600px) {
+  .dialog-actions.import-actions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .import-actions .primary {
+    order: 1;
+  }
+  .import-actions .quiet {
+    order: 2;
+  }
 }

@@ -113,6 +113,7 @@ test("PostgreSQL: isolation, session activation, receipts, generation and atomic
   // A full 10 MB transfer is chunked; a failed final validation rolls back.
   const largeDiary = {
     ...defaults(),
+    version: 3,
     sessions: { "2026-10-29": data(), "2026-10-30": data() },
   };
   const base = JSON.stringify({ ...largeDiary, padding: "" });

@@ -81,6 +81,15 @@ export function createApi({ auth, service, config }) {
       const actor = session
         ? { userId: session.user.id, sessionId: session.session.id }
         : null;
+      if (
+        method !== "GET" &&
+        request.headers.get("X-Hibrido-Data-Version") !== "4"
+      )
+        throw new ApiError(
+          426,
+          "CLIENT_UPGRADE_REQUIRED",
+          "O app foi atualizado. Recarregue para continuar; suas pendências foram preservadas.",
+        );
       if (method === "GET" && path === "/me")
         return reply(await service.me(actor));
       if (method === "GET" && path === "/diary")
@@ -88,7 +97,9 @@ export function createApi({ auth, service, config }) {
       const body = method === "GET" ? null : await request.json();
       if (
         method === "PUT" &&
-        (path === "/settings" || /^\/sessions\/\d{4}-\d{2}-\d{2}$/.test(path))
+        (path === "/settings" ||
+          path === "/days" ||
+          /^\/sessions\/\d{4}-\d{2}-\d{2}$/.test(path))
       )
         return reply(await service.save(actor, path, body));
       if (method === "DELETE" && path === "/diary")

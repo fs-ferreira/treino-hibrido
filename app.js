@@ -2,6 +2,16 @@ import { account } from "./lib/account.js";
 import { notify } from "./lib/notifications.js";
 import {
   defaults,
+  scheduledWorkouts,
+  materializeDay,
+  workoutStarted,
+  workoutState,
+  dayState,
+  recordedWorkouts,
+  weekSummary,
+  addWorkout,
+  moveWorkout,
+  validDate,
   parsePace,
   paceText,
   dateKey,
@@ -15,7 +25,7 @@ import {
   maskTime,
   parseDuration,
   durationText,
-} from "./lib/core.js?v=1.6.0";
+} from "./lib/core.js?v=4.0.0";
 import {
   withoutWeight,
   loadSuggestions,
@@ -23,18 +33,18 @@ import {
   getRunPlan,
   paceRevision,
   effortTarget,
-} from "./lib/progression.js?v=1.7.6";
+} from "./lib/progression.js?v=4.0.0";
 import { workouts, exercises } from "./lib/exercises.js";
 import { muscleMap, createMuscleMapController } from "./lib/muscle-map.js";
 import { runBlocksView } from "./lib/run-view.js?v=1.7.0";
-import { plansView } from "./lib/plans-view.js?v=2.2.0";
-import { resolveRoute, isAppHash } from "./lib/routes.js?v=1.7.1";
+import { plansView } from "./lib/plans-view.js?v=4.0.0";
+import { resolveRoute, isAppHash } from "./lib/routes.js?v=4.0.0";
 import {
   settingsView,
   createSettingsController,
   settingsSections,
-} from "./lib/settings.js?v=2.2.0";
-import { createMobileNav } from "./lib/mobile-nav.js?v=1.7.3";
+} from "./lib/settings.js?v=4.0.0";
+import { createMobileNav } from "./lib/mobile-nav.js?v=4.0.0";
 import { illustration } from "./lib/diagrams.js?v=2.2.0";
 import { createMovementPlayer } from "./lib/movement-player.js?v=2.2.0";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";
@@ -45,6 +55,12 @@ import {
   createAccordions,
   createDialogController,
 } from "./lib/motion.js?v=1.6.0";
+import {
+  historyView as renderHistory,
+  historyDefaults,
+  seriesView,
+} from "./lib/history-view.js";
+import { backupSummary } from "./lib/backup-view.js";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -74,10 +90,13 @@ const fullDate = (k) =>
     weekday: "long",
     day: "numeric",
     month: "long",
+    year: "numeric",
   });
 let data = account.data ?? defaults(),
-  storageProblem = "",
   selected = dateKey(),
+  selectedWorkout = null,
+  runDrafts = new Map(),
+  historyFilters = historyDefaults(),
   week = weekStart(selected),
   expanded = new Set(),
   expandedPlanDays = new Set([1]),
@@ -140,7 +159,6 @@ async function persist(message, { cloudOnly = false } = {}) {
   if (account.blocked) return false;
   try {
     const result = await account.remote.save(data);
-    storageProblem = result.saved === "memory" ? account.status.message : "";
     if (message && (result.saved === "cloud" || !cloudOnly))
       notify(result.saved === "cloud" ? message : account.status.message);
     return ["cloud", "local"].includes(result.saved);
@@ -152,22 +170,83 @@ async function persist(message, { cloudOnly = false } = {}) {
     return false;
   }
 }
-function getType(key) {
-  return data.sessions[key]?.type || workoutFor(key, data.settings);
+function currentSession(
+  key = selected,
+  id = key === selected ? selectedWorkout : null,
+) {
+  const items = scheduledWorkouts(data, key);
+  return (
+    items.find((s) => s.id === id) ??
+    items.find((s) => !s.done) ??
+    items[0] ??
+    null
+  );
 }
-function session(key = selected) {
-  return (data.sessions[key] ??= {
-    type: workoutFor(key, data.settings),
-    done: false,
-    sets: {},
-    run: null,
+function getType(key) {
+  return currentSession(key)?.type ?? "rest";
+}
+function session(key = selected, id = selectedWorkout) {
+  const day = materializeDay(data, key);
+  const item = day.workouts.find((s) => s.id === id) ?? day.workouts[0];
+  if (!item) throw Error("Adicione um treino antes de registrar.");
+  if (key === selected) selectedWorkout = item.id;
+  return item;
+}
+function draftKey(date = selected, id = currentSession(date)?.id) {
+  return `${date}/${id}`;
+}
+function runValues(run) {
+  return {
+    minutes: String(run?.minutes ?? ""),
+    km: String(run?.km ?? ""),
+    rpe: String(run?.rpe ?? ""),
+    notes: run?.notes ?? "",
+    hardPace: run?.hardPace ? paceText(run.hardPace) : "",
+    hardRpe: String(run?.hardRpe ?? ""),
+  };
+}
+function captureRunDraft() {
+  const form = $("#run-form");
+  if (!form) return;
+  const values = {
+    ...runValues(null),
+    ...Object.fromEntries(new FormData(form)),
+  };
+  const key = draftKey();
+  if (
+    JSON.stringify(values) === JSON.stringify(runValues(currentSession()?.run))
+  )
+    runDrafts.delete(key);
+  else runDrafts.set(key, values);
+  const notice = $("[data-run-draft-warning]");
+  if (notice) notice.hidden = !runDrafts.has(key);
+}
+function selectDay(
+  date,
+  id,
+  { session: open = false, keepScroll = true, replace = false } = {},
+) {
+  if (!validDate(date)) return;
+  const old = draftKey();
+  selected = date;
+  selectedWorkout =
+    id ??
+    scheduledWorkouts(data, date).find((s) => !s.done)?.id ??
+    scheduledWorkouts(data, date)[0]?.id ??
+    null;
+  if (old !== draftKey()) expanded.clear();
+  navigateTo(`hoje/${date}${selectedWorkout ? `/${selectedWorkout}` : ""}`, {
+    refresh: true,
+    session: open,
+    keepScroll,
+    replace,
   });
 }
 const strengthSetCount = (type) => workouts[type].ids.length * 3;
 const emptySets = () =>
   Array.from({ length: 3 }, () => ({ kg: "", reps: "", done: false }));
 function exerciseSession(id) {
-  const mode = withoutWeight(data.sessions, selected, id),
+  const mode = withoutWeight(data.sessions, selected, id, selectedWorkout),
     s = session();
   s.withoutWeight ??= {};
   s.withoutWeight[id] ??= mode;
@@ -179,15 +258,10 @@ const weightText = (value) =>
     ? "—"
     : value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 function setHistoryText(sets, noWeight) {
-  return sets
-    .map(
-      (set) =>
-        `${noWeight ? "Sem peso adicional" : `${weightText(set.kg)} kg`} × ${set.reps === "" ? "—" : set.reps}${set.done ? " ✓" : ""}`,
-    )
-    .join(" / ");
+  return seriesView(sets, noWeight);
 }
-function count(key) {
-  return Object.values(data.sessions[key]?.sets || {})
+function count(key = selected, id = key === selected ? selectedWorkout : null) {
+  return Object.values(currentSession(key, id)?.sets ?? {})
     .flat()
     .filter((s) => s.done).length;
 }
@@ -221,6 +295,13 @@ function applyNavigation(route, options = {}) {
   });
   const previous = resolveRoute(currentRoute),
     next = resolveRoute(route);
+  const scrollBefore = window.scrollY;
+  if (next.section === "hoje") {
+    if (next.date) selected = next.date;
+    if (next.workoutId) selectedWorkout = next.workoutId;
+    const active = currentSession();
+    selectedWorkout = active?.id ?? null;
+  }
   currentRoute = route;
   if (
     previous.section === "configuracoes" &&
@@ -239,50 +320,75 @@ function applyNavigation(route, options = {}) {
   render();
   main.focus({ preventScroll: true });
   window.scrollTo({
-    ...(routePositions.get(route) ?? { left: 0, top: 0 }),
+    ...(options.keepScroll
+      ? { left: 0, top: scrollBefore }
+      : (routePositions.get(route) ?? { left: 0, top: 0 })),
     behavior: "instant",
   });
   motion.enter(main);
   if (options.session) scrollToSession();
 }
 function navigateTo(hash, options = {}) {
-  if (location.hash !== `#${hash}`) history.pushState(null, "", `#${hash}`);
+  if (location.hash !== `#${hash}`)
+    history[options.replace ? "replaceState" : "pushState"](
+      null,
+      "",
+      `#${hash}`,
+    );
   applyNavigation(routeFromHash(), options);
 }
 function syncTodayStatus() {
-  if (currentRoute !== "hoje") return;
-  const start = weekStart(selected);
-  const done = Array.from(
-    { length: 7 },
-    (_, i) => data.sessions[addDays(start, i)],
-  ).filter((s) => s?.done && s.type !== "rest").length;
-  const ring = $(".progress-ring");
+  if (resolveRoute(currentRoute).section !== "hoje") return;
+  const summary = weekSummary(data, selected),
+    ring = $(".progress-ring");
   if (ring) {
-    ring.style.setProperty("--progress", `${Math.min(done / 6, 1) * 100}%`);
-    ring.querySelector("b").innerHTML = `${done}<small>/6</small>`;
+    ring.style.setProperty(
+      "--progress",
+      `${summary.planned ? (summary.done / summary.planned) * 100 : 0}%`,
+    );
+    ring.querySelector("b").innerHTML =
+      `${summary.done}<small>/${summary.planned}</small>`;
   }
+  const split = $(".split-stat");
+  if (split)
+    split.innerHTML = `<span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span>`;
   document.querySelectorAll(".week-strip .day").forEach((button) => {
     const key = button.dataset.date,
-      finished = Boolean(data.sessions[key]?.done);
+      state = dayState(data, key),
+      items = scheduledWorkouts(data, key);
     button.classList.toggle("selected", key === selected);
     button.setAttribute("aria-pressed", String(key === selected));
     button.setAttribute(
       "aria-label",
-      `${fullDate(key)}, ${workouts[getType(key)].name}${finished ? ", concluído" : ""}`,
+      `${fullDate(key)}, ${items.map((s) => workouts[s.type].name).join(", ") || "Descanso"}, ${state.label}`,
     );
     const indicator = button.querySelector(".day-indicator");
-    indicator.classList.toggle("done", finished);
-    indicator.innerHTML = finished ? icon("check") : "";
+    indicator.classList.toggle("done", state.key === "done");
+    indicator.innerHTML = state.key === "done" ? icon("check") : "";
   });
-  const link = $(".hero .button");
   if ($(".hero .session-state"))
-    $(".hero .session-state").textContent = sessionStatus(selected).label;
-  if (link)
-    link.innerHTML = `${sessionStatus(selected).action} ${icon("arrow-down")}`;
+    $(".hero .session-state").textContent = sessionStatus().label;
+  const link = $('.hero a[href="#session"]');
+  if (link) link.innerHTML = `${sessionStatus().action} ${icon("arrow-down")}`;
+  document.querySelectorAll("[data-workout-status]").forEach((el) => {
+    const item = scheduledWorkouts(data, selected).find(
+      (s) => s.id === el.dataset.workoutStatus,
+    );
+    el.textContent = runDrafts.has(draftKey(selected, item?.id))
+      ? "Rascunho"
+      : workoutState(item).label;
+  });
+  document.querySelectorAll('[data-action="move-workout"]').forEach((el) => {
+    const item = scheduledWorkouts(data, selected).find(
+      (s) => s.id === el.dataset.workout,
+    );
+    el.disabled =
+      workoutStarted(item) || runDrafts.has(draftKey(selected, item?.id));
+  });
 }
 function syncStrength(id) {
   if (!$(".progress-line")) return;
-  const s = data.sessions[selected],
+  const s = currentSession(),
     total = count(selected),
     planned = strengthSetCount(getType(selected));
   $(".count-pill").textContent = `${total}/${planned} séries`;
@@ -307,7 +413,12 @@ function syncStrength(id) {
           Boolean(sets[Number(input.dataset.index)].done),
         );
     });
-    const noWeight = withoutWeight(data.sessions, selected, id);
+    const noWeight = withoutWeight(
+      data.sessions,
+      selected,
+      id,
+      selectedWorkout,
+    );
     card.querySelectorAll('[data-field="kg"]').forEach((input) => {
       input.disabled = noWeight;
     });
@@ -336,29 +447,7 @@ function syncStrength(id) {
   syncTodayStatus();
 }
 function refreshDay() {
-  accordions.finish();
-  motion.finishAll();
-  const before = $(".week-strip").getBoundingClientRect().top;
-  $(".page-heading h1").innerHTML =
-    selected === dateKey()
-      ? 'Vamos nessa<span class="accent">.</span>'
-      : 'Seu treino, no seu tempo<span class="accent">.</span>';
-  $(".page-heading .muted").textContent = fullDate(selected);
-  $(".hero").outerHTML = heroView();
-  $("[data-action=reset-day]").hidden = selected === dateKey();
-  $("#session").innerHTML = sessionView(getType(selected));
-  if ($(".week-strip .day").dataset.date !== weekStart(selected))
-    $(".week-strip").outerHTML = weekStrip();
-  hydrateIcons($(".hero"));
-  hydrateIcons($("#session"));
-  syncTodayStatus();
-  if (window.scrollY > 0)
-    window.scrollBy({
-      top: $(".week-strip").getBoundingClientRect().top - before,
-      behavior: "instant",
-    });
-  motion.enter($(".hero"), "day");
-  motion.enter($("#session"), "day");
+  selectDay(selected, selectedWorkout);
 }
 function syncLongRun() {
   const { blocks, total, snapshot } = getRunPlan(
@@ -366,6 +455,7 @@ function syncLongRun() {
     data.settings,
     data.sessions,
     selected,
+    selectedWorkout,
   );
   $(".long-options label strong").textContent =
     `${data.settings.longMinutes} min`;
@@ -396,28 +486,35 @@ function updateTitle(route) {
         }[route.section] ?? "Hoje");
   document.title = `${title} · HÍBRIDO`;
 }
-function render() {
+function render({ preserve = false } = {}) {
+  const ui = preserve ? captureView() : null;
   if (account.blocked) return;
   muscleMaps.reset();
   settingsUi.unmount();
   accordions.finish();
   motion.finishAll();
   const route = resolveRoute(currentRoute);
+  if (route.section === "hoje") {
+    if (route.date) selected = route.date;
+    if (route.workoutId) selectedWorkout = route.workoutId;
+    selectedWorkout = currentSession()?.id ?? null;
+  }
   mobileNav.setActive(route.section);
-  $("#top-date").textContent = new Date().toLocaleDateString("pt-BR", {
+  $("#top-date").textContent = (
+    route.section === "hoje" ? dateFromKey(selected) : new Date()
+  ).toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
   main.innerHTML =
-    (storageProblem
-      ? `<div class="notice" id="storage-alert" role="alert">${storageProblem}</div>`
+    (runDrafts.size && !(route.section === "hoje" && runDrafts.has(draftKey()))
+      ? `<p class="caption run-draft-notice">Há rascunhos de corrida nesta visita. Eles se perdem ao recarregar. <a href="#hoje/${escape(runDrafts.keys().next().value)}">Ver rascunho</a></p>`
       : "") +
     (
       {
         hoje: todayView,
-        semana: weekView,
         treinos: () => plansView(data.settings, route, expandedPlanDays),
         historico: historyView,
         configuracoes: () => settingsView(data.settings, route.settingsSection),
@@ -425,51 +522,37 @@ function render() {
     )();
   updateTitle(route);
   hydrateIcons();
+  muscleMaps.refresh();
+  if (ui) restoreView(ui);
   if (route.section === "configuracoes")
     settingsUi.mount($("#settings-page"), route.settingsSection);
 }
 function weekStrip(start = weekStart(selected)) {
-  return `<div class="week-strip" aria-label="Dias da semana">${Array.from(
+  return `<div class="week-strip" role="group" aria-label="Dias da semana">${Array.from(
     { length: 7 },
     (_, i) => {
       const key = addDays(start, i),
-        d = dateFromKey(key),
-        type = getType(key),
-        done = data.sessions[key]?.done;
-      return `<button class="day ${key === selected ? "selected" : ""} ${workouts[type].kind}" data-action="day" data-date="${key}" aria-label="${fullDate(key)}, ${workouts[type].name}${done ? ", concluído" : ""}" aria-pressed="${key === selected}"><span>${["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][d.getDay()]}</span><b>${String(d.getDate()).padStart(2, "0")}</b><i class="day-indicator ${done ? "done" : ""}">${done ? "✓" : ""}</i></button>`;
+        items = scheduledWorkouts(data, key),
+        state = dayState(data, key);
+      return `<button class="day ${key === selected ? "selected" : ""} ${items[0] ? workouts[items[0].type].kind : "rest"}" data-action="day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""} aria-label="${escape(fullDate(key))}, ${escape(items.map((s) => workouts[s.type].name).join(", ") || "Descanso")}, ${state.label}"><span>${["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][dateFromKey(key).getDay()]}</span><b>${dateFromKey(key).getDate()}</b><small>${items.length ? `${items.length} ${items.length === 1 ? "treino" : "treinos"}` : "Pausa"}</small><i class="day-indicator ${state.key === "done" ? "done" : ""}">${state.key === "done" ? icon("check") : ""}</i></button>`;
     },
   ).join("")}</div>`;
 }
-function sessionStatus(key) {
-  const s = data.sessions[key],
-    kind = workouts[getType(key)].kind;
-  const started = Boolean(
-    s?.run ||
-      Object.values(s?.sets ?? {}).some((sets) =>
-        sets.some((set) => set.done || set.kg !== "" || set.reps !== ""),
-      ),
-  );
-  return s?.done
-    ? { label: "Concluído", action: "Rever treino" }
-    : kind === "rest"
-      ? { label: "Descanso", action: "Ver recuperação" }
-      : started
-        ? { label: "Em andamento", action: "Continuar treino" }
-        : { label: "Planejado", action: "Abrir treino" };
+function sessionStatus() {
+  return workoutState(currentSession());
+}
+function dayWorkoutsView() {
+  const items = scheduledWorkouts(data, selected);
+  return `<section class="day-workouts" aria-label="Treinos do dia"><div class="section-title"><h2>Treinos do dia</h2><button class="button quiet" data-action="add-workout">Adicionar treino ${icon("plus")}</button></div><div class="day-workout-list">${items.map((item) => `<article class="panel day-workout ${item.id === selectedWorkout ? "is-selected" : ""}"><button class="workout-select" data-action="select-workout" data-workout="${item.id}" aria-pressed="${item.id === selectedWorkout}"><b>${workouts[item.type].name}</b><span data-workout-status="${item.id}">${runDrafts.has(draftKey(selected, item.id)) ? "Rascunho" : workoutState(item).label}</span><span>${item.id === selectedWorkout ? "Em exibição" : "Abrir"} ${icon("arrow-down")}</span></button><button class="text-button" data-action="move-workout" data-workout="${item.id}" ${workoutStarted(item) || runDrafts.has(draftKey(selected, item.id)) ? "disabled" : ""} aria-label="Mover ${workouts[item.type].name} para outra data">Mover</button></article>`).join("")}</div>${items.some((item) => workoutStarted(item) || runDrafts.has(draftKey(selected, item.id))) ? '<p class="caption">Treinos iniciados permanecem nesta data. Você pode adicionar outro treino.</p>' : ""}</section>`;
 }
 function heroView() {
   const type = getType(selected),
     w = workouts[type];
-  return `<section class="hero ${w.kind}"><div class="hero-copy">${w.kind === "run" ? "" : tag(w.tag, w.kind)}<span class="session-state">${sessionStatus(selected).label}</span><p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? `<div><b>${String(w.ids.length).padStart(2, "0")}</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>` : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (data.sessions[selected]?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${sessionStatus(selected).action} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-cross">+</span></div></section>`;
+  return `<section class="hero ${w.kind}"><div class="hero-copy">${w.kind === "run" ? "" : tag(w.tag, w.kind)}<span class="session-state">${sessionStatus(selected).label}</span><p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? `<div><b>${String(w.ids.length).padStart(2, "0")}</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>` : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (currentSession()?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${sessionStatus(selected).action} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-cross">+</span></div></section>`;
 }
 function todayView() {
-  const type = getType(selected),
-    w = workouts[type],
-    start = weekStart(selected),
-    done = Array.from(
-      { length: 7 },
-      (_, i) => data.sessions[addDays(start, i)],
-    ).filter((s) => s?.done && s.type !== "rest").length;
+  const summary = weekSummary(data, selected),
+    start = weekStart(selected);
   return (
     heading(
       "",
@@ -479,7 +562,8 @@ function todayView() {
       fullDate(selected),
       `<button class="button quiet" data-action="reset-day" ${selected === dateKey() ? "hidden" : ""}>Ir para hoje</button>`,
     ) +
-    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><h2>Resumo da semana</h2><div class="progress-ring" style="--progress:${Math.min(done / 6, 1) * 100}%"><div><b>${done}<small>/6</small></b><span>treinos concluídos</span></div></div><div class="split-stat"><span><i class="dot lime"></i> Musculação <b>3</b></span><span><i class="dot cyan"></i> Corrida <b>3</b></span></div></section></div><div class="section-title"><h2>Sua semana</h2><a class="text-link" href="#semana">Ver calendário ${arrow}</a></div>${weekStrip(start)}<section id="session" class="session-section">${sessionView(type)}</section>`
+    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><h2>Resumo da semana</h2><div class="progress-ring" style="--progress:${summary.planned ? (summary.done / summary.planned) * 100 : 0}%"><div><b>${summary.done}<small>/${summary.planned}</small></b><span>treinos concluídos</span></div></div><p class="caption">Concluídos / programados</p><div class="split-stat"><span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span></div></section></div>
+  <section id="week-navigation" aria-label="Navegação semanal"><div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(start)} — ${shortDate(addDays(start, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week" ${weekStart(selected) === weekStart(dateKey()) ? "hidden" : ""}>Semana atual</button></div>${weekStrip(start)}</section>${dayWorkoutsView()}<section id="session" class="session-section" data-workout-id="${escape(selectedWorkout ?? "")}">${sessionView(getType(selected))}</section>`
   );
 }
 function sessionView(type) {
@@ -490,7 +574,7 @@ function sessionView(type) {
 }
 function strengthView(type) {
   const w = workouts[type],
-    s = data.sessions[selected],
+    s = currentSession(),
     total = count(selected),
     planned = strengthSetCount(getType(selected));
   return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/${planned} séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / planned})"></span></div><p class="section-hint">3 séries de 6–8 repetições.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
@@ -504,7 +588,7 @@ function loadSuggestionReason(suggestion) {
 }
 function exerciseHistory(id, previous, suggestions) {
   return `<details class="exercise-history"><summary><span>Histórico e sugestões</span>${icon("chevron-down")}</summary>
-    <div class="exercise-history-content">${previous ? `<p class="previous"><b>Última sessão · ${shortDate(previous.date)}</b><br>${setHistoryText(previous.sets, Boolean(data.sessions[previous.date].withoutWeight?.[id]))}</p>` : '<p class="previous">Sem registros anteriores.</p>'}
+    <div class="exercise-history-content">${previous ? `<div class="previous"><b>Última sessão · ${shortDate(previous.date)}</b><br>${setHistoryText(previous.sets, previous.withoutWeight)}</div>` : '<p class="previous">Sem registros anteriores.</p>'}
     <ol class="load-reference">${suggestions.map((suggestion, i) => (suggestion ? `<li><b>${String(i + 1).padStart(2, "0")}</b><div id="load-reason-${id}-${i}"><span><strong>${weightText(suggestion.kg)} kg</strong> · ${loadSuggestionReason(suggestion)}</span><small>Referência · ${shortDate(suggestion.date)} · ${weightText(suggestion.previousKg)} kg × ${suggestion.reps}${!suggestion.usable ? " · acima do limite de 2000 kg" : ""}</small></div></li>` : "")).join("")}</ol>
     </div></details>`;
 }
@@ -512,7 +596,7 @@ function exerciseCard(id, index, s) {
   const e = exercises[id],
     sets = s?.sets[id] || emptySets(),
     previous = previousSets(data.sessions, selected, id),
-    noWeight = withoutWeight(data.sessions, selected, id),
+    noWeight = withoutWeight(data.sessions, selected, id, selectedWorkout),
     suggestions = loadSuggestions(
       data.sessions,
       selected,
@@ -581,9 +665,16 @@ function paceAdvice(plan, type) {
     ${paceMethod(plan)}</section>`;
 }
 function runView(type) {
-  const plan = getRunPlan(type, data.settings, data.sessions, selected),
+  const plan = getRunPlan(
+      type,
+      data.settings,
+      data.sessions,
+      selected,
+      selectedWorkout,
+    ),
     { blocks, total, snapshot } = plan,
-    r = data.sessions[selected]?.run,
+    r = currentSession()?.run,
+    v = runDrafts.get(draftKey()) ?? runValues(r),
     missing = !snapshot.easyPace || (type === "interval" && !snapshot.hardPace),
     isLong = type === "long";
   return `<div class="section-title"><div><p class="eyebrow cyan-text">CORRIDA · ${shortDate(selected)}</p><h2>Planejamento da corrida</h2></div></div>
@@ -591,75 +682,73 @@ function runView(type) {
     ${missing && !plan.adjustment.blocked ? '<div class="notice">Configure seus paces para estimar a distância. <a href="#configuracoes/corrida">Configurar paces →</a></div>' : ""}
     ${r && !plan.saved ? '<p class="notice subtle">Este registro antigo não guardava o planejamento original. O plano abaixo é uma simulação com as referências atuais.</p>' : ""}
     ${paceAdvice(plan, type)}
-    ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption">${snapshot.easyPace ? `Faixa de 60–90 min: <span id="long-distance-range">${longRangeText(snapshot.easyPace)}</span>. ` : ""}<span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Escolha conforme sua capacidade atual; a duração não aumenta automaticamente."}</span></p></div>` : ""}
+    ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração padrão do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption">${snapshot.easyPace ? `Faixa de 60–90 min: <span id="long-distance-range">${longRangeText(snapshot.easyPace)}</span>. ` : ""}<span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Ajusta o padrão dos próximos longões. Escolha conforme sua capacidade atual; a duração não aumenta automaticamente."}</span></p></div>` : ""}
     <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${total.known && !total.complete ? `<p class="caption">Distância parcial: inclui apenas as etapas com pace informado.${type === "interval" && !snapshot.walkPace ? " Caminhada sem estimativa." : ""}</p>` : ""}</div>
     <aside><div class="panel effort-card"><span class="mini-icon">${icon("activity")}</span><h3>${type === "interval" ? "Forte. Sem sprint." : "O ritmo da conversa."}</h3><p>${type === "interval" ? "Blocos fortes em 7–8/10 de esforço: um ritmo repetível, com controle nos oito blocos. O ajuste usa apenas os dados desses blocos." : "Mantenha o esforço em 3–4/10, como no plano original. Você deve conseguir conversar com frases completas e sem dificuldade."}</p><a class="text-link" href="#configuracoes/corrida">Ajustar meus ritmos ${arrow}</a></div>
-    <form id="run-form" class="panel run-form"><h3>Como foi a corrida?</h3><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${r?.minutes ?? ""}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${r?.km ?? ""}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${r ? paceText((r.minutes * 60) / r.km) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(r?.rpe)}</select></label>
-    ${type === "interval" ? `<fieldset class="hard-run-fields"><legend>Blocos fortes <span class="optional">opcional</span></legend><p class="caption" id="hard-run-hint">Preencha os dois campos para ajustar o próximo intervalado. Não use a média da sessão inteira.</p><label>Pace médio dos blocos fortes<input name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${r?.hardPace ? paceText(r.hardPace) : ""}" placeholder="mm:ss" aria-describedby="hard-run-hint"></label><label>Esforço dos blocos fortes (0–10)<select name="hardRpe">${effortOptions(r?.hardRpe)}</select></label></fieldset>` : ""}
-    <label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(r?.notes || "")}</textarea></label><p id="run-error" class="form-error" role="alert"></p><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button></form></aside></div>`;
-}
-function calendarView() {
-  const dates = Array.from({ length: 7 }, (_, i) => addDays(week, i));
-  return `<div class="calendar-grid">${dates
-    .map((key) => {
-      const type = getType(key),
-        w = workouts[type],
-        s = data.sessions[key];
-      return `<button class="calendar-card ${w.kind} ${key === dateKey() ? "is-today" : ""}" data-action="open-day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""}><div class="calendar-top"><span>${dateFromKey(key).toLocaleDateString("pt-BR", { weekday: "long" })}</span><b>${dateFromKey(key).getDate()}</b></div>${key === dateKey() || key === selected ? `<span class="day-context">${key === dateKey() ? "Hoje" : "Dia selecionado"}</span>` : ""}${tag(w.kind === "strength" ? "FORÇA" : w.kind === "run" ? "CORRIDA" : "PAUSA", w.kind)}<h3>${w.name}</h3><p>${w.kind === "strength" ? `${w.ids.length} exercícios · 3 × 6–8` : type === "interval" ? "40 min · 8 blocos" : type === "easy" ? "30 min · leve" : type === "long" ? "60–90 min · leve" : "Recupere a energia"}</p><div class="calendar-status">${s?.done ? "✓ Concluído" : s ? "◐ Em andamento" : "○ Planejado"} <span>↗</span></div></button>`;
-    })
-    .join("")}</div>`;
-}
-function weekView() {
-  return (
-    heading(
-      "",
-      'Uma semana equilibrada<span class="accent">.</span>',
-      "Três dias de força. Três de corrida. Um para recuperar.",
-    ) +
-    `<div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(week)} — ${shortDate(addDays(week, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week" ${week === weekStart(dateKey()) ? "hidden" : ""}>Semana atual</button></div>${calendarView()}<div class="notice subtle">Longão no ${data.settings.longDay === 6 ? "sábado" : "domingo"}. <a href="#configuracoes/semana">Trocar o dia</a>. Sessões já registradas mantêm o treino original.</div>`
-  );
+    <form id="run-form" class="panel run-form"><h3>Como foi a corrida?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${escape(v.minutes ?? "")}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${escape(v.km ?? "")}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${Number(v.minutes) > 0 && Number(v.km) > 0 ? paceText((Number(v.minutes) * 60) / Number(v.km)) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label>
+    ${type === "interval" ? `<fieldset class="hard-run-fields"><legend>Blocos fortes <span class="optional">opcional</span></legend><p class="caption" id="hard-run-hint">Preencha os dois campos para ajustar o próximo intervalado. Não use a média da sessão inteira.</p><label>Pace médio dos blocos fortes<input name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${escape(v.hardPace ?? "")}" placeholder="mm:ss" aria-describedby="hard-run-hint"></label><label>Esforço dos blocos fortes (0–10)<select name="hardRpe">${effortOptions(v.hardRpe === "" ? null : Number(v.hardRpe))}</select></label></fieldset>` : ""}
+    <label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(v.notes ?? "")}</textarea></label><p id="run-error" class="form-error" role="alert"></p><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button></form></aside></div>`;
 }
 function historyView() {
-  const entries = Object.entries(data.sessions)
-    .filter(
-      ([, s]) =>
-        s.done ||
-        s.run ||
-        Object.values(s.sets).some((arr) =>
-          arr.some((x) => x.done || x.kg !== "" || x.reps !== ""),
-        ),
-    )
-    .sort(([a], [b]) => b.localeCompare(a));
-  const totalKm = entries.reduce((sum, [, s]) => sum + (s.run?.km || 0), 0),
-    finished = entries.filter(([, s]) => s.done).length;
-  return (
-    heading("", 'Sua evolução<span class="accent">.</span>', "") +
-    `<div class="history-metrics"><div class="panel"><small>SESSÕES CONCLUÍDAS</small><b>${String(finished).padStart(2, "0")}</b></div><div class="panel"><small>QUILÔMETROS REGISTRADOS</small><b class="cyan-text">${num(totalKm, 1)}<em>km</em></b></div><div class="panel"><small>SÉRIES CONCLUÍDAS</small><b>${entries.reduce((sum, [key]) => sum + count(key), 0)}</b></div></div>` +
-    (entries.length
-      ? `<div class="history-list">${entries
-          .map(
-            ([key, s], index) =>
-              `${index === 0 || entries[index - 1][0].slice(0, 7) !== key.slice(0, 7) ? `<h2 class="history-month">${dateFromKey(key).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</h2>` : ""}<article class="panel history-entry"><div class="history-title"><div>${tag(workouts[s.type].kind === "run" ? "CORRIDA" : "FORÇA", workouts[s.type].kind)}<h3>${workouts[s.type].name}</h3><p>${fullDate(key)}</p></div><button class="button quiet" data-action="open-day" data-date="${key}">Abrir ${arrow}</button></div>${
-                s.run
-                  ? `<div class="history-run"><span><b>${num(s.run.km, 2)}</b> km</span><span><b>${num(s.run.minutes, 1)}</b> min</span><span><b>${paceText((s.run.minutes * 60) / s.run.km)}</b> /km</span><span>Esforço <b>${s.run.rpe}/10</b></span></div>${s.run.hardPace ? `<p class="caption">Blocos fortes · ${paceText(s.run.hardPace)}/km · esforço ${s.run.hardRpe}/10</p>` : ""}${s.run.plan ? `<p class="caption">Planejado · ${paceText(s.type === "interval" ? s.run.plan.hardPace : s.run.plan.easyPace)}/km · ${s.type === "interval" ? 40 : s.type === "easy" ? 30 : s.run.plan.longMinutes} min</p>` : ""}${s.run.notes ? `<p class="history-note">${escape(s.run.notes)}</p>` : ""}`
-                  : `<details class="history-strength"><summary>Consultar séries registradas ${icon("chevron-down")}</summary><div class="history-sets">${Object.entries(
-                      s.sets,
-                    )
-                      .filter(([, sets]) =>
-                        sets.some(
-                          (x) => x.done || x.kg !== "" || x.reps !== "",
-                        ),
-                      )
-                      .map(
-                        ([id, sets]) =>
-                          `<div><span>${escape(exercises[id]?.name || id)}</span><b>${setHistoryText(sets, Boolean(s.withoutWeight?.[id]))}</b></div>`,
-                      )
-                      .join("")}</div></details>`
-              }<p class="caption">${s.done ? "✓ Sessão concluída" : "◐ Sessão em andamento"}</p></article>`,
-          )
-          .join("")}</div>`
-      : `<div class="empty-state panel"><span>↗</span><h2>Sua história começa no próximo treino.</h2><p>Registre as séries ou uma corrida e volte aqui para acompanhar.</p><a class="button primary" href="#hoje">Ver meu treino ${arrow}</a></div>`)
-  );
+  return renderHistory(data, historyFilters);
+}
+function captureView() {
+  const active = document.activeElement,
+    field = active?.closest("#main")
+      ? {
+          id: active.id,
+          name: active.name,
+          exercise: active.dataset.id,
+          index: active.dataset.index,
+          field: active.dataset.field,
+          action: active.dataset.action,
+          historyField: active.dataset.historyField,
+        }
+      : null;
+  return {
+    field,
+    start: active?.selectionStart,
+    end: active?.selectionEnd,
+    y: window.scrollY,
+    open: [...main.querySelectorAll("details[open]")]
+      .map((el) =>
+        el.dataset.exercise
+          ? `[data-exercise="${el.dataset.exercise}"]`
+          : el.dataset.muscleDisclosure
+            ? `[data-muscle-disclosure="${el.dataset.muscleDisclosure}"]`
+            : el.classList.contains("pace-method")
+              ? ".pace-method"
+              : el.classList.contains("exercise-history")
+                ? `[data-exercise="${el.closest("[data-exercise]").dataset.exercise}"] .exercise-history`
+                : null,
+      )
+      .filter(Boolean),
+  };
+}
+function restoreView(ui) {
+  for (const selector of ui.open) {
+    const el = main.querySelector(selector);
+    if (el) el.open = true;
+  }
+  let field;
+  if (ui.field?.id) field = document.getElementById(ui.field.id);
+  else if (ui.field?.name)
+    field = main.querySelector(`[name="${CSS.escape(ui.field.name)}"]`);
+  else if (ui.field?.field)
+    field = main.querySelector(
+      `[data-field="${ui.field.field}"][data-id="${ui.field.exercise}"][data-index="${ui.field.index}"]`,
+    );
+  else if (ui.field?.historyField)
+    field = main.querySelector(
+      `[data-history-field="${ui.field.historyField}"]`,
+    );
+  else if (ui.field?.action)
+    field = main.querySelector(`[data-action="${ui.field.action}"]`);
+  field?.focus({ preventScroll: true });
+  try {
+    if (ui.start !== null) field?.setSelectionRange(ui.start, ui.end);
+  } catch {}
+  window.scrollTo({ top: ui.y, behavior: "instant" });
 }
 function openDialog(html, compact = false) {
   disposeMovement();
@@ -692,21 +781,24 @@ function importDialog() {
   openDialog(
     `<div class="dialog-top"><span class="eyebrow">SEU DIÁRIO, COM VOCÊ</span><button class="close-button" data-action="close-dialog" aria-label="Fechar importação">${icon("x")}</button></div>
     <h2 id="guide-title">Importar backup</h2><p class="muted">Escolha um arquivo JSON exportado pelo HÍBRIDO. Você poderá conferir o conteúdo antes de restaurar.</p>
-    <label class="import-dropzone" for="import-file"><span class="import-symbol" aria-hidden="true">${icon("arrow-up")}</span><strong>Escolher arquivo JSON</strong><small>Até 10 MB · versões 1, 2 e 3</small><input id="import-file" type="file" accept="application/json,.json" aria-label="Escolher arquivo JSON"></label>
+    <label class="import-dropzone" for="import-file"><span class="import-symbol" aria-hidden="true">${icon("arrow-up")}</span><strong>Escolher arquivo JSON</strong><small>Até 10 MB · versões 1, 2, 3 e 4</small><input id="import-file" type="file" accept="application/json,.json" aria-label="Escolher arquivo JSON"></label>
     <p id="import-file-name" class="import-file-name">Nenhum arquivo selecionado</p><p id="import-file-status" class="caption" role="status">A seleção do arquivo ainda não altera seu diário.</p>
     <p id="import-error" class="form-error" role="alert"></p><section id="import-summary" class="import-summary" aria-label="Resumo do backup" aria-live="polite" hidden></section>
     <p class="import-warning">Restaurar substitui os registros e as configurações da sua conta na nuvem. Requer conexão. Exporte uma cópia do diário atual se quiser guardá-lo.</p>
-    <div class="dialog-actions"><button class="button quiet" data-action="close-dialog">Cancelar</button><button class="button primary" data-action="restore-backup" disabled>Restaurar backup ${icon("check")}</button></div>`,
+    <div class="dialog-actions import-actions"><p class="import-action-warning">Restaurar substitui os registros e as configurações da conta.</p><button class="button quiet" data-action="close-dialog">Cancelar</button><button class="button primary" data-action="restore-backup" disabled>Restaurar backup ${icon("check")}</button></div>`,
     true,
   );
 }
 function clearDialog() {
-  const entries = Object.values(data.sessions),
+  const entries = recordedWorkouts(data.sessions).filter(({ workout }) =>
+      workoutStarted(workout),
+    ),
     total = entries.length;
   pendingConfirmation = async () => {
     try {
       await account.remote.replace(null);
       settingsUi.reset();
+      runDrafts.clear();
       expanded.clear();
       render();
       notify("Diário apagado da conta.");
@@ -755,6 +847,28 @@ function sources() {
       )}</div><p class="caption">Referências consultadas em 20/10/2026. Vídeos dependem dos sites de origem.</p>`,
   );
 }
+function addWorkoutDialog() {
+  openDialog(
+    `<div class="dialog-top"><span class="eyebrow">${escape(fullDate(selected))}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar adição de treino">×</button></div><h2 id="guide-title">Adicionar treino</h2><p>Os treinos desta data serão mantidos.</p><form id="add-workout-form" data-date="${selected}"><label>Treino<select name="type" required>${Object.entries(
+      workouts,
+    )
+      .filter(([type]) => type !== "rest")
+      .map(([type, w]) => `<option value="${type}">${escape(w.name)}</option>`)
+      .join(
+        "",
+      )}</select></label><div class="dialog-actions"><button type="button" class="button quiet" data-action="close-dialog">Cancelar</button><button type="submit" class="button primary">Adicionar treino</button></div></form>`,
+    true,
+  );
+}
+function moveWorkoutDialog(id) {
+  const item = scheduledWorkouts(data, selected).find((s) => s.id === id);
+  if (!item || workoutStarted(item) || runDrafts.has(draftKey(selected, id)))
+    return;
+  openDialog(
+    `<div class="dialog-top"><span class="eyebrow">${escape(workouts[item.type].name)}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar remanejamento">×</button></div><h2 id="guide-title">Mover treino</h2><form id="move-workout-form" data-date="${selected}" data-workout="${id}"><label>Data de destino<input type="date" name="destination" required></label><p class="caption" data-move-preview role="status">Os treinos do destino serão mantidos. Se a origem ficar sem treinos, será um dia de descanso.</p><p class="form-error" data-move-error role="alert"></p><div class="dialog-actions"><button type="button" class="button quiet" data-action="close-dialog">Cancelar</button><button type="submit" class="button primary">Mover treino</button></div></form>`,
+    true,
+  );
+}
 document.addEventListener("click", (event) => {
   if (account.blocked) return;
   const summary = event.target.closest(
@@ -777,13 +891,20 @@ document.addEventListener("click", (event) => {
     const hash = link.getAttribute("href").slice(1);
     if (isAppHash(hash)) {
       event.preventDefault();
-      if (link.hasAttribute("data-open-today")) {
-        selected = dateKey();
-        expanded.clear();
-        navigateTo("hoje", { refresh: true, session: true });
+      if (hash === "hoje" || link.hasAttribute("data-open-today")) {
+        selectDay(dateKey(), null, { keepScroll: false });
         return;
       }
-      navigateTo(hash, { session: hash === "session" });
+      if (hash === "semana") {
+        selectDay(dateKey(), null, { keepScroll: false });
+        $("#week-navigation")?.scrollIntoView({ block: "start" });
+        return;
+      }
+      if (hash === "session") {
+        selectDay(selected, selectedWorkout, { session: true });
+        return;
+      }
+      navigateTo(hash);
       return;
     }
   }
@@ -792,7 +913,7 @@ document.addEventListener("click", (event) => {
   const action = button.dataset.action;
   if (action === "step-load") {
     const { id, index, direction } = button.dataset;
-    if (withoutWeight(data.sessions, selected, id)) return;
+    if (withoutWeight(data.sessions, selected, id, selectedWorkout)) return;
     const input = $(
       `[data-exercise="${id}"] [data-field="kg"][data-index="${index}"]`,
     );
@@ -811,8 +932,8 @@ document.addEventListener("click", (event) => {
     const id = button.dataset.id,
       index = Number(button.dataset.index);
     if (
-      withoutWeight(data.sessions, selected, id) ||
-      data.sessions[selected]?.sets?.[id]?.[index]?.done
+      withoutWeight(data.sessions, selected, id, selectedWorkout) ||
+      currentSession()?.sets?.[id]?.[index]?.done
     )
       return;
     const suggestion = loadSuggestions(
@@ -841,50 +962,49 @@ document.addEventListener("click", (event) => {
     dialogs.close(pendingConfirmation);
     return;
   }
+  if (action === "add-workout") return addWorkoutDialog();
+  if (action === "move-workout")
+    return moveWorkoutDialog(button.dataset.workout);
+  if (action === "select-workout") {
+    selectDay(selected, button.dataset.workout, { session: true });
+    return;
+  }
   if (action === "day" || action === "open-day") {
-    const changed = selected !== button.dataset.date;
-    selected = button.dataset.date;
-    if (changed) expanded.clear();
-    if (action === "open-day")
-      navigateTo("hoje", { session: true, refresh: true });
-    else if (changed) refreshDay();
+    selectDay(button.dataset.date, button.dataset.workout, {
+      session: action === "open-day",
+      keepScroll: action !== "open-day",
+    });
     return;
   }
-  if (action === "reset-day") {
-    if (selected !== dateKey()) {
-      selected = dateKey();
-      expanded.clear();
-      refreshDay();
-    }
+  if (action === "reset-day" || action === "current-week") {
+    selectDay(dateKey());
     return;
   }
-  if (["prev-week", "next-week", "current-week"].includes(action)) {
-    const before = week;
-    week =
-      action === "current-week"
-        ? weekStart(dateKey())
-        : addDays(week, action === "prev-week" ? -7 : 7);
-    if (before !== week) {
-      $(".week-controls h2").textContent =
-        `${shortDate(week)} — ${shortDate(addDays(week, 6))}`;
-      motion.stop($(".calendar-grid"));
-      $(".calendar-grid").outerHTML = calendarView();
-      hydrateIcons($(".calendar-grid"));
-      $("[data-action=current-week]").hidden = week === weekStart(dateKey());
-      motion.enter($(".calendar-grid"), "week", week > before ? 1 : -1);
-    }
+  if (action === "prev-week" || action === "next-week") {
+    selectDay(addDays(selected, action === "prev-week" ? -7 : 7));
+    return;
+  }
+  if (action === "more-history") {
+    historyFilters.limit += 20;
+    render({ preserve: true });
+    return;
+  }
+  if (action === "clear-history-filters") {
+    historyFilters = historyDefaults();
+    render({ preserve: true });
     return;
   }
   if (action === "finish-strength") {
-    if (data.sessions[selected]?.done) {
+    if (currentSession()?.done) {
       session().done = false;
       persist("Sessão reaberta.");
       syncStrength();
       return;
     }
-    const key = selected;
+    const key = selected,
+      id = selectedWorkout;
     confirmSession(() => {
-      session(key).done = true;
+      session(key, id).done = true;
       persist("Sessão concluída. Bom trabalho!");
       syncStrength();
       motion.feedback($(".week-summary .progress-ring b"));
@@ -911,6 +1031,7 @@ document.addEventListener("click", (event) => {
       try {
         await account.remote.replace(imported);
         settingsUi.reset();
+        runDrafts.clear();
         expanded.clear();
         render();
         notify("Backup restaurado na nuvem.");
@@ -944,6 +1065,33 @@ document.addEventListener("change", async (event) => {
   if (account.blocked) return;
   const input = event.target;
   if (input.closest("[data-settings-form]")) return;
+  if (input.dataset.historyField) {
+    const { applied, ...current } = historyFilters;
+    if (
+      current.period !== "custom" ||
+      (validDate(current.from) &&
+        validDate(current.to) &&
+        current.from <= current.to)
+    )
+      historyFilters.applied = current;
+    historyFilters[input.dataset.historyField] = input.value;
+    historyFilters.limit = 20;
+    if (historyFilters.type !== "all" && !workouts[historyFilters.type]?.ids)
+      historyFilters.exercise = "";
+    if (
+      historyFilters.exercise &&
+      historyFilters.type !== "all" &&
+      !workouts[historyFilters.type].ids.includes(historyFilters.exercise)
+    )
+      historyFilters.exercise = "";
+    render({ preserve: true });
+    return;
+  }
+  if (input.closest("#run-form")) {
+    captureRunDraft();
+    syncTodayStatus();
+  }
+
   if (input.dataset.withoutWeight) {
     const id = input.dataset.withoutWeight,
       s = exerciseSession(id);
@@ -1003,10 +1151,8 @@ document.addEventListener("change", async (event) => {
       const imported = validateBackup(parsed);
       if (generation !== importGeneration || !$("#import-summary")) return;
       pendingImport = imported;
-      const entries = Object.values(imported.sessions);
-      const series = entries.flatMap((s) => Object.values(s.sets).flat());
-      $("#import-summary").innerHTML =
-        `<p class="eyebrow">O QUE SERÁ RESTAURADO</p><dl class="import-metrics"><div><dt>Sessões</dt><dd>${entries.length}</dd></div><div><dt>Concluídas</dt><dd>${entries.filter((s) => s.done).length}</dd></div><div><dt>Séries feitas</dt><dd>${series.filter((s) => s.done).length}</dd></div><div><dt>Corridas</dt><dd>${entries.filter((s) => s.run).length}</dd></div></dl><p class="caption">${parsed.version === 3 ? "Backup versão 3." : `Backup versão ${parsed.version}, atualizado para versão 3 ao restaurar.`} Configurações incluídas.</p>`;
+      const entries = recordedWorkouts(imported.sessions);
+      $("#import-summary").innerHTML = backupSummary(imported, parsed.version);
       $("#import-summary").hidden = false;
       $("#import-file-status").textContent =
         "Arquivo validado. Confira o resumo antes de restaurar.";
@@ -1050,7 +1196,16 @@ document.addEventListener("input", (event) => {
     persist();
     syncStrength(id);
   }
+  if (input.closest("#move-workout-form") && input.name === "destination") {
+    const preview = $("[data-move-preview]");
+    if (validDate(input.value)) {
+      const items = scheduledWorkouts(data, input.value);
+      preview.textContent = `Destino: ${fullDate(input.value)}. ${items.length ? items.map((s) => workouts[s.type].name).join(", ") + " serão mantidos." : "Dia de descanso."} A origem sem treinos ficará em descanso.`;
+    }
+  }
   if (event.target.closest("#run-form")) {
+    captureRunDraft();
+    syncTodayStatus();
     const form = $("#run-form"),
       m = Number(form.elements.minutes.value),
       km = Number(form.elements.km.value);
@@ -1068,6 +1223,45 @@ document.addEventListener("submit", (event) => {
     values = Object.fromEntries(new FormData(form));
   if (form.matches("[data-settings-form]")) return;
   if (!form.reportValidity()) return;
+  if (form.id === "add-workout-form") {
+    const date = form.dataset.date;
+    form.querySelector('[type="submit"]').disabled = true;
+    dialogs.close(() => {
+      const item = addWorkout(data, date, values.type);
+      persist();
+      selectDay(date, item.id, { keepScroll: false });
+    });
+    return;
+  }
+  if (form.id === "move-workout-form") {
+    const from = form.dataset.date,
+      id = form.dataset.workout,
+      to = values.destination;
+    if (to === from) {
+      $("[data-move-error]").textContent =
+        "Escolha uma data diferente da origem.";
+      return;
+    }
+    if (
+      runDrafts.has(draftKey(from, id)) ||
+      workoutStarted(scheduledWorkouts(data, from).find((s) => s.id === id))
+    ) {
+      $("[data-move-error]").textContent =
+        "Treinos iniciados devem permanecer na data original.";
+      return;
+    }
+    form.querySelector('[type="submit"]').disabled = true;
+    dialogs.close(() => {
+      try {
+        moveWorkout(data, from, to, id);
+        persist();
+        selectDay(to, id, { keepScroll: false });
+      } catch (error) {
+        notify(error.message);
+      }
+    });
+    return;
+  }
   if (form.id === "run-form") {
     const s = session(),
       previous = s.run;
@@ -1092,7 +1286,13 @@ document.addEventListener("submit", (event) => {
     const plan =
       previous?.plan ??
       (!previous
-        ? getRunPlan(s.type, data.settings, data.sessions, selected).snapshot
+        ? getRunPlan(
+            s.type,
+            data.settings,
+            data.sessions,
+            selected,
+            selectedWorkout,
+          ).snapshot
         : null);
     s.run = {
       minutes: Number(values.minutes),
@@ -1115,6 +1315,7 @@ document.addEventListener("submit", (event) => {
         data.settings,
         data.sessions,
         selected,
+        selectedWorkout,
       );
       const caption = $(".pace-advice [data-plan-caption]");
       if (caption) caption.textContent = paceHelp(savedPlan);
@@ -1129,7 +1330,18 @@ document.addEventListener("submit", (event) => {
           "Duração preservada no planejamento registrado.";
     }
     s.done = true;
-    persist("Corrida registrada. Mais um treino na conta!");
+    const key = draftKey(),
+      submitted = JSON.stringify(runDrafts.get(key));
+    persist("Corrida registrada. Mais um treino na conta!").then((saved) => {
+      if (saved && JSON.stringify(runDrafts.get(key)) === submitted) {
+        runDrafts.delete(key);
+        if (key === draftKey()) {
+          const notice = $("[data-run-draft-warning]");
+          if (notice) notice.hidden = true;
+          syncTodayStatus();
+        }
+      }
+    });
     syncTodayStatus();
     $("#run-form button[type=submit]").innerHTML =
       `Salvar alterações ${icon("check")}`;
@@ -1139,6 +1351,19 @@ document.addEventListener("submit", (event) => {
 function handleLocation() {
   if (account.blocked) return;
   if (location.hash === "#main") return;
+  if (location.hash === "#semana") {
+    selectDay(dateKey(), null, { keepScroll: false, replace: true });
+    $("#week-navigation")?.scrollIntoView({ block: "start" });
+    return;
+  }
+  if (location.hash === "#hoje") {
+    selectDay(dateKey(), null, { keepScroll: false, replace: true });
+    return;
+  }
+  if (location.hash === "#session") {
+    selectDay(selected, selectedWorkout, { session: true, replace: true });
+    return;
+  }
   applyNavigation(routeFromHash(), { session: location.hash === "#session" });
 }
 window.addEventListener("hashchange", handleLocation);
@@ -1166,17 +1391,28 @@ document.addEventListener("focusout", (event) => {
 });
 account.update = (next, force = false) => {
   if (account.blocked) return;
-  const changed = JSON.stringify(data) !== JSON.stringify(next);
+  const stable = (value) =>
+    JSON.stringify(value, (_key, v) =>
+      v && typeof v === "object" && !Array.isArray(v)
+        ? Object.fromEntries(
+            Object.entries(v).sort(([a], [b]) => a.localeCompare(b)),
+          )
+        : v,
+    );
+  const changed = stable(data) !== stable(next);
   data = next;
-  if (changed || force) render();
+  if (changed || force) render({ preserve: true });
 };
 account.lock = () => {
   disposeMovement();
   dialogs.close();
   settingsUi.reset();
+  runDrafts.clear();
   data = defaults();
   account.data = null;
   main.replaceChildren();
 };
 render();
+if (location.hash === "#semana")
+  $("#week-navigation")?.scrollIntoView({ block: "start" });
 if (location.hash === "#session") scrollToSession();

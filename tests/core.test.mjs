@@ -104,7 +104,7 @@ test("semana inicia na segunda e cruza meses/anos sem colisão", () => {
   );
 });
 test("backup retorna cópia validada e sessões de semanas diferentes são independentes", () => {
-  const data = defaults();
+  const data = { ...defaults(), version: 3 };
   for (const [date, kg] of [
     ["2026-10-19", 20],
     ["2026-10-26", 25],
@@ -122,9 +122,17 @@ test("backup retorna cópia validada e sessões de semanas diferentes são indep
       run: null,
     };
   const copy = validateBackup(JSON.parse(JSON.stringify(data)));
-  assert.deepEqual(copy, data);
-  copy.sessions["2026-10-26"].sets["pec-deck"][0].kg = 30;
-  assert.equal(copy.sessions["2026-10-19"].sets["pec-deck"][0].kg, 20);
+  assert.deepEqual(copy.settings, data.settings);
+  for (const date of Object.keys(data.sessions)) {
+    const { id, ...entry } = copy.sessions[date].workouts[0];
+    assert.equal(id, `legacy-${date}`);
+    assert.deepEqual(entry, data.sessions[date]);
+  }
+  copy.sessions["2026-10-26"].workouts[0].sets["pec-deck"][0].kg = 30;
+  assert.equal(
+    copy.sessions["2026-10-19"].workouts[0].sets["pec-deck"][0].kg,
+    20,
+  );
   assert.equal(data.sessions["2026-10-26"].sets["pec-deck"][0].kg, 25);
   assert.equal(
     previousSets(copy.sessions, "2026-10-26", "pec-deck").date,
@@ -215,7 +223,7 @@ test("migra backup v1 sem perder texto ou sessões", () => {
     sessions: {},
   };
   const migrated = validateBackup(old);
-  assert.equal(migrated.version, 3);
+  assert.equal(migrated.version, 4);
   assert.equal(migrated.settings.recentRunNote, old.settings.recentRun);
   assert.deepEqual(migrated.settings.recentRun, {
     km: "",

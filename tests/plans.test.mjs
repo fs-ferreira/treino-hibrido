@@ -67,16 +67,10 @@ test("lista e detalhe consultam o plano sem criar sessões ou modificar configur
   data.settings.longMinutes = 60;
   data.settings.longDay = 6;
   assert.equal(JSON.stringify(data), original);
-  assert.equal(validateBackup(data).version, 3);
+  assert.equal(validateBackup(data).version, 4);
 });
 test("rotas distinguem lista e detalhe, preservam Treinos e tratam identificador desconhecido", () => {
-  assert.deepEqual(sections, [
-    "hoje",
-    "semana",
-    "treinos",
-    "historico",
-    "configuracoes",
-  ]);
+  assert.deepEqual(sections, ["hoje", "treinos", "historico", "configuracoes"]);
   const list = resolveRoute("#treinos"),
     detail = resolveRoute("#treinos/hibrido-3x3"),
     missing = resolveRoute("#treinos/nao-existe");

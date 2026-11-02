@@ -193,16 +193,14 @@ test("apply one suggestion, keep manual values, focus, scroll and completion", a
   );
   await field(card, "done", 1).uncheck();
   await expect(use(card, 1)).toBeEnabled();
-  await expect(page.locator(".topbar [data-sync-status]")).toHaveText(
-    "Salvo na nuvem",
-  );
+  await expect(page.locator("[data-sync-status]")).toHaveText("Salvo na nuvem");
   const saved = page.cloudFixture.data;
-  expect(saved.sessions[CARD_DATE].sets[CARD_ID][0]).toEqual({
+  expect(saved.sessions[CARD_DATE].workouts[0].sets[CARD_ID][0]).toEqual({
     kg: 14.5,
     reps: 7,
     done: false,
   });
-  expect(saved.sessions[CARD_DATE].sets[CARD_ID][1].kg).toBe(17);
+  expect(saved.sessions[CARD_DATE].workouts[0].sets[CARD_ID][1].kg).toBe(17);
 });
 
 test("without additional weight preserves three loads and persists across reload", async ({
