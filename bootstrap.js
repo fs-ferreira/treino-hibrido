@@ -1,37 +1,112 @@
 import { account } from "./lib/account.js";
 import { apiRequest, createRemoteDiary } from "./lib/remote-diary.js";
 import { notify, dismissNotification } from "./lib/notifications.js";
+import { createMotion, TIMES } from "./lib/motion.js?v=1.6.0";
+
 const gate = document.querySelector("#account-gate"),
   shell = document.querySelector(".shell"),
+  splash = document.querySelector("#auth-splash"),
+  splashStatus = document.querySelector("#auth-splash-status"),
   googleLogin = document.querySelector("#google-login"),
   loginLabel = document.querySelector("[data-login-label]"),
-  progress = document.querySelector("#account-progress"),
-  skip = document.querySelector(".skip");
+  skip = document.querySelector(".skip"),
+  motion = createMotion();
 const accessError = "Não foi possível acessar. Tente novamente.",
   actionError = "Não foi possível concluir. Tente novamente.";
 let mounted = false,
-  starting = false,
-  signingIn = false,
-  redirecting = false;
+  appLoad,
+  appLoadFailed = false,
+  generation = 0,
+  operation = null;
+
+function isCurrent(value) {
+  return operation === value && generation === value.id;
+}
 function setAccessState(state) {
   gate.dataset.state = state;
   googleLogin.disabled = state !== "idle";
   googleLogin.setAttribute("aria-busy", String(state !== "idle"));
   loginLabel.textContent =
     state === "signing-in" ? "Entrando…" : "Entrar com Google";
-  progress.textContent = state === "checking" ? "Preparando seu acesso…" : "";
 }
-function showGate({ retry = false, recovery = false } = {}) {
+function announce(message) {
+  if (splashStatus.textContent !== message) splashStatus.textContent = message;
+}
+function setCovered(element, covered) {
+  element.inert = covered;
+  if (covered) element.setAttribute("aria-hidden", "true");
+  else element.removeAttribute("aria-hidden");
+}
+function beginAccess(state, message) {
+  operation?.controller.abort();
+  motion.stop(splash);
+  const value = {
+    id: ++generation,
+    controller: new AbortController(),
+  };
+  operation = value;
+  account.blocked = true;
+  for (const element of [gate, shell, skip]) setCovered(element, true);
+  gate.hidden = shell.hidden = true;
+  splash.hidden = false;
+  document.body.dataset.accountView = "loading";
+  setAccessState(state);
+  announce(message);
+  dismissNotification();
+  return value;
+}
+function gateOptions() {
+  return {
+    retry: !document.querySelector("#account-retry").hidden,
+    recovery: !document.querySelector("#account-recovery").hidden,
+  };
+}
+function prepareGate({ retry = false, recovery = false } = {}) {
   account.blocked = true;
   shell.hidden = true;
+  setCovered(shell, true);
   gate.hidden = false;
-  document.body.dataset.accountView = "login";
   skip.href = "#google-login";
   skip.textContent = "Pular para o acesso";
   document.querySelector("#account-retry").hidden = !retry;
   document.querySelector("#account-recovery").hidden = !recovery;
   document.querySelector("#pending-export").hidden = !account.remote?.pending();
-  if (!signingIn) setAccessState("idle");
+}
+function settleView(view, focus) {
+  splash.hidden = true;
+  setCovered(gate, view !== "login");
+  setCovered(shell, view !== "diary");
+  setCovered(skip, false);
+  document.body.dataset.accountView = view;
+  operation = null;
+  setAccessState("idle");
+  focus?.focus({ preventScroll: true });
+}
+async function reveal(value, view, focus) {
+  if (!isCurrent(value)) return false;
+  await motion.play(splash, [{ opacity: 1 }, { opacity: 0 }], {
+    duration: TIMES.feedback,
+  });
+  if (!isCurrent(value)) return false;
+  settleView(view, focus);
+  return true;
+}
+function clearDiary() {
+  account.blocked = true;
+  account.lock?.();
+  document.querySelector("#main").replaceChildren();
+  document.querySelector("#account-name").textContent = "";
+  document.querySelector("#account-email").textContent = "";
+  account.identity = account.data = null;
+}
+function blockAccess() {
+  generation++;
+  operation?.controller.abort();
+  motion.stop(splash);
+  clearDiary();
+  prepareGate({ retry: true });
+  settleView("login", googleLogin);
+  notify(accessError);
 }
 function updateStatus(value) {
   account.status = value;
@@ -54,147 +129,174 @@ function download(value) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-async function mount() {
+async function mount(value) {
+  if (!isCurrent(value)) return;
+  announce("Abrindo seu diário…");
   account.blocked = false;
   gate.hidden = true;
   shell.hidden = false;
-  document.body.dataset.accountView = "diary";
+  // Keep the layout measurable for navigation, but inaccessible under the splash.
+  setCovered(shell, true);
   skip.href = "#main";
   skip.textContent = "Pular para o conteúdo";
-  dismissNotification();
   if (!mounted) {
-    await import("./app.js?v=2.2.0");
+    appLoad ??= import("./app.js?v=2.2.0").catch((error) => {
+      appLoadFailed = true;
+      throw error;
+    });
+    await appLoad;
     mounted = true;
+    if (!isCurrent(value)) return;
   } else account.update?.(account.data, true);
   document.querySelector("#account-name").textContent =
     account.identity.user.name;
   document.querySelector("#account-email").textContent =
     account.identity.user.email;
   updateStatus(account.status);
+  await reveal(value, "diary");
 }
-async function start({ initial = false } = {}) {
-  if (starting || signingIn) return;
-  starting = true;
-  setAccessState("checking");
+async function start({ initial = false, force = false } = {}) {
+  if (operation && !force) return;
+  const value = beginAccess("checking", "Preparando seu acesso…");
+  account.remote?.stop();
+  // Browsers cache failed ES modules; retry them in a fresh document.
+  if (appLoadFailed) {
+    location.reload();
+    return;
+  }
+  const remote = createRemoteDiary({
+    onOpenPhase(phase) {
+      if (isCurrent(value))
+        announce(
+          phase === "loading"
+            ? "Abrindo seu diário…"
+            : "Preparando seu acesso…",
+        );
+    },
+    onStatus(status) {
+      if (account.remote === remote) updateStatus(status);
+    },
+    onBlocked() {
+      if (account.remote === remote) blockAccess();
+    },
+    onData(data) {
+      if (account.remote !== remote) return;
+      account.data = data;
+      if (!account.blocked) account.update?.(data);
+    },
+  });
+  account.remote = remote;
   try {
-    account.remote?.stop();
-    const remote = createRemoteDiary({
-      onStatus(value) {
-        if (account.remote === remote) updateStatus(value);
-      },
-      onBlocked() {
-        if (account.remote !== remote) return;
-        showGate({ retry: true });
-        account.lock?.();
-        notify(accessError);
-        if (!signingIn) googleLogin.focus({ preventScroll: true });
-      },
-      onData(data) {
-        if (account.remote !== remote) return;
-        account.data = data;
-        if (!account.blocked) account.update?.(data);
-      },
-    });
-    account.remote = remote;
     const opened = await remote.open();
+    if (!isCurrent(value)) return;
     account.identity = opened.identity;
     account.data = opened.data;
     if (opened.recovery) {
-      showGate({ recovery: true });
+      prepareGate({ recovery: true });
       document.querySelector("#pending-resume").disabled =
         opened.recovery.generation !== opened.identity.generation;
-    } else await mount();
+      await reveal(value, "login", initial ? null : googleLogin);
+    } else await mount(value);
   } catch (error) {
-    showGate({ retry: error.status !== 401 });
-    account.lock?.();
-    if (!initial || error.status !== 401) notify(accessError);
-  } finally {
-    starting = false;
-    setAccessState("idle");
-    if (!initial && !gate.hidden) googleLogin.focus({ preventScroll: true });
+    if (!isCurrent(value)) return;
+    clearDiary();
+    prepareGate({ retry: error.status !== 401 });
+    const shown = await reveal(value, "login", initial ? null : googleLogin);
+    if (shown && (!initial || error.status !== 401)) notify(accessError);
   }
 }
+
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-account-action]");
-  if (!button || button.disabled) return;
-  const action = button.dataset.accountAction;
+  if (!button || button.disabled || operation) return;
+  const action = button.dataset.accountAction,
+    previousGate = gateOptions();
+  let value;
+  button.disabled = true;
   try {
     if (action === "login") {
-      if (starting || signingIn) return;
-      signingIn = true;
-      dismissNotification();
-      setAccessState("signing-in");
-      const value = await apiRequest("/auth/sign-in/social", {
+      value = beginAccess("signing-in", "Entrando…");
+      const result = await apiRequest("/auth/sign-in/social", {
         method: "POST",
         body: { provider: "google" },
+        signal: value.controller.signal,
       });
-      const url = new URL(value.url);
+      if (!isCurrent(value)) return;
+      const url = new URL(result.url);
       if (url.protocol !== "https:" || url.hostname !== "accounts.google.com")
         throw Error("Não foi possível iniciar o login.");
       location.assign(url.href);
-      redirecting = true;
     }
-    if (action !== "login") button.disabled = true;
     if (action === "retry") await start();
     if (action === "export") download(account.remote.recoveryData());
     if (action === "resume" || action === "discard") {
+      value = beginAccess("checking", "Abrindo seu diário…");
       const result = await account.remote.recover(action === "resume");
-      if (result?.saved === "blocked") return;
+      if (!isCurrent(value) || result?.saved === "blocked") return;
       document.querySelector("#account-recovery").hidden = true;
-      await mount();
+      await mount(value);
     }
-    if (action === "logout") {
-      if (account.remote.pending()) {
+    if (action === "logout" || action === "discard-logout") {
+      if (action === "logout" && account.remote.pending()) {
         document.querySelector("#logout-panel").hidden = false;
         return;
       }
-      await account.remote.logout();
+      value = beginAccess("checking", "Saindo…");
+      await account.remote.logout({ discard: action === "discard-logout" });
+      if (!isCurrent(value)) return;
+      clearDiary();
       location.reload();
     }
     if (action === "cancel-logout")
       document.querySelector("#logout-panel").hidden = true;
-    if (action === "discard-logout") {
-      await account.remote.logout({ discard: true });
-      location.reload();
-    }
   } catch (error) {
-    if (gate.hidden) {
-      const el = document.querySelector("#account-action-error");
-      el.textContent = error.message || "Não foi possível concluir.";
-    } else notify(action === "login" ? accessError : actionError);
-  } finally {
-    if (action === "login") {
-      if (!redirecting) {
-        signingIn = false;
-        setAccessState("idle");
-        googleLogin.focus({ preventScroll: true });
+    if (value && !isCurrent(value)) return;
+    if (action === "logout" || action === "discard-logout") {
+      if ([401, 403].includes(error.status)) {
+        blockAccess();
+        return;
       }
-    } else button.disabled = false;
+      account.blocked = false;
+      shell.hidden = false;
+      if (await reveal(value, "diary")) {
+        document.querySelector("#account-action-error").textContent =
+          actionError;
+        button.disabled = false;
+        button.focus({ preventScroll: true });
+      }
+    } else if (value) {
+      prepareGate(previousGate);
+      if (await reveal(value, "login", googleLogin))
+        notify(action === "login" ? accessError : actionError);
+    } else notify(actionError);
+  } finally {
+    // A successful redirect keeps its busy state until navigation or BFCache return.
+    if (!operation) button.disabled = false;
   }
 });
-window.addEventListener("online", () => {
-  if (!account.blocked) void account.remote?.check();
-});
+
+function checkInBackground() {
+  if (!operation && !account.blocked) void account.remote?.check();
+}
+window.addEventListener("online", checkInBackground);
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && !account.blocked) void account.remote?.check();
+  if (!document.hidden) checkInBackground();
 });
 setInterval(() => {
-  if (!document.hidden && !account.blocked) void account.remote?.check();
+  if (!document.hidden) checkInBackground();
 }, 15000);
 window.addEventListener("pageshow", (event) => {
-  if (event.persisted) {
-    signingIn = redirecting = false;
-    setAccessState("idle");
-  }
+  if (event.persisted) void start({ force: true });
 });
 const currentUrl = new URL(location.href);
 if (currentUrl.searchParams.has("authError")) {
-  showGate();
   currentUrl.searchParams.delete("authError");
   history.replaceState(
     history.state,
     "",
     currentUrl.pathname + currentUrl.search + currentUrl.hash,
   );
+  prepareGate();
+  settleView("login");
   notify(accessError);
 } else void start({ initial: true });

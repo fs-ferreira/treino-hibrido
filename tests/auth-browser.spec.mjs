@@ -20,6 +20,33 @@ async function mockSignedOut(page) {
   );
 }
 
+async function holdResponse(page, pattern) {
+  let release, arrived;
+  const waiting = new Promise((resolve) => (release = resolve)),
+    requested = new Promise((resolve) => (arrived = resolve));
+  await page.route(pattern, async (route) => {
+    arrived(route.request());
+    const response = await waiting;
+    if (response) await route.fulfill(response);
+    else await route.fallback();
+  });
+  return { release, requested };
+}
+
+async function expectDiaryReady(page) {
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator(".shell")).toBeVisible();
+  await expect(page.locator(".shell")).not.toHaveAttribute("inert");
+}
+
+async function restoreFromHistory(page) {
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new PageTransitionEvent("pageshow", { persisted: true }),
+    ),
+  );
+}
+
 async function openRecovery(page, generation = "test-generation") {
   await mockSignedOut(page);
   await page.goto("/");
@@ -49,6 +76,7 @@ async function openRecovery(page, generation = "test-generation") {
   const cloud = await mockCloud(page);
   await page.reload();
   await expect(page.locator("#account-recovery")).toBeVisible();
+  await expect(page.locator("#auth-splash")).toBeHidden();
   return cloud;
 }
 
@@ -79,36 +107,148 @@ test("private diary is not mounted before Google authentication", async ({
   );
 });
 
-test("initial check is discreet and respects reduced motion", async ({
+test("initial splash is available before the bootstrap module loads", async ({
+  page,
+}) => {
+  await mockSignedOut(page);
+  const module = await holdResponse(page, "**/bootstrap.js?*");
+  await page.goto("/", { waitUntil: "commit" });
+  await expect(page.locator("#auth-splash")).toBeVisible();
+  await expect(page.locator("#account-gate")).toBeHidden();
+  await expect(page.locator(".shell")).toBeHidden();
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(12, 13, 15)",
+  );
+  await expect(page.getByRole("button")).toHaveCount(0);
+  module.release();
+  await expect(page.locator("#google-login")).toBeEnabled();
+  await expect(page.locator("#auth-splash")).toBeHidden();
+});
+
+test("initial splash blocks focus and respects reduced motion", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  let release;
-  const wait = new Promise((resolve) => (release = resolve));
-  await page.route("**/api/me", async (route) => {
-    await wait;
-    await route.fulfill({ status: 401, json: { code: "AUTH_REQUIRED" } });
-  });
+  const pending = await holdResponse(page, "**/api/me");
   await page.goto("/");
+  await expect(page.locator("#auth-splash")).toBeVisible();
+  await expect(page.locator("#account-gate")).toBeHidden();
+  await expect(page.locator(".shell")).toBeHidden();
+  for (const selector of ["#account-gate", ".shell", ".skip"])
+    await expect(page.locator(selector)).toHaveAttribute("inert", "");
   await expect(page.locator("#google-login")).toBeDisabled();
   await expect(page.locator("#google-login")).toHaveAttribute(
     "aria-busy",
     "true",
   );
-  await expect(page.locator(".login-spinner")).toBeVisible();
-  await expect(page.locator(".login-spinner")).toHaveCSS(
-    "animation-name",
-    "none",
-  );
-  await expect(page.locator("#account-progress")).toHaveText(
+  expect(
+    await page
+      .locator(".auth-splash-mark")
+      .evaluate((el) => getComputedStyle(el, "::after").animationName),
+  ).toBe("none");
+  await expect(page.locator("#auth-splash-status")).toHaveText(
     "Preparando seu acesso…",
   );
-  expect(await page.locator("body").innerText()).not.toMatch(
-    /conectando|servidor|api/i,
+  await expect(page.locator("#auth-splash-status")).toHaveCSS(
+    "clip-path",
+    "inset(50%)",
   );
-  release();
+  await page.keyboard.press("Tab");
+  expect(
+    await page.evaluate(() => document.activeElement === document.body),
+  ).toBe(true);
+  pending.release({ status: 401, json: { code: "AUTH_REQUIRED" } });
   await expect(page.locator("#google-login")).toBeEnabled();
-  await expect(page.locator(".login-spinner")).toBeHidden();
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator("#account-gate")).not.toHaveAttribute("inert");
+});
+
+test("authenticated opening waits for diary data and the application module", async ({
+  page,
+}) => {
+  await mockCloud(page);
+  const diary = await holdResponse(page, "**/api/diary"),
+    module = await holdResponse(page, "**/app.js?*");
+  await page.goto("/?source=google#historico");
+  await diary.requested;
+  await expect(page.locator("#auth-splash-status")).toHaveText(
+    "Abrindo seu diário…",
+  );
+  await expect(page.locator("#main")).toBeEmpty();
+  await expect(page.locator("#account-gate")).toBeHidden();
+  diary.release();
+  await module.requested;
+  await expect(page.locator("#auth-splash")).toBeVisible();
+  await expect(page.locator(".shell")).toHaveAttribute("inert", "");
+  await expect(page.getByRole("main")).toHaveCount(0);
+  module.release();
+  await expectDiaryReady(page);
+  await expect(
+    page.getByRole("heading", { name: /Sua evolução/ }),
+  ).toBeVisible();
+  await expect(page).toHaveURL("/?source=google#historico");
+});
+
+test("failed diary loading leaves the splash and can retry", async ({
+  page,
+}) => {
+  await mockCloud(page);
+  const pending = await holdResponse(page, "**/api/diary");
+  await page.goto("/");
+  await pending.requested;
+  pending.release({ status: 503, json: { message: technicalMessage } });
+  await expect(page.locator("#toast.visible")).toHaveText(accessError);
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator("#main")).toBeEmpty();
+  await page.unroute("**/api/diary");
+  await page
+    .getByRole("button", { name: "Tentar novamente", exact: true })
+    .click();
+  await expectDiaryReady(page);
+});
+
+test("request timeout leaves the splash and offers retry", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.install();
+  const pending = await holdResponse(page, "**/api/me");
+  await page.goto("/");
+  await pending.requested;
+  await expect(page.locator("#auth-splash")).toBeVisible();
+  await page.clock.runFor(12001);
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator("#toast.visible")).toHaveText(accessError);
+  await expect(
+    page.getByRole("button", { name: "Tentar novamente", exact: true }),
+  ).toBeEnabled();
+  pending.release({ status: 401, json: { code: "AUTH_REQUIRED" } });
+});
+
+test("failed application loading offers a working retry", async ({ page }) => {
+  await mockCloud(page);
+  const module = await holdResponse(page, "**/app.js?*");
+  await page.goto("/");
+  await module.requested;
+  module.release({ status: 503, contentType: "text/javascript", body: "" });
+  await expect(page.locator("#toast.visible")).toHaveText(accessError);
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator("#main")).toBeEmpty();
+  await page.unroute("**/app.js?*");
+  await page
+    .getByRole("button", { name: "Tentar novamente", exact: true })
+    .click();
+  await expectDiaryReady(page);
+});
+
+test("splash transitions also work without the animation API", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Element.prototype.animate = undefined;
+  });
+  await mockCloud(page);
+  await page.goto("/");
+  await expectDiaryReady(page);
 });
 
 for (const failure of ["server", "invalid-json", "network"]) {
@@ -202,6 +342,9 @@ test("Google login sends once, stays busy and follows only the Google destinatio
   await page.goto("/");
   const button = page.locator("#google-login");
   await button.click();
+  await expect(page.locator("#auth-splash")).toBeVisible();
+  await expect(page.locator("#auth-splash-status")).toHaveText("Entrando…");
+  await expect(page.locator("#account-gate")).toBeHidden();
   await expect(button).toBeDisabled();
   await expect(button).toHaveText("Entrando…");
   await expect(button).toHaveAttribute("aria-busy", "true");
@@ -313,7 +456,30 @@ for (const viewport of [
   }, testInfo) => {
     await page.setViewportSize(viewport);
     await mockSignedOut(page);
+    const pending = await holdResponse(page, "**/api/me");
     await page.goto("/");
+    await expect(page.locator("#auth-splash")).toBeVisible();
+    const splashDimensions = await page
+      .locator(".auth-splash-mark")
+      .evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        return {
+          width: rect.width,
+          height: rect.height,
+          centerX: rect.x + rect.width / 2,
+          centerY: rect.y + rect.height / 2,
+          pageWidth: document.documentElement.scrollWidth,
+          animation: getComputedStyle(el, "::after").animationName,
+        };
+      });
+    expect(splashDimensions.width).toBe(64);
+    expect(splashDimensions.height).toBe(64);
+    expect(splashDimensions.centerX).toBeCloseTo(viewport.width / 2, 0);
+    expect(splashDimensions.centerY).toBeCloseTo(viewport.height / 2, 0);
+    expect(splashDimensions.pageWidth).toBe(viewport.width);
+    expect(splashDimensions.animation).toBe("auth-splash-pulse");
+    await page.screenshot({ path: testInfo.outputPath("splash.png") });
+    pending.release({ status: 401, json: { code: "AUTH_REQUIRED" } });
     const button = page.locator("#google-login");
     await expect(button).toBeEnabled();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -381,7 +547,156 @@ test("revoked session blocks editing and removes rendered private data", async (
   );
   await expect(page.locator("#toast.visible")).toHaveText(accessError);
   await expect(page.locator("#google-login")).toBeFocused();
+  await expect(page.locator("#auth-splash")).toBeHidden();
 });
+
+test("background session checks keep the diary interactive without a splash", async ({
+  page,
+}) => {
+  await mockCloud(page);
+  await page.goto("/");
+  await expectDiaryReady(page);
+  const pending = await holdResponse(page, "**/api/me");
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await pending.requested;
+  await expectDiaryReady(page);
+  await page.getByRole("link", { name: "Histórico", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: /Sua evolução/ }),
+  ).toBeVisible();
+  pending.release({ status: 503, json: { message: technicalMessage } });
+  await expect(page.locator(".topbar [data-sync-status]")).toContainText(
+    "Sem conexão",
+  );
+  await expectDiaryReady(page);
+});
+
+test("BFCache return revalidates once and ignores an earlier opening response", async ({
+  page,
+}) => {
+  await mockCloud(page);
+  const pending = await holdResponse(page, "**/api/me");
+  await page.goto("/");
+  await pending.requested;
+  await page.unroute("**/api/me");
+  let checks = 0;
+  await page.route("**/api/me", (route) => {
+    checks++;
+    return route.fulfill({ status: 401, json: { code: "AUTH_REQUIRED" } });
+  });
+  await restoreFromHistory(page);
+  await expect(page.locator("#google-login")).toBeEnabled();
+  pending.release();
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator("#account-gate")).toBeVisible();
+  await expect(page.locator("#main")).toBeEmpty();
+  expect(checks).toBe(1);
+});
+
+test("BFCache invalidation during module loading cannot reveal private content", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const cloud = await mockCloud(page);
+  const module = await holdResponse(page, "**/app.js?*");
+  await page.goto("/");
+  await module.requested;
+  cloud.revoked = true;
+  await restoreFromHistory(page);
+  await expect(page.locator("#google-login")).toBeEnabled();
+  const loaded = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/app.js",
+  );
+  module.release();
+  await loaded;
+  await expect(page.locator("#account-gate")).toBeVisible();
+  await expect(page.locator("#main")).toBeEmpty();
+  await expect(page.locator(".shell")).toBeHidden();
+  expect(errors).toEqual([]);
+  cloud.revoked = false;
+  await restoreFromHistory(page);
+  await expectDiaryReady(page);
+  await expect(page.locator("#main")).not.toBeEmpty();
+});
+
+test("BFCache return cancels a pending Google redirect", async ({ page }) => {
+  await mockSignedOut(page);
+  const pending = await holdResponse(page, "**/api/auth/sign-in/social");
+  await page.goto("/");
+  await page.getByRole("button", { name: "Entrar com Google" }).click();
+  await pending.requested;
+  await restoreFromHistory(page);
+  await expect(page.locator("#google-login")).toBeEnabled();
+  pending.release({
+    json: { url: "https://accounts.google.com/o/oauth2/auth" },
+  });
+  await expect(page).toHaveURL("/");
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  await expect(page.locator("#account-gate")).toBeVisible();
+});
+
+test("failed logout restores the diary and keyboard focus", async ({
+  page,
+}) => {
+  await mockCloud(page);
+  await page.goto("/");
+  await expectDiaryReady(page);
+  const pending = await holdResponse(page, "**/api/auth/sign-out");
+  await page.locator(".account-menu > summary").click();
+  const logout = page.getByRole("button", {
+    name: "Sair da conta",
+    exact: true,
+  });
+  await logout.click();
+  await pending.requested;
+  await expect(page.locator("#auth-splash")).toBeVisible();
+  await expect(page.locator("#auth-splash-status")).toHaveText("Saindo…");
+  await expect(page.locator(".shell")).toHaveAttribute("inert", "");
+  pending.release({ status: 503, json: { message: technicalMessage } });
+  await expectDiaryReady(page);
+  await expect(logout).toBeEnabled();
+  await expect(logout).toBeFocused();
+  await expect(page.locator("#account-action-error")).toHaveText(
+    "Não foi possível concluir. Tente novamente.",
+  );
+  expect(await page.locator("body").innerText()).not.toContain(
+    technicalMessage,
+  );
+});
+test("logout with pending changes keeps choices and export outside the splash", async ({
+  page,
+}) => {
+  const card = await openExerciseCard(page),
+    cloud = page.cloudFixture,
+    input = card.locator('[data-field="kg"]').first();
+  cloud.fail = true;
+  await input.fill("18");
+  await input.blur();
+  await expect(page.locator(".topbar [data-sync-status]")).toContainText(
+    "sincronização pendente",
+  );
+  await page.locator(".account-menu > summary").click();
+  await page
+    .getByRole("button", { name: "Sair da conta", exact: true })
+    .click();
+  await expect(page.locator("#logout-panel")).toBeVisible();
+  await expect(page.locator("#auth-splash")).toBeHidden();
+  const downloading = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Exportar pendências", exact: true })
+    .click();
+  expect((await downloading).suggestedFilename()).toBe(
+    "hibrido-pendencias.json",
+  );
+  await page
+    .getByRole("button", { name: "Continuar no app", exact: true })
+    .click();
+  await expect(page.locator("#logout-panel")).toBeHidden();
+  await expect(input).toHaveValue("18");
+  await expectDiaryReady(page);
+});
+
 test("logout revokes session and gate returns; private source files cannot be downloaded", async ({
   page,
   request,
@@ -431,6 +746,7 @@ test("settings drafts stay local until Save and survive typing during the reques
 }) => {
   const cloud = await mockCloud(page);
   await page.goto("/#configuracoes/progressao");
+  await expectDiaryReady(page);
   const input = page.locator("#setting-loadProgression");
   await expect(input).toBeVisible();
   await input.fill("7");

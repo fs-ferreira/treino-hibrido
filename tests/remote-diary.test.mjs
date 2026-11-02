@@ -100,6 +100,59 @@ function setup() {
     },
   };
 }
+test("opening phases follow authentication and do not repeat in background checks", async () => {
+  const events = [],
+    f = setup(),
+    remote = createRemoteDiary({
+      journal: f.journal,
+      request: async (path) => {
+        events.push(path);
+        return path === "/me"
+          ? f.identity
+          : { ...f.data, generation: "g", nextCursor: null };
+      },
+      onOpenPhase: (phase) => events.push(phase),
+    });
+  await remote.open();
+  assert.deepEqual(events, ["checking", "/me", "loading", "/diary"]);
+  events.length = 0;
+  await remote.check();
+  assert.deepEqual(events, ["/me", "/diary"]);
+  remote.stop();
+});
+
+test("stopped opening ignores a late authentication response", async () => {
+  let release;
+  const pending = new Promise((resolve) => (release = resolve)),
+    phases = [],
+    requests = [],
+    remote = createRemoteDiary({
+      request: (path) => {
+        requests.push(path);
+        return pending;
+      },
+      onOpenPhase: (phase) => phases.push(phase),
+    });
+  const opening = remote.open();
+  remote.stop();
+  release({ user: { id: "u" }, sessionId: "s" });
+  await assert.rejects(opening, { name: "AbortError" });
+  assert.deepEqual(phases, ["checking"]);
+  assert.deepEqual(requests, ["/me"]);
+});
+
+test("failed authentication never announces diary loading", async () => {
+  const phases = [],
+    remote = createRemoteDiary({
+      request: async () => {
+        throw new RemoteError(401, "AUTH_REQUIRED", "Entre novamente.");
+      },
+      onOpenPhase: (phase) => phases.push(phase),
+    });
+  await assert.rejects(remote.open(), { status: 401 });
+  assert.deepEqual(phases, ["checking"]);
+});
+
 test("server confirmation, immediate send and unknown-commit retry are idempotent", async () => {
   const f = setup(),
     sync = f.make(),

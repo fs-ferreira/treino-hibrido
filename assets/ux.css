@@ -1184,6 +1184,56 @@ dialog > div > p,
   }
 }
 
+.auth-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  background: var(--bg);
+}
+.auth-splash-mark {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+.auth-splash-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.auth-splash-mark::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1px solid var(--lime);
+  border-radius: 22px;
+  box-shadow: 0 0 16px #c3f96933;
+  opacity: 0.4;
+  animation: auth-splash-pulse 1.8s ease-in-out infinite;
+}
+@keyframes auth-splash-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-splash-mark::after {
+    animation: none;
+  }
+}
+
 .account-gate {
   position: relative;
   isolation: isolate;
