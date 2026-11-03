@@ -229,6 +229,7 @@ test("history filters, 20-item pagination and exercise comparison count workouts
   await expect(page.locator(".history-entry")).toHaveCount(20);
   await page.getByRole("button", { name: "Mostrar mais 20 treinos" }).click();
   await expect(page.locator(".history-entry")).toHaveCount(27);
+  await page.locator("#history-filters-toggle").click();
   await page.locator('[data-history-field="type"]').selectOption("upper");
   await page
     .locator('[data-history-field="exercise"]')
@@ -245,6 +246,265 @@ test("history filters, 20-item pagination and exercise comparison count workouts
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);
   }
+});
+function historyDiary() {
+  const data = defaults();
+  for (let i = 0; i < 52; i++) {
+    const workout = addWorkout(
+      data,
+      addDays(TODAY, -i),
+      i % 2 ? "upper" : "easy",
+    );
+    workout.done = true;
+    if (workout.type === "easy")
+      workout.run = { minutes: 30, km: 5, rpe: 4, notes: "" };
+    else
+      workout.sets["pec-deck"] = [0, 1, 2].map(() => ({
+        kg: 10 + i,
+        reps: 8,
+        done: true,
+      }));
+  }
+  return data;
+}
+test("history pending dates preserve results, metrics and pagination until the entire recorte is valid", async ({
+  page,
+}) => {
+  const cloud = await open(page, historyDiary(), "historico");
+  await page.getByRole("button", { name: "Mostrar mais 20 treinos" }).click();
+  const summary = await page.locator("[data-history-summary]").textContent();
+  const metrics = await page.locator(".history-metrics").innerText();
+  const results = await page.locator(".history-list").innerText();
+  await page.locator("#history-filters-toggle").click();
+  await page
+    .getByRole("combobox", { name: "Período", exact: true })
+    .selectOption("custom");
+  await expect(page.locator("#history-range-error")).toHaveCount(0);
+  await expect(page.locator("#history-range-hint")).toContainText(
+    "Preencha as duas datas",
+  );
+  await page
+    .getByRole("combobox", { name: "Treino", exact: true })
+    .selectOption("upper");
+  await page
+    .getByRole("combobox", { name: "Exercício", exact: true })
+    .selectOption("pec-deck");
+  await page.getByLabel("De", { exact: true }).fill(TODAY);
+  await page.getByLabel("Até", { exact: true }).fill("2026-10-01");
+  await expect(page.locator("#history-range-error")).toContainText("inicial");
+  await expect(page.locator("#history-from")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(page.locator("[data-history-summary]")).toHaveText(summary);
+  await expect(page.locator(".history-metrics")).toHaveText(metrics, {
+    useInnerText: true,
+  });
+  await expect(page.locator(".history-list")).toHaveText(results, {
+    useInnerText: true,
+  });
+  await expect(page.locator(".history-entry")).toHaveCount(40);
+  await expect(page.locator("#history-status")).toContainText("pendentes");
+  await page.getByRole("button", { name: "Mostrar mais 20 treinos" }).click();
+  await expect(page.locator(".history-entry")).toHaveCount(52);
+  await page.getByLabel("Até", { exact: true }).fill(TODAY);
+  await expect(
+    page.getByText("Nenhum treino neste recorte.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("[data-history-summary]")).toHaveText(
+    "02/11/2026 a 02/11/2026 · Upper · Crucifixo na máquina",
+  );
+  await page
+    .getByRole("combobox", { name: "Treino", exact: true })
+    .selectOption("easy");
+  await expect(page.locator(".history-entry")).toHaveCount(1);
+  await expect(page.locator("[data-history-period]")).toHaveText(
+    "1 treino registrado",
+  );
+  await expect(page.locator(".history-metrics .panel b")).toHaveText([
+    "01",
+    "5,0km",
+    "0",
+  ]);
+  expect(cloud.writes).toBe(0);
+});
+test("history pending workout changes keep the applied exercise comparison coherent", async ({
+  page,
+}) => {
+  const cloud = await open(page, historyDiary(), "historico");
+  await page.locator("#history-filters-toggle").click();
+  await page
+    .getByRole("combobox", { name: "Exercício", exact: true })
+    .selectOption("pec-deck");
+  await page.getByRole("button", { name: "Mostrar mais 20 treinos" }).click();
+  const comparison = await page.locator(".exercise-comparison").innerText();
+  const metrics = await page.locator(".history-metrics").innerText();
+  await page
+    .getByRole("combobox", { name: "Período", exact: true })
+    .selectOption("custom");
+  await page
+    .getByRole("combobox", { name: "Treino", exact: true })
+    .selectOption("easy");
+  await expect(page.locator("#history-exercise")).toHaveCount(0);
+  await expect(page.locator(".exercise-comparison")).toHaveText(comparison, {
+    useInnerText: true,
+  });
+  await expect(page.locator(".exercise-comparison tbody tr")).toHaveCount(26);
+  await expect(page.locator(".history-metrics")).toHaveText(metrics, {
+    useInnerText: true,
+  });
+  await expect(page.locator("[data-history-summary]")).toContainText(
+    "Crucifixo na máquina",
+  );
+  await page.getByLabel("De", { exact: true }).fill("2026-10-31");
+  await page.getByLabel("Até", { exact: true }).fill("2026-11-01");
+  await expect(page.locator(".exercise-comparison")).toHaveCount(0);
+  await expect(page.locator(".history-entry")).toHaveCount(1);
+  await expect(page.locator("[data-history-summary]")).toHaveText(
+    "31/10/2026 a 01/11/2026 · Corrida leve",
+  );
+  expect(cloud.writes).toBe(0);
+});
+test("history disclosure supports keyboard, focus, navigation and desktop resizing", async ({
+  page,
+}) => {
+  const cloud = await open(page, historyDiary(), "historico");
+  const toggle = page.locator("#history-filters-toggle");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#history-filter-fields")).toBeHidden();
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#history-period")).toBeFocused();
+  await page.locator("#history-period").selectOption("30");
+  await expect(page.locator("#history-period")).toBeFocused();
+  const y = await page.evaluate(() => scrollY);
+  await page.locator("#history-period").selectOption("90");
+  expect(await page.evaluate(() => scrollY)).toBe(y);
+  await toggle.focus();
+  await page.keyboard.press("Space");
+  await expect(page.locator("#history-filter-fields")).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await page.setViewportSize({ width: 1024, height: 844 });
+  await expect(page.locator("#history-filter-fields")).toBeVisible();
+  await expect(toggle).toBeHidden();
+  await expect(page.locator("#history-period")).toBeFocused();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#history-period")).toBeFocused();
+  await navigate(page, "configuracoes/dados");
+  await navigate(page, "historico");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#history-period")).toHaveValue("90");
+  await page
+    .locator('.history-filters [data-action="clear-history-filters"]')
+    .click();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#history-period")).toHaveValue("all");
+  await expect(page.locator(".history-entry")).toHaveCount(20);
+  await expect(page.locator("#history-status")).toContainText(
+    "Exibindo 20 treinos",
+  );
+  expect(cloud.writes).toBe(0);
+});
+test("history exercise compatibility, empty results and reset preserve the diary", async ({
+  page,
+}) => {
+  const cloud = await open(page, historyDiary(), "historico", 1440);
+  await expect(
+    page.locator('.history-filters [data-action="clear-history-filters"]'),
+  ).toHaveCount(0);
+  await page
+    .getByRole("combobox", { name: "Exercício", exact: true })
+    .selectOption("pec-deck");
+  await page
+    .getByRole("combobox", { name: "Treino", exact: true })
+    .selectOption("upper");
+  await expect(page.locator("#history-exercise")).toHaveValue("pec-deck");
+  await expect(page.locator("#history-exercise option")).toHaveCount(9);
+  await page
+    .getByRole("combobox", { name: "Treino", exact: true })
+    .selectOption("lower");
+  await expect(page.locator("#history-exercise")).toHaveValue("");
+  await expect(page.locator("#history-exercise option")).toHaveCount(8);
+  await expect(
+    page.getByText("Nenhum treino neste recorte.", { exact: true }),
+  ).toBeVisible();
+  await page
+    .locator('.empty-state [data-action="clear-history-filters"]')
+    .click();
+  await expect(page.locator("#history-period")).toBeFocused();
+  await expect(page.locator(".history-entry")).toHaveCount(20);
+  await expect(page.locator("#history-exercise option")).toHaveCount(24);
+  expect(cloud.writes).toBe(0);
+  await page.reload();
+  await expect(page.locator("[data-history-summary]")).toHaveText(
+    "Todo o período · Todos os treinos",
+  );
+});
+test("history responsive layouts keep fields accessible and capture the default, expanded and custom states", async ({
+  page,
+}) => {
+  const cloud = await open(page, historyDiary(), "historico", 320);
+  const measurements = [];
+  for (const [width, height] of [
+    [320, 844],
+    [390, 844],
+    [600, 844],
+    [601, 844],
+    [768, 844],
+    [1024, 844],
+    [1440, 900],
+    [844, 390],
+  ]) {
+    await page.setViewportSize({ width, height });
+    const mobile = width <= 600;
+    if (mobile && (await page.locator("#history-filter-fields").isVisible()))
+      await page.locator("#history-filters-toggle").click();
+    await page.screenshot({
+      path: test.info().outputPath(`history-${width}x${height}-default.png`),
+    });
+    if (mobile) {
+      const panelHeight = await page
+        .locator(".history-filters")
+        .evaluate((el) => el.offsetHeight);
+      expect(panelHeight).toBeLessThan(200);
+      measurements.push({ width, collapsedHeight: panelHeight });
+      await page.locator("#history-filters-toggle").click();
+    }
+    await page.screenshot({
+      path: test.info().outputPath(`history-${width}x${height}-expanded.png`),
+    });
+    await page.locator("#history-period").selectOption("custom");
+    await page.locator("#history-from").fill(TODAY);
+    await page.locator("#history-to").fill(TODAY);
+    await page.locator("#history-filters-title").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: test.info().outputPath(`history-${width}x${height}-custom.png`),
+    });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+    for (const control of await page
+      .locator(".history-filters input, .history-filters select")
+      .all()) {
+      const box = await control.boundingBox();
+      expect(box.height).toBeGreaterThanOrEqual(48);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+    }
+    await page
+      .locator('.history-filters [data-action="clear-history-filters"]')
+      .click();
+  }
+  await test.info().attach("history-measurements", {
+    body: JSON.stringify(measurements),
+    contentType: "application/json",
+  });
+  expect(cloud.writes).toBe(0);
 });
 test("backup v4 preview distinguishes days, workouts and programming without restoring", async ({
   page,

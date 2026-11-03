@@ -98,7 +98,7 @@ Até 600 px, o menu circular mostra três destinos completos, sem clones. Arrast
 
 Rascunhos de corrida vivem em memória por data/treino. Navegar entre telas, datas e treinos os preserva; recarregar ou fechar perde o que não foi salvo. O app avisa enquanto houver rascunho. O sucesso automático permanece acessível sem cápsula visual; pendências/falhas usam um único aviso aderente. Configurações confirma salvamento manual na nuvem por quatro segundos.
 
-O Histórico agrupa os treinos por data, filtra período/tipo/exercício e apresenta 20 por vez. Comparações de intervalado separam a sessão completa dos blocos fortes; uma seleção de exercício alinha suas três séries. Totais refletem o recorte e não incluem treinos apenas programados.
+O Histórico agrupa os treinos por data, filtra período/tipo/exercício e apresenta 20 por vez. O painel mostra o recorte aplicado; até 600 px, os campos começam recolhidos e podem ser expandidos na própria página. Seleções válidas atualizam os resultados automaticamente. Enquanto um intervalo personalizado estiver incompleto ou invertido, o recorte anterior, as métricas, a comparação e a paginação permanecem em exibição. Os filtros e a expansão são preservados durante a navegação da visita; recarregar restaura os padrões. Comparações de intervalado separam a sessão completa dos blocos fortes; uma seleção de exercício alinha suas três séries. Totais refletem o recorte e não incluem treinos apenas programados. A [validação do filtro do Histórico](docs/validacao-historico.md) registra os cenários e as medidas da refatoração.
 
 ## Publicar e atualizar
 

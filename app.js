@@ -58,6 +58,8 @@ import {
 import {
   historyView as renderHistory,
   historyDefaults,
+  updateHistoryFilters,
+  clearHistoryFilters,
   seriesView,
 } from "./lib/history-view.js";
 import { backupSummary } from "./lib/backup-view.js";
@@ -107,6 +109,42 @@ let data = account.data ?? defaults(),
   dialogReturnFocus = null;
 const motion = createMotion({ onStart: createMotionDiagnostics() });
 const mobileNav = createMobileNav($("nav"));
+const historyMobile = matchMedia("(max-width: 600px)");
+function syncHistoryDisclosure() {
+  const fields = $("#history-filter-fields");
+  const toggle = $("#history-filters-toggle");
+  if (!fields || !toggle) return;
+  const toggleFocused = document.activeElement === toggle;
+  if (historyMobile.matches && fields.contains(document.activeElement))
+    historyFilters.expanded = true;
+  const open = !historyMobile.matches || historyFilters.expanded;
+  fields.hidden = !open;
+  toggle.hidden = !historyMobile.matches;
+  toggle.setAttribute("aria-expanded", String(open));
+  toggle.setAttribute(
+    "aria-label",
+    open ? "Recolher filtros" : "Expandir filtros",
+  );
+  toggle.querySelector("span").textContent = open ? "Recolher" : "Expandir";
+  $(".history-filters").dataset.expanded = String(open);
+  if (!historyMobile.matches && toggleFocused)
+    $("#history-period").focus({ preventScroll: true });
+}
+historyMobile.addEventListener("change", syncHistoryDisclosure);
+function announceHistory() {
+  const visible = main.querySelectorAll(
+    ".history-entry, .exercise-comparison tbody tr",
+  ).length;
+  $("#history-status").textContent = [
+    $("[data-history-summary]")?.textContent,
+    $("[data-history-period]")?.textContent,
+    `Exibindo ${visible} ${visible === 1 ? "treino" : "treinos"}`,
+    $("[data-history-pending]")?.textContent,
+    $("#history-range-error")?.textContent,
+  ]
+    .filter(Boolean)
+    .join(". ");
+}
 document.documentElement.classList.toggle(
   "no-motion-api",
   typeof Element.prototype.animate !== "function",
@@ -521,6 +559,7 @@ function render({ preserve = false } = {}) {
       }[route.section] || todayView
     )();
   updateTitle(route);
+  if (route.section !== "historico") $("#history-status").textContent = "";
   hydrateIcons();
   muscleMaps.refresh();
   if (ui) restoreView(ui);
@@ -690,7 +729,7 @@ function runView(type) {
     <label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(v.notes ?? "")}</textarea></label><p id="run-error" class="form-error" role="alert"></p><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button></form></aside></div>`;
 }
 function historyView() {
-  return renderHistory(data, historyFilters);
+  return renderHistory(data, historyFilters, { mobile: historyMobile.matches });
 }
 function captureView() {
   const active = document.activeElement,
@@ -744,6 +783,10 @@ function restoreView(ui) {
     );
   else if (ui.field?.action)
     field = main.querySelector(`[data-action="${ui.field.action}"]`);
+  if (!field && ui.field?.action === "clear-history-filters")
+    field = historyMobile.matches
+      ? $("#history-filters-toggle")
+      : $("#history-period");
   field?.focus({ preventScroll: true });
   try {
     if (ui.start !== null) field?.setSelectionRange(ui.start, ui.end);
@@ -987,11 +1030,18 @@ document.addEventListener("click", (event) => {
   if (action === "more-history") {
     historyFilters.limit += 20;
     render({ preserve: true });
+    announceHistory();
+    return;
+  }
+  if (action === "toggle-history-filters") {
+    historyFilters.expanded = !historyFilters.expanded;
+    syncHistoryDisclosure();
     return;
   }
   if (action === "clear-history-filters") {
-    historyFilters = historyDefaults();
+    historyFilters = clearHistoryFilters(historyFilters);
     render({ preserve: true });
+    announceHistory();
     return;
   }
   if (action === "finish-strength") {
@@ -1066,25 +1116,13 @@ document.addEventListener("change", async (event) => {
   const input = event.target;
   if (input.closest("[data-settings-form]")) return;
   if (input.dataset.historyField) {
-    const { applied, ...current } = historyFilters;
-    if (
-      current.period !== "custom" ||
-      (validDate(current.from) &&
-        validDate(current.to) &&
-        current.from <= current.to)
-    )
-      historyFilters.applied = current;
-    historyFilters[input.dataset.historyField] = input.value;
-    historyFilters.limit = 20;
-    if (historyFilters.type !== "all" && !workouts[historyFilters.type]?.ids)
-      historyFilters.exercise = "";
-    if (
-      historyFilters.exercise &&
-      historyFilters.type !== "all" &&
-      !workouts[historyFilters.type].ids.includes(historyFilters.exercise)
-    )
-      historyFilters.exercise = "";
+    historyFilters = updateHistoryFilters(
+      historyFilters,
+      input.dataset.historyField,
+      input.value,
+    );
     render({ preserve: true });
+    announceHistory();
     return;
   }
   if (input.closest("#run-form")) {
