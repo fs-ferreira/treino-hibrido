@@ -362,7 +362,7 @@ test("plano salvo conserva paces e duração apesar de configurações e histór
   assert.deepEqual(current.blocks, original.blocks);
   assert.equal(current.total.minutes, 60);
 });
-test("backups v1/v2 migram para v4 sem transformar zero em sem peso nem inventar blocos", () => {
+test("backups v1/v2 migram para v5 sem transformar zero em sem peso nem inventar blocos", () => {
   const old = defaults();
   old.version = 2;
   delete old.settings.loadProgression;
@@ -373,7 +373,7 @@ test("backups v1/v2 migram para v4 sem transformar zero em sem peso nem inventar
     "2026-10-20": run("interval"),
   };
   const copy = validateBackup(old);
-  assert.equal(copy.version, 4);
+  assert.equal(copy.version, 5);
   assert.equal(KEY, "treino-hibrido:v1");
   assert.equal(copy.settings.loadProgression, 5);
   assert.equal(copy.settings.paceProgression, false);
@@ -382,7 +382,11 @@ test("backups v1/v2 migram para v4 sem transformar zero em sem peso nem inventar
   for (const [date, entry] of Object.entries(old.sessions)) {
     const { id, ...restored } = copy.sessions[date].workouts[0];
     assert.equal(id, `legacy-${date}`);
-    assert.deepEqual(restored, entry);
+    assert.deepEqual(restored, {
+      ...entry,
+      completedAt: null,
+      canceledAt: null,
+    });
   }
 });
 test("backup v3 restaura cargas retidas, modos, referências e planejamento sem perder precisão", () => {
@@ -403,7 +407,7 @@ test("backup v3 restaura cargas retidas, modos, referências e planejamento sem 
   assert.deepEqual(restored.settings, data.settings);
   for (const [date, entry] of Object.entries(data.sessions)) {
     const { id, ...item } = restored.sessions[date].workouts[0];
-    assert.deepEqual(item, entry);
+    assert.deepEqual(item, { ...entry, completedAt: null, canceledAt: null });
   }
 });
 test("backup inválido rejeita progressão, modo e campos de corrida antes de substituir dados", () => {

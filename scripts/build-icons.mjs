@@ -1,5 +1,6 @@
 import fs from "node:fs";
 const names = [
+  "minus",
   "arrow-up-right",
   "arrow-down",
   "arrow-up",

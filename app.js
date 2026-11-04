@@ -6,11 +6,14 @@ import {
   materializeDay,
   workoutStarted,
   workoutState,
-  dayState,
   recordedWorkouts,
   weekSummary,
   addWorkout,
   moveWorkout,
+  cancelWorkout,
+  reactivateWorkout,
+  reopenWorkout,
+  completeWorkout,
   validDate,
   parsePace,
   paceText,
@@ -25,7 +28,7 @@ import {
   maskTime,
   parseDuration,
   durationText,
-} from "./lib/core.js?v=4.0.0";
+} from "./lib/core.js?v=5.0.0";
 import {
   withoutWeight,
   loadSuggestions,
@@ -64,6 +67,13 @@ import {
 } from "./lib/history-view.js";
 import { backupSummary } from "./lib/backup-view.js";
 import { createFieldControls } from "./lib/field-controls.js";
+import {
+  workoutHero,
+  dayContents,
+  dayLabel,
+  statusBadge,
+  summaryDetails,
+} from "./lib/workout-view.js";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -110,6 +120,7 @@ let data = account.data ?? defaults(),
   dialogReturnFocus = null;
 const motion = createMotion({ onStart: createMotionDiagnostics() });
 const fieldControls = createFieldControls({ motion });
+const pendingReorganizations = new WeakMap();
 const mobileNav = createMobileNav($("nav"));
 const historyMobile = matchMedia("(max-width: 600px)");
 let historyDisclosureGeneration = 0;
@@ -240,7 +251,7 @@ function currentSession(
   const items = scheduledWorkouts(data, key);
   return (
     items.find((s) => s.id === id) ??
-    items.find((s) => !s.done) ??
+    items.find((s) => !s.done && !s.canceledAt) ??
     items[0] ??
     null
   );
@@ -252,6 +263,7 @@ function session(key = selected, id = selectedWorkout) {
   const day = materializeDay(data, key);
   const item = day.workouts.find((s) => s.id === id) ?? day.workouts[0];
   if (!item) throw Error("Adicione um treino antes de registrar.");
+  if (item.canceledAt) throw Error("Reative o treino antes de registrar.");
   if (key === selected) selectedWorkout = item.id;
   return item;
 }
@@ -294,7 +306,7 @@ function selectDay(
   selected = date;
   selectedWorkout =
     id ??
-    scheduledWorkouts(data, date).find((s) => !s.done)?.id ??
+    scheduledWorkouts(data, date).find((s) => !s.done && !s.canceledAt)?.id ??
     scheduledWorkouts(data, date)[0]?.id ??
     null;
   if (old !== draftKey()) expanded.clear();
@@ -416,38 +428,52 @@ function syncTodayStatus() {
   const split = $(".split-stat");
   if (split)
     split.innerHTML = `<span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span>`;
+  const details = $("[data-summary-details]");
+  if (details) details.innerHTML = summaryDetails(summary);
   document.querySelectorAll(".week-strip .day").forEach((button) => {
     const key = button.dataset.date,
-      state = dayState(data, key),
-      items = scheduledWorkouts(data, key);
-    button.classList.toggle("selected", key === selected);
-    button.setAttribute("aria-pressed", String(key === selected));
-    button.setAttribute(
-      "aria-label",
-      `${fullDate(key)}, ${items.map((s) => workouts[s.type].name).join(", ") || "Descanso"}, ${state.label}`,
-    );
-    const indicator = button.querySelector(".day-indicator");
-    indicator.classList.toggle("done", state.key === "done");
-    indicator.innerHTML = state.key === "done" ? icon("check") : "";
+      items = scheduledWorkouts(data, key),
+      states = items.map((item) => stateFor(item, key));
+    button.setAttribute("aria-label", dayLabel(key, items, states));
+    if (key === dateKey()) button.setAttribute("aria-current", "date");
+    else button.removeAttribute("aria-current");
+    button.innerHTML = dayContents(key, items, states);
   });
-  if ($(".hero .session-state"))
-    $(".hero .session-state").textContent = sessionStatus().label;
-  const link = $('.hero a[href="#session"]');
-  if (link) link.innerHTML = `${sessionStatus().action} ${icon("arrow-down")}`;
+  const hero = $(".hero");
+  if (hero) {
+    const focused = hero.contains(document.activeElement)
+      ? document.activeElement
+      : null;
+    const focusAction = focused?.dataset.action,
+      focusHref = focused?.getAttribute("href");
+    const fresh = document.createElement("div");
+    fresh.innerHTML = heroView();
+    hero.className = fresh.firstElementChild.className;
+    hero.innerHTML = fresh.firstElementChild.innerHTML;
+    if (focused) {
+      const next = [...hero.querySelectorAll("button,a")].find((el) =>
+        focusAction
+          ? el.dataset.action === focusAction
+          : el.getAttribute("href") === focusHref,
+      );
+      (
+        next ?? hero.querySelector(".hero-actions button,.hero-actions a")
+      )?.focus({ preventScroll: true });
+    }
+  }
+  const todayButton = $('[data-action="reset-day"]');
+  if (todayButton) todayButton.hidden = selected === dateKey();
   document.querySelectorAll("[data-workout-status]").forEach((el) => {
     const item = scheduledWorkouts(data, selected).find(
       (s) => s.id === el.dataset.workoutStatus,
     );
-    el.textContent = runDrafts.has(draftKey(selected, item?.id))
-      ? "Rascunho"
-      : workoutState(item).label;
+    el.innerHTML = statusBadge(stateFor(item));
   });
   document.querySelectorAll('[data-action="move-workout"]').forEach((el) => {
     const item = scheduledWorkouts(data, selected).find(
       (s) => s.id === el.dataset.workout,
     );
-    el.disabled =
-      workoutStarted(item) || runDrafts.has(draftKey(selected, item?.id));
+    el.disabled = !canReorganize(item);
   });
 }
 function syncStrength(id) {
@@ -627,7 +653,30 @@ function render({ preserve = false, preserveHistoryCard = false } = {}) {
   if (route.section === "configuracoes")
     settingsUi.mount($("#settings-page"), route.settingsSection);
   fieldControls.refresh(main);
+  if (route.section === "hoje" && matchMedia("(max-width: 600px)").matches) {
+    const strip = $(".week-strip"),
+      day = strip?.querySelector(".selected");
+    if (day)
+      strip.scrollLeft +=
+        day.getBoundingClientRect().left -
+        strip.getBoundingClientRect().left -
+        (strip.clientWidth - day.offsetWidth) / 2;
+  }
   if (ui) restoreView(ui);
+}
+function stateFor(item, date = selected) {
+  return workoutState(item, {
+    date,
+    hasDraft: runDrafts.has(draftKey(date, item?.id)),
+  });
+}
+function canReorganize(item) {
+  return Boolean(
+    item &&
+      !item.canceledAt &&
+      !workoutStarted(item) &&
+      !runDrafts.has(draftKey(selected, item.id)),
+  );
 }
 function weekStrip(start = weekStart(selected)) {
   return `<div class="week-strip" role="group" aria-label="Dias da semana">${Array.from(
@@ -635,22 +684,20 @@ function weekStrip(start = weekStart(selected)) {
     (_, i) => {
       const key = addDays(start, i),
         items = scheduledWorkouts(data, key),
-        state = dayState(data, key);
-      return `<button class="day ${key === selected ? "selected" : ""} ${items[0] ? workouts[items[0].type].kind : "rest"}" data-action="day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""} aria-label="${escape(fullDate(key))}, ${escape(items.map((s) => workouts[s.type].name).join(", ") || "Descanso")}, ${state.label}"><span>${["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][dateFromKey(key).getDay()]}</span><b>${dateFromKey(key).getDate()}</b><small>${items.length ? `${items.length} ${items.length === 1 ? "treino" : "treinos"}` : "Pausa"}</small><i class="day-indicator ${state.key === "done" ? "done" : ""}">${state.key === "done" ? icon("check") : ""}</i></button>`;
+        states = items.map((item) => stateFor(item, key));
+      return `<button class="day ${key === selected ? "selected" : ""} ${items[0] ? workouts[items[0].type].kind : "rest"}" data-action="day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""} aria-label="${escape(dayLabel(key, items, states))}">${dayContents(key, items, states)}</button>`;
     },
   ).join("")}</div>`;
 }
-function sessionStatus() {
-  return workoutState(currentSession());
-}
 function dayWorkoutsView() {
   const items = scheduledWorkouts(data, selected);
-  return `<section class="day-workouts" aria-label="Treinos do dia"><div class="section-title"><h2>Treinos do dia</h2><button class="button quiet" data-action="add-workout">Adicionar treino ${icon("plus")}</button></div><div class="day-workout-list">${items.map((item) => `<article class="panel day-workout ${item.id === selectedWorkout ? "is-selected" : ""}"><button class="workout-select" data-action="select-workout" data-workout="${item.id}" aria-pressed="${item.id === selectedWorkout}"><b>${workouts[item.type].name}</b><span data-workout-status="${item.id}">${runDrafts.has(draftKey(selected, item.id)) ? "Rascunho" : workoutState(item).label}</span><span>${item.id === selectedWorkout ? "Em exibição" : "Abrir"} ${icon("arrow-down")}</span></button><button class="text-button" data-action="move-workout" data-workout="${item.id}" ${workoutStarted(item) || runDrafts.has(draftKey(selected, item.id)) ? "disabled" : ""} aria-label="Mover ${workouts[item.type].name} para outra data">Mover</button></article>`).join("")}</div>${items.some((item) => workoutStarted(item) || runDrafts.has(draftKey(selected, item.id))) ? '<p class="caption">Treinos iniciados permanecem nesta data. Você pode adicionar outro treino.</p>' : ""}</section>`;
+  return `<section class="day-workouts" aria-label="Treinos do dia"><div class="section-title"><h2>Treinos do dia</h2><button class="button quiet" data-action="add-workout">Adicionar treino ${icon("plus")}</button></div><div class="day-workout-list">${items.map((item) => `<article class="panel day-workout ${item.id === selectedWorkout ? "is-selected" : ""}"><button class="workout-select" data-action="select-workout" data-workout="${item.id}" aria-pressed="${item.id === selectedWorkout}"><b>${workouts[item.type].name}</b><span data-workout-status="${item.id}">${statusBadge(stateFor(item))}</span><span>${item.id === selectedWorkout ? "Em exibição" : "Abrir"} ${icon("arrow-down")}</span></button>${item.canceledAt ? `<button class="text-button" data-action="reactivate-workout" data-workout="${item.id}">Reativar</button>` : `<button class="text-button" data-action="move-workout" data-workout="${item.id}" ${canReorganize(item) ? "" : "disabled"} aria-label="Reorganizar ${workouts[item.type].name}" aria-describedby="reorganize-help">Reorganizar</button>`}</article>`).join("")}</div><p class="caption" id="reorganize-help">Treinos com registros não podem ser movidos ou cancelados.${items.some((item) => runDrafts.has(draftKey(selected, item.id))) ? " Salve o rascunho de corrida antes de reorganizar." : ""}</p></section>`;
 }
 function heroView() {
-  const type = getType(selected),
-    w = workouts[type];
-  return `<section class="hero ${w.kind}"><div class="hero-copy">${w.kind === "run" ? "" : tag(w.tag, w.kind)}<span class="session-state">${sessionStatus(selected).label}</span><p class="hero-overline">${selected === dateKey() ? "O TREINO DE HOJE" : "TREINO SELECIONADO"}</p><h2>${w.name}<span>.</span></h2><p>${w.subtitle}</p><div class="hero-stats">${w.kind === "strength" ? `<div><b>${String(w.ids.length).padStart(2, "0")}</b><span>exercícios</span></div><div><b>03</b><span>séries cada</span></div><div><b>6–8</b><span>repetições</span></div>` : w.kind === "run" ? `<div><b>${type === "interval" ? 40 : type === "easy" ? 30 : (currentSession()?.run?.plan?.longMinutes ?? data.settings.longMinutes)}</b><span>minutos</span></div><div><b>${type === "interval" ? "08" : "3–4"}</b><span>${type === "interval" ? "blocos" : "esforço / 10"}</span></div>` : "<div><b>01</b><span>pausa merecida</span></div>"}</div><a class="button primary" href="#session">${sessionStatus(selected).action} <span>↓</span></a></div><div class="hero-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><span class="art-cross">+</span></div></section>`;
+  const item = currentSession();
+  return workoutHero(item, selected, data.settings, {
+    hasDraft: runDrafts.has(draftKey(selected, item?.id)),
+  });
 }
 function todayView() {
   const summary = weekSummary(data, selected),
@@ -664,12 +711,14 @@ function todayView() {
       fullDate(selected),
       `<button class="button quiet" data-action="reset-day" ${selected === dateKey() ? "hidden" : ""}>Ir para hoje</button>`,
     ) +
-    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><h2>Resumo da semana</h2><div class="progress-ring" style="--progress:${summary.planned ? (summary.done / summary.planned) * 100 : 0}%"><div><b>${summary.done}<small>/${summary.planned}</small></b><span>treinos concluídos</span></div></div><p class="caption">Concluídos / programados</p><div class="split-stat"><span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span></div></section></div>
+    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><h2>Resumo da semana</h2><div class="progress-ring" style="--progress:${summary.planned ? (summary.done / summary.planned) * 100 : 0}%"><div><b>${summary.done}<small>/${summary.planned}</small></b><span>treinos concluídos</span></div></div><p class="caption">Concluídos / programados</p><div class="split-stat"><span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span></div><p class="summary-details" data-summary-details>${summaryDetails(summary)}</p></section></div>
   <section id="week-navigation" aria-label="Navegação semanal"><div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(start)} — ${shortDate(addDays(start, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week" ${weekStart(selected) === weekStart(dateKey()) ? "hidden" : ""}>Semana atual</button></div>${weekStrip(start)}</section>${dayWorkoutsView()}<section id="session" class="session-section" data-workout-id="${escape(selectedWorkout ?? "")}">${sessionView(getType(selected))}</section>`
   );
 }
 function sessionView(type) {
   const w = workouts[type];
+  if (currentSession()?.canceledAt)
+    return `<div class="panel canceled-session"><span class="eyebrow">TREINO CANCELADO</span><h2>O plano continua aqui.</h2><p>Reative o treino para registrar seus resultados.</p>${w.kind === "strength" ? `<ul>${w.ids.map((id) => `<li><span>${escape(exercises[id].name)}</span><button class="text-button" data-action="guide" data-id="${id}">Como fazer ${icon("arrow-up-right")}</button></li>`).join("")}</ul>` : `<p>${escape(w.subtitle)} · ${type === "interval" ? "40 minutos, 8 blocos" : type === "easy" ? "30 minutos" : data.settings.longMinutes + " minutos"}</p>`}<button class="button quiet" data-action="reactivate-workout" data-workout="${selectedWorkout}">Reativar treino ${icon("rotate-ccw")}</button></div>`;
   if (w.kind === "strength") return strengthView(type);
   if (w.kind === "run") return runView(type);
   return `<div class="rest-card panel"><div class="rest-icon">☾</div><p class="eyebrow">ESPAÇO PARA RECUPERAR</p><h2>Hoje, desacelere.</h2><p>O plano reserva este dia para descanso. Priorize o sono e chegue ao próximo treino com disposição.</p><span class="muted">Próximo treino: ${workouts[getType(addDays(selected, 1))].name}</span></div>`;
@@ -971,12 +1020,60 @@ function addWorkoutDialog() {
 }
 function moveWorkoutDialog(id) {
   const item = scheduledWorkouts(data, selected).find((s) => s.id === id);
-  if (!item || workoutStarted(item) || runDrafts.has(draftKey(selected, id)))
-    return;
+  if (!canReorganize(item)) return;
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">${escape(workouts[item.type].name)}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar remanejamento">×</button></div><h2 id="guide-title">Mover treino</h2><form id="move-workout-form" data-date="${selected}" data-workout="${id}"><label>Data de destino<input type="date" name="destination" required></label><p class="caption" data-move-preview role="status">Os treinos do destino serão mantidos. Se a origem ficar sem treinos, será um dia de descanso.</p><p class="form-error" data-move-error role="alert"></p><div class="dialog-actions"><button type="button" class="button quiet" data-action="close-dialog">Cancelar</button><button type="submit" class="button primary">Mover treino</button></div></form>`,
+    `<div class="dialog-top"><span class="eyebrow">${escape(workouts[item.type].name)}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar reorganização de treino">${icon("x")}</button></div><h2 id="guide-title">Reorganizar treino</h2><p class="reorganize-date">${icon("calendar-days")} ${escape(fullDate(selected))}</p><form id="move-workout-form" data-date="${selected}" data-workout="${id}"><fieldset class="reorganize-options"><legend class="sr-only">O que deseja fazer?</legend><label><input type="radio" name="operation" value="move" checked><span>${icon("calendar-days")}<b>Mover treino</b><small>Escolher outra data</small></span></label><label><input type="radio" name="operation" value="cancel"><span>${icon("minus")}<b>Cancelar treino</b><small>Não realizar esta sessão</small></span></label></fieldset><div data-move-fields><label>Data de destino<input type="date" name="destination" required></label><p class="caption" data-move-preview role="status">Os treinos do destino serão mantidos. Se a origem ficar sem treinos, será um dia de descanso.</p></div><div class="cancel-explanation" data-cancel-fields hidden>${icon("circle")}<p>Este treino será marcado como cancelado e continuará no histórico e na meta da semana. Você poderá reativá-lo depois.</p></div><p class="form-error" data-move-error role="alert"></p><div class="dialog-actions"><button type="button" class="button quiet" data-action="close-dialog">Voltar</button><button type="submit" class="button primary">Mover treino</button></div></form>`,
     true,
   );
+}
+
+async function saveWorkoutChange(form, change) {
+  const submit = form.querySelector('[type="submit"]');
+  if (form.getAttribute("aria-busy") === "true") return;
+  form.setAttribute("aria-busy", "true");
+  submit.disabled = true;
+  submit.textContent = "Salvando…";
+  for (const control of form.querySelectorAll('fieldset, [name="destination"]'))
+    control.disabled = true;
+  fieldControls.refresh(form);
+  try {
+    data = change.candidate;
+    const result = await account.remote.save(change.candidate);
+    if (!["cloud", "local"].includes(result.saved)) {
+      form.querySelector("[data-move-error]").textContent =
+        result.saved === "memory"
+          ? "Alteração apenas nesta aba. Não foi possível salvar no dispositivo nem na nuvem. Tente salvar novamente ou exporte uma cópia antes de sair."
+          : "Não foi possível confirmar o salvamento. Suas pendências foram preservadas.";
+      submit.textContent = "Tentar salvar novamente";
+      if (!account.blocked) render({ preserve: true });
+      return;
+    }
+    pendingReorganizations.delete(form);
+    if (form.isConnected && $("#guide-dialog").open)
+      dialogs.close(() =>
+        selectDay(change.to, change.id, {
+          keepScroll: change.action !== "move",
+        }),
+      );
+    else if (!$("#guide-dialog").open) render({ preserve: true });
+    notify(
+      result.saved === "local"
+        ? "Salvo neste dispositivo · sincronização pendente"
+        : change.action === "move"
+          ? "Treino movido."
+          : change.action === "cancel"
+            ? "Treino cancelado. Você pode reativá-lo depois."
+            : "Treino reativado.",
+    );
+  } catch (error) {
+    if (form.isConnected)
+      form.querySelector("[data-move-error]").textContent =
+        error.message || "Não foi possível salvar. Tente novamente.";
+    submit.textContent = "Tentar salvar novamente";
+  } finally {
+    form.removeAttribute("aria-busy");
+    submit.disabled = false;
+  }
 }
 document.addEventListener("click", (event) => {
   if (account.blocked) return;
@@ -1067,7 +1164,7 @@ document.addEventListener("click", (event) => {
     if (!suggestion?.usable) return;
     const s = exerciseSession(id);
     s.sets[id][index].kg = suggestion.kg;
-    s.done = false;
+    reopenWorkout(s);
     const input = $(
       `[data-exercise="${id}"] [data-field="kg"][data-index="${index}"]`,
     );
@@ -1085,7 +1182,39 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "add-workout") return addWorkoutDialog();
-  if (action === "move-workout")
+  if (action === "reactivate-workout") {
+    if (
+      !scheduledWorkouts(data, selected).some(
+        (item) => item.id === button.dataset.workout && item.canceledAt,
+      )
+    )
+      return;
+    button.disabled = true;
+    const date = selected,
+      id = button.dataset.workout;
+    const candidate = structuredClone(data);
+    reactivateWorkout(candidate, date, id);
+    data = candidate;
+    account.remote
+      .save(candidate)
+      .then((result) => {
+        if (selected === date && selectedWorkout === id) selectDay(date, id);
+        else render({ preserve: true });
+        notify(
+          result.saved === "cloud"
+            ? "Treino reativado."
+            : result.saved === "local"
+              ? "Salvo neste dispositivo · sincronização pendente"
+              : "Alteração apenas nesta aba. Exporte uma cópia antes de sair.",
+        );
+      })
+      .catch((error) => {
+        button.disabled = false;
+        notify(error.message);
+      });
+    return;
+  }
+  if (action === "move-workout" || action === "reorganize-selected")
     return moveWorkoutDialog(button.dataset.workout);
   if (action === "select-workout") {
     selectDay(selected, button.dataset.workout, { session: true });
@@ -1127,7 +1256,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "finish-strength") {
     if (currentSession()?.done) {
-      session().done = false;
+      reopenWorkout(session());
       persist("Sessão reaberta.");
       syncStrength();
       return;
@@ -1135,7 +1264,7 @@ document.addEventListener("click", (event) => {
     const key = selected,
       id = selectedWorkout;
     confirmSession(() => {
-      session(key, id).done = true;
+      completeWorkout(session(key, id));
       persist("Sessão concluída. Bom trabalho!");
       syncStrength();
       motion.feedback($(".week-summary .progress-ring b"));
@@ -1196,6 +1325,22 @@ document.addEventListener(
 document.addEventListener("change", async (event) => {
   if (account.blocked) return;
   const input = event.target;
+  if (input.matches('#move-workout-form [name="operation"]')) {
+    fieldControls.close();
+    const form = input.form,
+      cancel = input.value === "cancel",
+      destination = form.elements.destination;
+    destination.disabled = cancel;
+    destination.required = !cancel;
+    form.querySelector("[data-move-fields]").hidden = cancel;
+    form.querySelector("[data-cancel-fields]").hidden = !cancel;
+    form.querySelector('[type="submit"]').textContent = cancel
+      ? "Confirmar cancelamento"
+      : "Mover treino";
+    form.querySelector("[data-move-error]").textContent = "";
+    fieldControls.refresh(form);
+    return;
+  }
   if (input.closest("[data-settings-form]")) return;
   if (input.dataset.historyField) {
     historyFilters = updateHistoryFilters(
@@ -1216,7 +1361,7 @@ document.addEventListener("change", async (event) => {
     const id = input.dataset.withoutWeight,
       s = exerciseSession(id);
     s.withoutWeight[id] = input.checked;
-    s.done = false;
+    reopenWorkout(s);
     persist();
     syncStrength(id);
     return;
@@ -1246,7 +1391,7 @@ document.addEventListener("change", async (event) => {
         : input.value === ""
           ? ""
           : Number(input.value);
-    s.done = false;
+    reopenWorkout(s);
     persist();
     syncStrength(id);
     if (field === "done") motion.feedback(input.nextElementSibling);
@@ -1312,7 +1457,7 @@ document.addEventListener("input", (event) => {
     s.sets[id] ??= emptySets();
     s.sets[id][Number(input.dataset.index)][input.dataset.field] =
       input.value === "" ? "" : Number(input.value);
-    s.done = false;
+    reopenWorkout(s);
     persist();
     syncStrength(id);
   }
@@ -1354,32 +1499,38 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.id === "move-workout-form") {
+    if (form.getAttribute("aria-busy") === "true") return;
+    if (pendingReorganizations.has(form)) {
+      void saveWorkoutChange(form, pendingReorganizations.get(form));
+      return;
+    }
     const from = form.dataset.date,
       id = form.dataset.workout,
-      to = values.destination;
-    if (to === from) {
+      action = values.operation === "cancel" ? "cancel" : "move",
+      to = action === "cancel" ? from : values.destination;
+    if (action === "move" && to === from) {
       $("[data-move-error]").textContent =
         "Escolha uma data diferente da origem.";
       return;
     }
     if (
       runDrafts.has(draftKey(from, id)) ||
-      workoutStarted(scheduledWorkouts(data, from).find((s) => s.id === id))
+      !canReorganize(scheduledWorkouts(data, from).find((s) => s.id === id))
     ) {
       $("[data-move-error]").textContent =
         "Treinos iniciados devem permanecer na data original.";
       return;
     }
-    form.querySelector('[type="submit"]').disabled = true;
-    dialogs.close(() => {
-      try {
-        moveWorkout(data, from, to, id);
-        persist();
-        selectDay(to, id, { keepScroll: false });
-      } catch (error) {
-        notify(error.message);
-      }
-    });
+    try {
+      const candidate = structuredClone(data);
+      if (action === "cancel") cancelWorkout(candidate, from, id);
+      else moveWorkout(candidate, from, to, id);
+      const change = { candidate, from, to, id, action };
+      pendingReorganizations.set(form, change);
+      void saveWorkoutChange(form, change);
+    } catch (error) {
+      $("[data-move-error]").textContent = error.message;
+    }
     return;
   }
   if (form.id === "run-form") {
@@ -1449,7 +1600,7 @@ document.addEventListener("submit", (event) => {
         longCaption.textContent =
           "Duração preservada no planejamento registrado.";
     }
-    s.done = true;
+    completeWorkout(s);
     const key = draftKey(),
       submitted = JSON.stringify(runDrafts.get(key));
     persist("Corrida registrada. Mais um treino na conta!").then((saved) => {
@@ -1534,6 +1685,27 @@ account.lock = () => {
   main.replaceChildren();
 };
 render();
+let statusDate = dateKey();
+function refreshCalendarDate() {
+  const today = dateKey();
+  if (today !== statusDate && !account.blocked) {
+    statusDate = today;
+    syncTodayStatus();
+  }
+}
+function watchCalendarDate() {
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 50);
+  setTimeout(() => {
+    refreshCalendarDate();
+    watchCalendarDate();
+  }, midnight.getTime() - Date.now());
+}
+watchCalendarDate();
+window.addEventListener("focus", refreshCalendarDate);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshCalendarDate();
+});
 if (location.hash === "#semana")
   $("#week-navigation")?.scrollIntoView({ block: "start" });
 if (location.hash === "#session") scrollToSession();

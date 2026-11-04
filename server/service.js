@@ -7,6 +7,8 @@ import {
   normalizeStoredDay,
   scheduledWorkouts,
   workoutStarted,
+  preserveDayMetadata,
+  preserveWorkoutMetadata,
 } from "../lib/core.js";
 import { allowedEmail } from "./config.js";
 export class ApiError extends Error {
@@ -221,10 +223,24 @@ export function createDiaryService({ pool, config }) {
             for (const item of legacy.workouts) {
               const index = day.workouts.findIndex((s) => s.id === item.id);
               if (index < 0) day.workouts.push(item);
-              else day.workouts[index] = item;
+              else {
+                const raw = { ...item };
+                for (const field of ["completedAt", "canceledAt"])
+                  if (!Object.hasOwn(body.value, field)) delete raw[field];
+                day.workouts[index] = preserveWorkoutMetadata(
+                  raw,
+                  day.workouts[index],
+                );
+              }
             }
             changes = { [legacyDate]: day };
           }
+          changes = Object.fromEntries(
+            Object.entries(changes).map(([date, day]) => [
+              date,
+              preserveDayMetadata(day, before.sessions[date]),
+            ]),
+          );
           const data = clean({
             ...before,
             sessions: { ...before.sessions, ...changes },
@@ -259,13 +275,19 @@ export function createDiaryService({ pool, config }) {
             for (const item of day.workouts) {
               const next = afterItems.get(item.id);
               if (
-                workoutStarted(item) &&
+                (workoutStarted(item) || item.canceledAt) &&
                 (!next || next.date !== date || next.item.type !== item.type)
               )
                 fail(
                   409,
                   "WORKOUT_STARTED",
                   "Treinos com registros devem permanecer na data original.",
+                );
+              if (next?.item.canceledAt && workoutStarted(item))
+                fail(
+                  409,
+                  "WORKOUT_STARTED",
+                  "Treinos com registros não podem ser cancelados.",
                 );
               if (next && next.date !== date && workoutStarted(next.item))
                 fail(

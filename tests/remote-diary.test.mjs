@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaults, normalizeStoredDay, moveWorkout } from "../lib/core.js";
+import {
+  defaults,
+  normalizeStoredDay,
+  moveWorkout,
+  preserveDayMetadata,
+} from "../lib/core.js";
 import { createRemoteDiary, RemoteError } from "../lib/remote-diary.js";
 const workout = (n) => ({
   workouts: [
@@ -53,9 +58,10 @@ function setup() {
       if (intercept) await intercept();
       if (!applied.has(options.body.operationId)) {
         if (path === "/settings") data.settings = options.body.value;
-        else if (path === "/days")
-          Object.assign(data.sessions, options.body.value);
-        else {
+        else if (path === "/days") {
+          for (const [date, day] of Object.entries(options.body.value))
+            data.sessions[date] = preserveDayMetadata(day, data.sessions[date]);
+        } else {
           const date = path.split("/")[2],
             incoming = normalizeStoredDay(date, options.body.value),
             day = data.sessions[date] ?? { workouts: [] };
@@ -365,5 +371,82 @@ test("legacy pending operations keep their receipts and merge without replacing 
     10,
   );
   assert.equal(f.applied.size, 1);
+  remote.stop();
+});
+
+test("v4 pending payloads preserve v5 timestamps without changing their receipt or body", async () => {
+  const f = setup(),
+    date = "2026-10-31",
+    initial = defaults();
+  initial.sessions[date] = workout("");
+  for (const set of initial.sessions[date].workouts[0].sets.fly)
+    Object.assign(set, { done: false, reps: "", kg: "" });
+  initial.sessions[date].workouts[0].canceledAt = "2026-11-04T15:30:00.000Z";
+  f.data = initial;
+  const legacy = structuredClone(initial.sessions[date]);
+  delete legacy.workouts[0].canceledAt;
+  const operation = {
+    id: crypto.randomUUID(),
+    path: "/days",
+    value: { [date]: legacy },
+    sending: true,
+  };
+  await f.journal.put("u", {
+    sessionId: "s",
+    generation: "g",
+    snapshot: initial,
+    operations: [operation],
+    blocked: false,
+  });
+  f.broken = true;
+  const remote = f.make(),
+    opened = await remote.open();
+  assert.equal(
+    opened.data.sessions[date].workouts[0].canceledAt,
+    initial.sessions[date].workouts[0].canceledAt,
+  );
+  await remote.save(opened.data);
+  assert.deepEqual(f.entry.operations[0], operation);
+  f.broken = false;
+  await remote.check();
+  assert.equal(
+    f.data.sessions[date].workouts[0].canceledAt,
+    initial.sessions[date].workouts[0].canceledAt,
+  );
+  assert.equal(f.applied.size, 1);
+  remote.stop();
+});
+
+test("conflicting legacy metadata enters recovery and preserves the original pending payload", async () => {
+  const f = setup(),
+    date = "2026-10-31",
+    initial = defaults();
+  initial.sessions[date] = workout(10);
+  initial.sessions[date].workouts[0].done = true;
+  initial.sessions[date].workouts[0].completedAt = "2026-11-04T15:30:00.000Z";
+  f.data = initial;
+  const legacy = structuredClone(initial.sessions[date]);
+  legacy.workouts[0].done = false;
+  delete legacy.workouts[0].completedAt;
+  const operation = {
+    id: crypto.randomUUID(),
+    path: "/days",
+    value: { [date]: legacy },
+    sending: true,
+  };
+  await f.journal.put("u", {
+    sessionId: "s",
+    generation: "g",
+    snapshot: initial,
+    operations: [operation],
+    blocked: false,
+  });
+  const remote = f.make(),
+    opened = await remote.open();
+  assert.ok(opened.recovery);
+  assert.equal(opened.data.sessions[date].workouts[0].done, true);
+  await assert.rejects(remote.recover(true), /Estado/);
+  assert.deepEqual(f.entry.operations[0], operation);
+  assert.equal(f.attempts.length, 0);
   remote.stop();
 });
