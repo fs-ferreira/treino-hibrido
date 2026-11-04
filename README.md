@@ -20,6 +20,14 @@ npm test
 
 Os testes verificam cálculos, programação de vários treinos, remanejamentos atômicos, migração de backups, recuperação de operações antigas, guias, progressão, movimentos, catálogo, navegação circular, filtros e configurações. A [validação da versão 4](docs/validacao-ux-v4.md) documenta o alcance e os limites.
 
+Os selects têm menus acessíveis por teclado e busca nos exercícios quando há mais de 12 opções. Datas aceitam `DD/MM/AAAA` e calendário em português: popover no desktop e painel inferior até 600 px. No mobile, toque no cabeçalho ou nos espaços livres do card de filtros para expandir e recolher. Os controles internos preservam o estado aberto.
+
+### Limpeza de branches neste repositório
+
+O repositório pessoal `fs-ferreira/treino-hibrido` usa exclusão automática das branches após merge de PR. Neste checkout, `fetch.prune=true` remove referências remotas obsoletas e `core.hooksPath=.githooks` executa a limpeza de branches locais depois de um merge ou pull na `main`. O hook preserva a `main`, branches em uso por worktrees e commits não integrados; não exclui branches remotas.
+
+Para conferir os candidatos sem apagar nada, execute `node scripts/cleanup-merged-branches.mjs --dry-run`. A rotina só funciona neste repositório pessoal e não altera configurações globais do Git. Novos clones precisam configurar `git config --local fetch.prune true` e `git config --local core.hooksPath .githooks` para ativar o comportamento local.
+
 ## Como usar
 
 1. Abra **Configurações → Corrida** e informe os paces com a máscara automática (digite `600` para `6:00`). O pace de caminhada é opcional. Registre a maior corrida recente em distância, tempo e data; o pace médio aparece automaticamente. A opção de usar esse pace como moderado-forte bloqueia o campo manual; desmarcar restaura o valor manual anterior. Use **Salvar alterações** para aplicar.

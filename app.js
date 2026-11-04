@@ -63,6 +63,7 @@ import {
   seriesView,
 } from "./lib/history-view.js";
 import { backupSummary } from "./lib/backup-view.js";
+import { createFieldControls } from "./lib/field-controls.js";
 let disposeMovement = () => {};
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -108,8 +109,10 @@ let data = account.data ?? defaults(),
   importGeneration = 0,
   dialogReturnFocus = null;
 const motion = createMotion({ onStart: createMotionDiagnostics() });
+const fieldControls = createFieldControls({ motion });
 const mobileNav = createMobileNav($("nav"));
 const historyMobile = matchMedia("(max-width: 600px)");
+let historyDisclosureGeneration = 0;
 function syncHistoryDisclosure() {
   const fields = $("#history-filter-fields");
   const toggle = $("#history-filters-toggle");
@@ -118,17 +121,38 @@ function syncHistoryDisclosure() {
   if (historyMobile.matches && fields.contains(document.activeElement))
     historyFilters.expanded = true;
   const open = !historyMobile.matches || historyFilters.expanded;
-  fields.hidden = !open;
-  toggle.hidden = !historyMobile.matches;
+  const generation = ++historyDisclosureGeneration;
+  motion.stop(fields);
+  const start = fields.hidden ? 0 : fields.getBoundingClientRect().height;
+  if (!open && fields.contains(document.activeElement))
+    toggle.focus({ preventScroll: true });
+  fields.hidden = false;
+  fields.inert = !open;
+  toggle.disabled = !historyMobile.matches;
   toggle.setAttribute("aria-expanded", String(open));
   toggle.setAttribute(
     "aria-label",
     open ? "Recolher filtros" : "Expandir filtros",
   );
-  toggle.querySelector("span").textContent = open ? "Recolher" : "Expandir";
   $(".history-filters").dataset.expanded = String(open);
+  const end = open ? fields.scrollHeight : 0;
+  fields.style.overflow = "hidden";
+  motion
+    .play(
+      fields,
+      [
+        { height: `${start}px`, opacity: open ? 0 : 1 },
+        { height: `${end}px`, opacity: open ? 1 : 0 },
+      ],
+      { duration: 200 },
+    )
+    .then(() => {
+      if (generation !== historyDisclosureGeneration) return;
+      fields.hidden = !open;
+      fields.style.removeProperty("overflow");
+    });
   if (!historyMobile.matches && toggleFocused)
-    $("#history-period").focus({ preventScroll: true });
+    fieldControls.focus($("#history-period"));
 }
 historyMobile.addEventListener("change", syncHistoryDisclosure);
 function announceHistory() {
@@ -159,6 +183,7 @@ function rememberDisclosure(card, open) {
 const accordions = createAccordions(motion, rememberDisclosure);
 const dialogs = createDialogController($("#guide-dialog"), motion, {
   onClosing() {
+    fieldControls.close();
     disposeMovement();
     pendingConfirmation = null;
     pendingImport = null;
@@ -322,6 +347,7 @@ function scrollToSession() {
   });
 }
 function applyNavigation(route, options = {}) {
+  fieldControls.close();
   dialogs.forceClose();
   if (route === currentRoute && !options.refresh) {
     if (options.session) scrollToSession();
@@ -524,9 +550,11 @@ function updateTitle(route) {
         }[route.section] ?? "Hoje");
   document.title = `${title} · HÍBRIDO`;
 }
-function render({ preserve = false } = {}) {
+function render({ preserve = false, preserveHistoryCard = false } = {}) {
   const ui = preserve ? captureView() : null;
+  const previousFilters = preserveHistoryCard ? $(".history-filters") : null;
   if (account.blocked) return;
+  if (!previousFilters) fieldControls.reset({ preserveDrafts: true });
   muscleMaps.reset();
   settingsUi.unmount();
   accordions.finish();
@@ -546,7 +574,7 @@ function render({ preserve = false } = {}) {
     month: "long",
     year: "numeric",
   });
-  main.innerHTML =
+  const content =
     (runDrafts.size && !(route.section === "hoje" && runDrafts.has(draftKey()))
       ? `<p class="caption run-draft-notice">Há rascunhos de corrida nesta visita. Eles se perdem ao recarregar. <a href="#hoje/${escape(runDrafts.keys().next().value)}">Ver rascunho</a></p>`
       : "") +
@@ -558,13 +586,48 @@ function render({ preserve = false } = {}) {
         configuracoes: () => settingsView(data.settings, route.settingsSection),
       }[route.section] || todayView
     )();
+  // Keep date fields and click targets alive when a blur commits a date.
+  if (previousFilters) {
+    const replacement = document.createElement("div");
+    replacement.innerHTML = content;
+    const next = replacement.querySelector(".history-filters");
+    previousFilters.querySelector("[data-history-summary]").textContent =
+      next.querySelector("[data-history-summary]").textContent;
+    for (const id of ["history-range-hint", "history-range-error"]) {
+      const old = previousFilters.querySelector(`#${id}`),
+        fresh = next.querySelector(`#${id}`);
+      if (old && fresh) old.textContent = fresh.textContent;
+      else if (old) old.remove();
+      else if (fresh)
+        previousFilters.querySelector(".history-date-range").append(fresh);
+    }
+    for (const fresh of next.querySelectorAll('input[type="date"]')) {
+      const old = previousFilters.querySelector(`#${fresh.id}`);
+      for (const name of ["aria-invalid", "aria-describedby"])
+        old.setAttribute(name, fresh.getAttribute(name));
+    }
+    const pending = previousFilters.querySelector("[data-history-pending]"),
+      freshPending = next.querySelector("[data-history-pending]");
+    if (pending && !freshPending) pending.remove();
+    else if (!pending && freshPending)
+      previousFilters.querySelector("header").after(freshPending);
+    for (const child of [...main.childNodes])
+      if (child !== previousFilters) child.remove();
+    let afterFilters = false;
+    for (const child of [...replacement.childNodes]) {
+      if (child === next) afterFilters = true;
+      else if (afterFilters) main.append(child);
+      else main.insertBefore(child, previousFilters);
+    }
+  } else main.innerHTML = content;
   updateTitle(route);
   if (route.section !== "historico") $("#history-status").textContent = "";
   hydrateIcons();
   muscleMaps.refresh();
-  if (ui) restoreView(ui);
   if (route.section === "configuracoes")
     settingsUi.mount($("#settings-page"), route.settingsSection);
+  fieldControls.refresh(main);
+  if (ui) restoreView(ui);
 }
 function weekStrip(start = weekStart(selected)) {
   return `<div class="week-strip" role="group" aria-label="Dias da semana">${Array.from(
@@ -787,13 +850,14 @@ function restoreView(ui) {
     field = historyMobile.matches
       ? $("#history-filters-toggle")
       : $("#history-period");
-  field?.focus({ preventScroll: true });
+  fieldControls.focus(field);
   try {
     if (ui.start !== null) field?.setSelectionRange(ui.start, ui.end);
   } catch {}
   window.scrollTo({ top: ui.y, behavior: "instant" });
 }
 function openDialog(html, compact = false) {
+  fieldControls.close();
   disposeMovement();
   dialogReturnFocus = null;
   $("#guide-dialog").classList.toggle("confirm-dialog", compact);
@@ -805,6 +869,7 @@ function openDialog(html, compact = false) {
   const actions = $("#guide-content > .dialog-actions");
   if (actions) $("#guide-dialog").append(actions);
   dialogs.show();
+  fieldControls.refresh($("#guide-dialog"));
   $("#guide-content").scrollTop = 0;
   disposeMovement = createMovementPlayer($(".movement-guide"));
 }
@@ -840,6 +905,7 @@ function clearDialog() {
   pendingConfirmation = async () => {
     try {
       await account.remote.replace(null);
+      fieldControls.reset();
       settingsUi.reset();
       runDrafts.clear();
       expanded.clear();
@@ -914,6 +980,19 @@ function moveWorkoutDialog(id) {
 }
 document.addEventListener("click", (event) => {
   if (account.blocked) return;
+  const filterCard = event.target.closest(".history-filters");
+  if (
+    historyMobile.matches &&
+    filterCard &&
+    !event.target.closest(
+      "button,input,select,textarea,label,a,[role],.field-control,.form-error,.history-filter-pending,.history-date-range p",
+    ) &&
+    !window.getSelection()?.toString()
+  ) {
+    historyFilters.expanded = !historyFilters.expanded;
+    syncHistoryDisclosure();
+    return;
+  }
   const summary = event.target.closest(
     "details[data-exercise] > summary, details[data-plan-day] > summary",
   );
@@ -1034,11 +1113,13 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "toggle-history-filters") {
+    if (!historyMobile.matches) return;
     historyFilters.expanded = !historyFilters.expanded;
     syncHistoryDisclosure();
     return;
   }
   if (action === "clear-history-filters") {
+    fieldControls.reset();
     historyFilters = clearHistoryFilters(historyFilters);
     render({ preserve: true });
     announceHistory();
@@ -1080,6 +1161,7 @@ document.addEventListener("click", (event) => {
     dialogs.close(async () => {
       try {
         await account.remote.replace(imported);
+        fieldControls.reset();
         settingsUi.reset();
         runDrafts.clear();
         expanded.clear();
@@ -1121,7 +1203,7 @@ document.addEventListener("change", async (event) => {
       input.dataset.historyField,
       input.value,
     );
-    render({ preserve: true });
+    render({ preserve: true, preserveHistoryCard: input.type === "date" });
     announceHistory();
     return;
   }
@@ -1442,6 +1524,7 @@ account.update = (next, force = false) => {
   if (changed || force) render({ preserve: true });
 };
 account.lock = () => {
+  fieldControls.reset();
   disposeMovement();
   dialogs.close();
   settingsUi.reset();
