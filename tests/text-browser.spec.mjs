@@ -1,3 +1,4 @@
+import { choose, enterDate } from "./helpers/field-controls-fixture.mjs";
 import { test, expect } from "@playwright/test";
 import { defaults } from "../lib/core.js";
 import { getRunPlan } from "../lib/progression.js";
@@ -212,7 +213,7 @@ test("pace explanation distinguishes base, history and saved planning", async ({
   );
   await page.locator('[name="minutes"]').fill("30");
   await page.locator('[name="km"]').fill("5");
-  await page.locator('[name="rpe"]').selectOption("4");
+  await choose(page.locator('[name="rpe"]'), "4");
   await page.locator("#run-form [type=submit]").click();
   await expect(page.locator("[data-plan-caption]")).toContainText(
     "Planejamento salvo com esta sessão.",
@@ -266,7 +267,7 @@ test("saving long run without a pace creates saved help and preserves the select
   await selectRun(page, "2026-10-31");
   await page.locator('[name="minutes"]').fill("60");
   await page.locator('[name="km"]').fill("8");
-  await page.locator('[name="rpe"]').selectOption("4");
+  await choose(page.locator('[name="rpe"]'), "4");
   await page.locator("#run-form [type=submit]").click();
   await expect(page.locator("#long-minutes")).toBeDisabled();
   await expect(page.locator("[data-plan-caption]")).toContainText(
