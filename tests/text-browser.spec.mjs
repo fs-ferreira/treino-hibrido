@@ -154,10 +154,10 @@ for (const date of ["2026-10-27", "2026-10-29", "2026-10-31"])
     await expect(page.locator("#session .notice")).toContainText(
       "Configure seus paces para estimar a distância.",
     );
-    await expect(page.locator(".pace-advice h3")).toHaveText(
-      "Pace não configurado",
+    await expect(page.locator(".block-pace").first()).toHaveText(
+      "Pace não informado",
     );
-    await expect(page.locator(".pace-method")).toHaveCount(0);
+    await expect(page.locator(".run-details")).not.toHaveAttribute("open", "");
     await expect(page.locator("#session")).not.toContainText(
       "Usamos seu ritmo configurado",
     );
@@ -173,7 +173,7 @@ for (const date of ["2026-10-27", "2026-10-29", "2026-10-31"])
       await expect(page.locator(".long-options label strong")).toHaveText(
         "75 min",
       );
-      await expect(page.locator(".run-overview > div").first()).toContainText(
+      await expect(page.locator(".run-overview strong").first()).toContainText(
         "75",
       );
     }
@@ -192,7 +192,7 @@ test("pace explanation distinguishes base, history and saved planning", async ({
   };
   await openApp(page, data);
   await selectRun(page, "2026-10-27");
-  await page.locator(".pace-method > summary").click();
+  await page.locator(".run-details > summary").click();
   await expect(page.locator("[data-plan-caption]")).toContainText(
     "Usa o pace definido em Configurações.",
   );
@@ -203,8 +203,8 @@ test("pace explanation distinguishes base, history and saved planning", async ({
     "Caminhada sem estimativa.",
   );
   await selectRun(page, "2026-10-29");
-  await page.locator(".pace-method > summary").click();
-  await expect(page.locator(".pace-advice h3")).toContainText("6:18");
+  await page.locator(".run-details > summary").click();
+  await expect(page.locator(".block-pace").first()).toContainText("6:18");
   await expect(page.locator("[data-plan-caption]")).toContainText(
     "Calculado a partir de uma corrida anterior",
   );
@@ -246,9 +246,12 @@ test("pace conflict keeps recalibration warning without duplicate setup notice",
   };
   await openApp(page, data);
   await selectRun(page, "2026-10-27");
-  await expect(page.locator(".pace-advice h3")).toHaveText(
-    "Recalibre seus ritmos",
-  );
+  await expect(
+    page
+      .locator(".block-pace")
+      .filter({ hasText: "Pace não informado" })
+      .first(),
+  ).toBeVisible();
   await expect(page.locator(".pace-advice .form-error")).toContainText(
     "precisa ser mais rápido que a recuperação",
   );
@@ -318,7 +321,7 @@ test("saved planning and legacy simulation remain distinct; partial totals requi
     "O plano abaixo é uma simulação",
   );
   await expect(page.locator("#long-minutes")).toBeDisabled();
-  await expect(page.locator(".long-options")).toContainText(
+  await expect(page.locator(".run-details")).toContainText(
     "Faixa de 60–90 min: 10,0–15,0 km.",
   );
 });

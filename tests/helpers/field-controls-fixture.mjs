@@ -1,5 +1,17 @@
 import { expect } from "@playwright/test";
 
+export async function chooseBirthMonth(page, value) {
+  await page.locator("#setting-heartRateBirthMonth-trigger").click();
+  const popup = page.locator(".field-month-calendar");
+  await popup
+    .getByLabel("Ano", { exact: true })
+    .selectOption(value.slice(0, 4));
+  await popup
+    .locator(`[data-birth-month="${Number(value.slice(5)) - 1}"]`)
+    .click();
+  await expect(popup).toHaveCount(0);
+}
+
 export async function choose(locator, value) {
   const field = await locator.evaluate((element, desired) => {
     const native =

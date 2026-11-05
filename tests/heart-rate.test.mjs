@@ -23,7 +23,11 @@ import {
 } from "../lib/core.js";
 import { getRunPlan } from "../lib/progression.js";
 import { settingsDraft, validateSettings } from "../lib/settings.js";
-import { runBlocksView, heartRateGuide } from "../lib/run-view.js";
+import {
+  runBlocksView,
+  runDetailsView,
+  heartRateNotice,
+} from "../lib/run-view.js";
 import { plansView } from "../lib/plans-view.js";
 
 beforeEach((t) => {
@@ -216,7 +220,7 @@ test("FC: snapshot individual é imutável e registros antigos não recebem bpm 
   );
   assert.equal(legacy.blocks[1].heartRate.minBpm, null);
   assert.equal(legacy.snapshot.heartRate, undefined);
-  assert.match(heartRateGuide(undefined, "interval", true), /Orientação geral/);
+  assert.match(heartRateNotice(undefined, true), /Orientação geral/);
 });
 
 test("FC: backups 1–5 migram sem inferir referência e v6 preserva metas e valida corrupção", () => {
@@ -281,16 +285,30 @@ test("FC: omissão em operações antigas preserva metadados, null explícito li
 
 test("FC: Hoje e Treinos compartilham apresentação e resumo recolhido inclui ambas as metas", () => {
   const settings = defaults().settings;
+  Object.assign(settings, {
+    easyPace: "6:00",
+    hardPace: "5:00",
+    walkPace: "12:00",
+  });
   settings.heartRate = { birthMonth: "1996-11", sex: "male" };
   const html = runBlocksView(runningPlan("interval", settings));
-  const summary = html.slice(
-    html.indexOf('<details class="interval-repeats">'),
-    html.indexOf("</summary>"),
+  assert.match(html, /Pace/);
+  assert.match(html, /FC 152–171 bpm/);
+  assert.match(html, /FC 95–133 bpm/);
+  assert.doesNotMatch(
+    html,
+    /FC de referência|% da FC máxima|km\/h|estimada|responde com atraso/,
   );
-  assert.match(summary, /Forte · FC de referência: 152–171 bpm · Z4/);
-  assert.match(summary, /Recuperação · FC de referência: 95–133 bpm · Z1–Z2/);
-  assert.match(summary, /FC pode continuar alta/);
+  assert.match(html, /Ver 8 ciclos/);
   assert.equal((html.match(/data-run-block=/g) || []).length, 18);
+  const details = runDetailsView(
+    runningPlan("interval", settings),
+    createHeartRatePlan("interval", settings.heartRate),
+    "interval",
+  );
+  assert.match(details, /Z4 · 80–90%/);
+  assert.match(details, /km\/h/);
+  assert.equal((details.match(/A FC responde com atraso/g) || []).length, 1);
   const catalog = plansView(
     settings,
     { planId: "hibrido-3x3" },

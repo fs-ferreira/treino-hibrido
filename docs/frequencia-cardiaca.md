@@ -1,6 +1,6 @@
 # Frequência cardíaca nas corridas — diário v6
 
-Em Configurações → Corrida, nascimento no formato **MM/AAAA** e sexo **Masculino/Feminino** são opcionais e devem ser preenchidos juntos. Não há campo de FC máxima manual. Sem perfil, as etapas mostram apenas zonas e percentuais. A estimativa em bpm aparece com o perfil preenchido, mesmo sem paces configurados.
+Em Configurações → Corrida, nascimento escolhido em um seletor exclusivo de mês e ano (ex.: **nov/1996**) e sexo **Masculino/Feminino** são opcionais e devem ser preenchidos juntos. Não há campo de FC máxima manual. Sem perfil, as etapas mostram apenas o pace; zonas e percentuais continuam disponíveis em **Detalhes e ajuda**. A estimativa em bpm aparece com o perfil preenchido, mesmo sem paces configurados.
 
 ## Cálculo e uso
 
@@ -48,3 +48,7 @@ Consultadas em **05/11/2026**:
 `heart-rate.test.mjs` cobre fórmulas, mês de aniversário, limites, validação do perfil, 18 etapas, cálculos de corrida, importações e snapshots. `heart-rate-server.test.mjs` verifica persistência, rejeição de dados inválidos e replay imutável. A suíte de sincronização cobre pendências v5. `heart-rate-browser.spec.mjs` verifica configurações, teclado, recarga, catálogo, snapshots e layout em 320 e 1440 px, usando contas/dados sintéticos e API simulada. Capturas ficam em `test-results/heart-rate/`.
 
 Validação em 05/11/2026: **179 testes unitários/API** e **76 testes de interface** passaram; `npm run build` e `git diff --check` passaram. Os testes de interface usaram o Microsoft Edge instalado via `PLAYWRIGHT_CHROMIUM_EXECUTABLE`. As capturas de Configurações em 320 px e do intervalado em 1440 px foram revisadas visualmente. Não foi necessário conectar contas reais nem alterar serviços externos.
+
+## Apresentação v6.1
+
+As linhas principais mostram duração, pace e bpm quando existe referência válida. **Faixas de FC estimadas** aparece uma vez por planejamento. Os ciclos do intervalado continuam recolhidos e **Detalhes e ajuda** reúne métricas secundárias e a orientação de FC, sem repeti-la em cada etapa. Em Configurações, **Como calculamos** contém fórmulas, cálculo da idade, fontes e a explicação do histórico. O seletor mantém o contrato interno de rascunho MM/AAAA e o armazenamento AAAA-MM; limpar nascimento não limpa sexo nem salva automaticamente.

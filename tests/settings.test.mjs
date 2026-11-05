@@ -238,7 +238,7 @@ test("intervalado agrupado mantém os 18 estágios e oito ciclos com total de 40
     html = runBlocksView(blocks);
   assert.equal((html.match(/data-run-block=/g) || []).length, 18);
   assert.equal((html.match(/class="interval-cycle"/g) || []).length, 8);
-  assert.match(html, /8 × forte \+ recuperação/);
+  assert.match(html, /Ver 8 ciclos/);
   assert.match(html, /32 min/);
   assert.equal(
     blocks.reduce((sum, b) => sum + b.minutes, 0),

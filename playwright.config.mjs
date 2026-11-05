@@ -14,6 +14,7 @@ export default defineConfig({
     "text-browser.spec.mjs",
     "auth-browser.spec.mjs",
     "heart-rate-browser.spec.mjs",
+    "run-presentation-browser.spec.mjs",
   ],
   workers: 1,
   timeout: 60000,

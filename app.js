@@ -39,15 +39,19 @@ import {
 } from "./lib/progression.js?v=6.0.0";
 import { workouts, exercises } from "./lib/exercises.js";
 import { muscleMap, createMuscleMapController } from "./lib/muscle-map.js";
-import { runBlocksView, heartRateGuide } from "./lib/run-view.js?v=6.0.0";
-import { plansView } from "./lib/plans-view.js?v=6.0.0";
+import {
+  runBlocksView,
+  heartRateNotice,
+  runDetailsView,
+} from "./lib/run-view.js?v=6.1.0";
+import { plansView } from "./lib/plans-view.js?v=6.1.0";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=4.0.0";
 import {
   settingsView,
   createSettingsController,
   settingsSections,
-} from "./lib/settings.js?v=6.0.0";
-import { createMobileNav } from "./lib/mobile-nav.js?v=4.0.0";
+} from "./lib/settings.js?v=6.1.0";
+import { createMobileNav } from "./lib/mobile-nav.js?v=6.1.0";
 import { illustration } from "./lib/diagrams.js?v=2.2.0";
 import { createMovementPlayer } from "./lib/movement-player.js?v=2.2.0";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";
@@ -66,7 +70,7 @@ import {
   seriesView,
 } from "./lib/history-view.js";
 import { backupSummary } from "./lib/backup-view.js";
-import { createFieldControls } from "./lib/field-controls.js";
+import { createFieldControls } from "./lib/field-controls.js?v=6.1.0";
 import {
   workoutHero,
   dayContents,
@@ -550,19 +554,26 @@ function syncLongRun() {
   $(".long-options label strong").textContent =
     `${data.settings.longMinutes} min`;
   $(".hero-stats b").textContent = data.settings.longMinutes;
-  const overview = $(".run-overview");
-  overview.querySelector(":scope > div:first-child b").innerHTML =
-    `${total.minutes}<em>min</em>`;
-  overview.querySelector(":scope > div:last-child b").innerHTML =
-    `${total.known ? num(total.km, 2) : "—"}<em>km</em>`;
+  $(".run-overview strong").textContent = `${total.minutes} min`;
   const range = $("#long-distance-range");
   if (range) range.textContent = longRangeText(snapshot.easyPace);
-  document.querySelectorAll(".run-block").forEach((row, i) => {
-    row.querySelector(".block-values b").textContent =
-      `${blocks[i].minutes} min`;
-    row.querySelector(".block-values small").textContent =
-      blocks[i].km === null ? "—" : `${num(blocks[i].km, 2)} km`;
-  });
+  $("#session .run-blocks").innerHTML = runBlocksView(blocks);
+  const help = $("#session .run-details"),
+    open = help.open;
+  const plan = getRunPlan(
+    "long",
+    data.settings,
+    data.sessions,
+    selected,
+    selectedWorkout,
+  );
+  help.outerHTML = runDetailsView(
+    blocks,
+    snapshot.heartRate,
+    "long",
+    paceMethod(plan, "long"),
+  );
+  $("#session .run-details").open = open;
 }
 function updateTitle(route) {
   const title =
@@ -794,26 +805,19 @@ function paceHelp(plan) {
       : "Usa o pace definido em Configurações.";
   return `O esforço real orienta o ritmo. Seus paces base são preservados. ${context}`;
 }
-function paceMethod(plan) {
-  return plan.saved || plan.adjustment.sourceDate || plan.adjustment.pace
-    ? `<details class="help-details pace-method"><summary>Entender esta sugestão</summary><p class="caption" data-plan-caption>${paceHelp(plan)}</p></details>`
-    : "";
+function paceMethod(plan, type) {
+  const a = plan.adjustment;
+  const reasons = {
+    maintain: "Esforço na faixa: manter o ritmo realizado.",
+    ease: "Esforço acima da faixa: reduzir o ritmo.",
+    partial: "Progressão ativa: metade da pequena correção para desacelerar.",
+    calibrate: "Esforço abaixo da faixa: aproximar do alvo.",
+    progress: "Duas corridas na faixa: avanço de 1% no pace.",
+  };
+  return `<section class="pace-method"><h3>Ritmo e esforço</h3><p class="caption" data-plan-caption>${paceHelp(plan)}</p><p>Alvo ${effortTarget(type).join("–")}/10${type === "interval" ? " nos blocos fortes" : ""}.</p>${a.sourceDate ? `<p>${reasons[a.reason] || ""}</p><p>Referência: ${shortDate(a.sourceDate)} · ${paceText(a.previousPace)}/km · esforço ${a.rpe}/10.${a.percent ? ` Ajuste de ${a.percent > 0 ? "+" : ""}${weightText(a.percent)}% no tempo por km.` : ""}</p>` : ""}${type === "long" && plan.snapshot.easyPace ? `<p>Faixa de 60–90 min: <span id="long-distance-range">${longRangeText(plan.snapshot.easyPace)}</span>.</p>` : ""}</section>`;
 }
 function paceAdvice(plan, type) {
-  const a = plan.adjustment,
-    [min, max] = effortTarget(type),
-    reasons = {
-      maintain: "Esforço dentro da faixa: manter o ritmo realizado.",
-      ease: "Esforço acima da faixa: reduzir o ritmo para o próximo treino.",
-      partial:
-        "Progressão ativada: metade da pequena correção para desacelerar.",
-      calibrate: "Esforço abaixo da faixa: aproximar o ritmo do esforço alvo.",
-      progress: "Duas últimas sessões na faixa: avanço de 1% no pace.",
-    };
-  return `<section class="panel pace-advice ${a.blocked ? "pace-conflict" : ""}" aria-label="Sugestão de ritmo"><p class="eyebrow cyan-text">${plan.saved ? "PLANEJAMENTO REGISTRADO" : a.sourceDate ? "RITMO AJUSTADO AO HISTÓRICO" : "SEU PACE BASE"}</p><div class="pace-advice-title"><h3>${a.pace ? `${paceText(a.pace)} <small>/km</small>` : a.blocked ? "Recalibre seus ritmos" : "Pace não configurado"}</h3><span>Alvo ${min}–${max}/10${type === "interval" ? " nos blocos fortes" : ""}</span></div>
-    ${a.sourceDate ? `<p>Referência: ${shortDate(a.sourceDate)} · ${paceText(a.previousPace)}/km · esforço ${a.rpe}/10.</p><p>${reasons[a.reason] || ""}${a.percent ? ` Ajuste de ${a.percent > 0 ? "+" : ""}${weightText(a.percent)}% no tempo por km.` : ""}</p>` : ""}
-    ${a.blocked ? `<p class="form-error">${type === "interval" ? "O pace forte sugerido precisa ser mais rápido que a recuperação. As etapas fortes ficam sem estimativa até a recalibração." : "O ritmo calculado ficou fora da faixa de 0:01 a 99:59/km. A distância fica sem estimativa até a recalibração."} <a href="#configuracoes/corrida">Revisar paces base</a>.</p>` : ""}
-    ${paceMethod(plan)}</section>`;
+  return `<div class="pace-advice ${plan.adjustment.blocked ? "pace-conflict" : ""}" aria-label="Origem do ritmo"><p class="eyebrow cyan-text">${plan.saved ? "Plano registrado" : plan.adjustment.sourceDate ? "Ritmo ajustado" : "Pace base"}</p>${plan.adjustment.blocked ? `<p class="form-error">${type === "interval" ? "O pace forte sugerido precisa ser mais rápido que a recuperação. As etapas fortes ficam sem estimativa até a recalibração." : "O ritmo calculado ficou fora da faixa de 0:01 a 99:59/km. A distância fica sem estimativa até a recalibração."} <a href="#configuracoes/corrida">Revisar paces base</a>.</p>` : ""}</div>`;
 }
 function runView(type) {
   const plan = getRunPlan(
@@ -829,14 +833,14 @@ function runView(type) {
     missing = !snapshot.easyPace || (type === "interval" && !snapshot.hardPace),
     isLong = type === "long";
   return `<div class="section-title"><div><p class="eyebrow cyan-text">CORRIDA · ${shortDate(selected)}</p><h2>Planejamento da corrida</h2></div></div>
-    <div class="run-layout"><div><div class="run-overview panel"><div><small>DURAÇÃO PREVISTA</small><b>${total.minutes}<em>min</em></b></div><div><small>${total.complete ? "DISTÂNCIA ESTIMADA" : "DISTÂNCIA PARCIAL"}</small><b>${total.known ? num(total.km, 2) : "—"}<em>km</em></b></div></div>
+    <div class="run-layout"><div><div class="run-overview"><span>Duração prevista</span><strong>${total.minutes} min</strong></div>
     ${missing && !plan.adjustment.blocked ? '<div class="notice">Configure seus paces para estimar a distância. <a href="#configuracoes/corrida">Configurar paces →</a></div>' : ""}
     ${r && !plan.saved ? '<p class="notice subtle">Este registro antigo não guardava o planejamento original. O plano abaixo é uma simulação com as referências atuais.</p>' : ""}
     ${paceAdvice(plan, type)}
-    ${heartRateGuide(snapshot.heartRate, type, Boolean(r && !snapshot.heartRate))}
-    ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração padrão do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption">${snapshot.easyPace ? `Faixa de 60–90 min: <span id="long-distance-range">${longRangeText(snapshot.easyPace)}</span>. ` : ""}<span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Ajusta o padrão dos próximos longões. Escolha conforme sua capacidade atual; a duração não aumenta automaticamente."}</span></p></div>` : ""}
-    <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${total.known && !total.complete ? `<p class="caption">Distância parcial: inclui apenas as etapas com pace informado.${type === "interval" && !snapshot.walkPace ? " Caminhada sem estimativa." : ""}</p>` : ""}</div>
-    <aside><div class="panel effort-card"><span class="mini-icon">${icon("activity")}</span><h3>${type === "interval" ? "Forte. Sem sprint." : "O ritmo da conversa."}</h3><p>${type === "interval" ? "Blocos fortes em 7–8/10 de esforço: um ritmo repetível, com controle nos oito blocos. O ajuste usa apenas os dados desses blocos." : "Mantenha o esforço em 3–4/10, como no plano original. Você deve conseguir conversar com frases completas e sem dificuldade."}</p><a class="text-link" href="#configuracoes/corrida">Ajustar meus ritmos ${arrow}</a></div>
+    ${heartRateNotice(snapshot.heartRate, Boolean(r && !snapshot.heartRate))}
+    ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração padrão do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption"><span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Padrão dos próximos longões. A duração não aumenta automaticamente."}</span></p></div>` : ""}
+    <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${runDetailsView(blocks, snapshot.heartRate, type, paceMethod(plan, type))}</div>
+    <aside>
     <form id="run-form" class="panel run-form"><h3>Como foi a corrida?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${escape(v.minutes ?? "")}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${escape(v.km ?? "")}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${Number(v.minutes) > 0 && Number(v.km) > 0 ? paceText((Number(v.minutes) * 60) / Number(v.km)) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label>
     ${type === "interval" ? `<fieldset class="hard-run-fields"><legend>Blocos fortes <span class="optional">opcional</span></legend><p class="caption" id="hard-run-hint">Preencha os dois campos para ajustar o próximo intervalado. Não use a média da sessão inteira.</p><label>Pace médio dos blocos fortes<input name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${escape(v.hardPace ?? "")}" placeholder="mm:ss" aria-describedby="hard-run-hint"></label><label>Esforço dos blocos fortes (0–10)<select name="hardRpe">${effortOptions(v.hardRpe === "" ? null : Number(v.hardRpe))}</select></label></fieldset>` : ""}
     <label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(v.notes ?? "")}</textarea></label><p id="run-error" class="form-error" role="alert"></p><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button></form></aside></div>`;
@@ -1581,7 +1585,7 @@ document.addEventListener("submit", (event) => {
     if (plan) {
       const slider = $("#long-minutes");
       if (slider) slider.disabled = true;
-      $(".pace-advice .eyebrow").textContent = "PLANEJAMENTO REGISTRADO";
+      $(".pace-advice .eyebrow").textContent = "Plano registrado";
       const savedPlan = getRunPlan(
         s.type,
         data.settings,
@@ -1589,12 +1593,12 @@ document.addEventListener("submit", (event) => {
         selected,
         selectedWorkout,
       );
-      const caption = $(".pace-advice [data-plan-caption]");
+      const caption = $(".run-details [data-plan-caption]");
       if (caption) caption.textContent = paceHelp(savedPlan);
       else
-        $(".pace-advice").insertAdjacentHTML(
+        $(".run-details-body").insertAdjacentHTML(
           "beforeend",
-          paceMethod(savedPlan),
+          paceMethod(savedPlan, s.type),
         );
       const longCaption = $("[data-long-caption]");
       if (longCaption)

@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { defaults, materializeDay } from "../lib/core.js";
 import { getRunPlan } from "../lib/progression.js";
 import { mockCloud } from "./helpers/cloud-api-fixture.mjs";
-import { choose } from "./helpers/field-controls-fixture.mjs";
+import { choose, chooseBirthMonth } from "./helpers/field-controls-fixture.mjs";
 
 const DATE = "2026-11-03";
 async function open(page, data, hash, width = 390) {
@@ -30,35 +30,37 @@ const navigate = (page, hash) =>
     location.hash = value;
   }, hash);
 
-test("nascimento MM/AAAA e sexo estimam ambas as fórmulas, salvam sem pace e sobrevivem à recarga", async ({
+test("seletor de nascimento e sexo estimam ambas as fórmulas e salvam somente pelo botão", async ({
   page,
 }) => {
   const cloud = await open(page, defaults(), "configuracoes/corrida");
-  const panel = page.locator("#settings-panel-corrida");
-  const birth = page.getByLabel("Nascimento (mês/ano)");
-  await birth.fill("111996");
-  await expect(birth).toHaveValue("11/1996");
+  const panel = page.locator("#settings-panel-corrida"),
+    birth = page.locator("#setting-heartRateBirthMonth-trigger");
+  await chooseBirthMonth(page, "1996-11");
+  await expect(birth).toHaveText("nov/1996");
   await choose(page.locator('[name="heartRateSex"]'), "male");
-  await expect(page.locator("[data-heart-rate-preview]")).toContainText(
-    "190 bpm · 30 anos · masculino (220 − idade)",
+  await expect(page.locator("[data-heart-rate-preview]")).toHaveText(
+    "FC máxima estimada: 190 bpm",
   );
   await choose(page.locator('[name="heartRateSex"]'), "female");
-  await expect(page.locator("[data-heart-rate-preview]")).toContainText(
-    "196 bpm · 30 anos · feminino (226 − idade)",
+  await expect(page.locator("[data-heart-rate-preview]")).toHaveText(
+    "FC máxima estimada: 196 bpm",
   );
+  expect(cloud.writes).toBe(0);
   await panel.getByRole("button", { name: "Salvar alterações" }).click();
   await expect
     .poll(() => cloud.data.settings.heartRate)
     .toEqual({ birthMonth: "1996-11", sex: "female" });
   await page.reload();
-  await expect(birth).toHaveValue("11/1996");
-  await expect(page.locator("[data-heart-rate-preview]")).toContainText(
-    "196 bpm",
-  );
+  await expect(birth).toHaveText("nov/1996");
   await expect(panel.getByRole("textbox", { name: /FC máxima/ })).toHaveCount(
     0,
   );
-  await birth.fill("13/1996");
+  await birth.click();
+  await page
+    .locator(".field-month-calendar")
+    .getByRole("button", { name: "Limpar", exact: true })
+    .click();
   await panel.getByRole("button", { name: "Salvar alterações" }).click();
   await expect(birth).toHaveAttribute("aria-invalid", "true");
   await expect(birth).toBeFocused();
@@ -66,7 +68,7 @@ test("nascimento MM/AAAA e sexo estimam ambas as fórmulas, salvam sem pace e so
   expect(cloud.data.settings.heartRate.birthMonth).toBe("1996-11");
 });
 
-for (const width of [320, 1440]) {
+for (const width of [320, 390, 1440]) {
   test(`etapas e resumo exibem FC estimada, teclado e catálogo compartilham metas em ${width}px`, async ({
     page,
   }) => {
@@ -76,23 +78,23 @@ for (const width of [320, 1440]) {
     const session = page.locator("#session");
     const repeats = session.locator(".interval-repeats");
     await expect(repeats).not.toHaveAttribute("open", "");
-    await expect(repeats.locator("summary")).toContainText(
-      "Forte · FC de referência: 152–171 bpm · Z4",
+    await expect(session.locator(".interval-preview")).toContainText(
+      "FC 152–171 bpm",
     );
-    await expect(repeats.locator("summary")).toContainText(
-      "Recuperação · FC de referência: 95–133 bpm · Z1–Z2",
+    await expect(session.locator(".interval-preview")).toContainText(
+      "FC 95–133 bpm",
     );
     await repeats.locator("summary").focus();
     await page.keyboard.press("Enter");
     await expect(repeats).toHaveAttribute("open", "");
     await expect(session.locator("[data-run-block]")).toHaveCount(18);
     await expect(session.locator("[data-run-block='1']")).toContainText(
-      "estimada",
+      "FC 152–171 bpm",
     );
     await expect(session.locator("[data-run-block='2']")).toContainText(
-      "FC pode continuar alta",
+      "Reduza o esforço.",
     );
-    await session.locator(".heart-rate-guide summary").click();
+    await session.locator(".run-details > summary").click();
     await expect(session.locator(".heart-rate-guide")).toContainText(
       "não precisa chegar à faixa antes do próximo bloco",
     );
@@ -109,10 +111,8 @@ for (const width of [320, 1440]) {
     await navigate(page, "treinos/hibrido-3x3");
     const day = page.locator('[data-plan-day="2"]');
     await day.locator(":scope > summary").click();
-    await expect(day.locator(".interval-repeats > summary")).toContainText(
-      "152–171 bpm",
-    );
-    await expect(day.locator(".heart-rate-reference")).toContainText(
+    await expect(day.locator(".interval-preview")).toContainText("152–171 bpm");
+    await expect(day.locator(".heart-rate-guide")).toContainText(
       "FC máxima estimada: 190 bpm",
     );
     await page.screenshot({
@@ -120,9 +120,9 @@ for (const width of [320, 1440]) {
       fullPage: true,
     });
     await navigate(page, "configuracoes/corrida");
-    await expect(page.getByLabel("Nascimento (mês/ano)")).toHaveValue(
-      "11/1996",
-    );
+    await expect(
+      page.locator("#setting-heartRateBirthMonth-trigger"),
+    ).toHaveText("nov/1996");
     await page.screenshot({
       path: `test-results/heart-rate/settings-${width}.png`,
       fullPage: true,
@@ -154,15 +154,15 @@ test("salvar corrida preserva a estimativa após editar sexo e ao recarregar", a
   await page.locator("#settings-panel-corrida [type=submit]").click();
   await expect.poll(() => cloud.data.settings.heartRate.sex).toBe("female");
   await navigate(page, `hoje/${DATE}`);
-  await expect(page.locator("#session .heart-rate-reference")).toContainText(
+  await expect(page.locator("#session .heart-rate-guide")).toContainText(
     "190 bpm",
   );
   await page.reload();
-  await expect(page.locator("#session .heart-rate-reference")).toContainText(
+  await expect(page.locator("#session .heart-rate-guide")).toContainText(
     "190 bpm",
   );
   await navigate(page, "hoje/2026-11-05");
-  await expect(page.locator("#session .heart-rate-reference")).toContainText(
+  await expect(page.locator("#session .heart-rate-guide")).toContainText(
     "196 bpm",
   );
 });
@@ -186,5 +186,8 @@ test("sem configuração ou referência histórica mostra somente zonas sem inve
     "Orientação geral",
   );
   await expect(page.locator("#session .run-blocks")).not.toContainText("bpm");
-  await expect(page.locator("#session .run-blocks")).toContainText("80–90%");
+  await expect(page.locator("#session .run-blocks")).not.toContainText(
+    "80–90%",
+  );
+  await expect(page.locator("#session .run-details")).toContainText("80–90%");
 });

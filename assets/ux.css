@@ -2218,3 +2218,524 @@ textarea,
     order: 2;
   }
 }
+
+/* Compact running plans: operational metrics first, shared by Hoje and Treinos. */
+.run-layout,
+.plan-day.run .plan-day-body,
+#settings-page {
+  --reading-body: 1.066667rem;
+  --reading-help: 0.933333rem;
+  --reading-metric: 1.2rem;
+  --reading-duration: 1.333333rem;
+}
+.run-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 310px);
+}
+.run-layout > *,
+.run-layout aside {
+  min-width: 0;
+}
+.run-layout .run-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 0 0 16px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--reading-help);
+  color: var(--muted);
+}
+.run-overview strong {
+  font-size: var(--reading-duration);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.run-layout .pace-advice {
+  padding: 0;
+  margin: 16px 0 8px;
+  border: 0;
+  background: transparent;
+}
+.run-layout .pace-advice .eyebrow {
+  font-size: var(--reading-help);
+  line-height: 1.5;
+  letter-spacing: normal;
+  margin: 0;
+}
+.run-layout .pace-advice .form-error {
+  font-size: var(--reading-help);
+}
+.run-layout > div > .heart-rate-reference,
+.plan-day-body > .heart-rate-reference {
+  font-size: var(--reading-help);
+  line-height: 1.5;
+  margin: 8px 0 24px;
+  color: var(--muted);
+}
+.run-blocks {
+  min-width: 0;
+}
+.run-blocks .run-block {
+  display: block;
+  min-width: 0;
+  padding: 16px 0;
+  line-height: 1.5;
+}
+.run-block-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px 16px;
+}
+.run-block .run-block-heading b {
+  font-size: var(--reading-body);
+  font-weight: 600;
+}
+.run-block .block-duration {
+  font-size: var(--reading-duration);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.block-duration span {
+  font-size: var(--reading-help);
+  font-weight: 400;
+}
+.run-block-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin-top: 8px;
+}
+.run-block .block-pace,
+.run-block .heart-rate-target {
+  color: var(--text);
+  font-size: var(--reading-metric);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.run-block .heart-rate-target {
+  color: var(--cyan);
+}
+.run-block .run-instruction {
+  font-size: var(--reading-help);
+  color: var(--muted);
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+.interval-group {
+  margin: 16px 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  min-width: 0;
+}
+.interval-group > h3 {
+  font-size: var(--reading-body);
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+.interval-group > h3 span {
+  color: var(--muted);
+  font-weight: 400;
+}
+.interval-group .interval-repeats {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  background: transparent;
+}
+.interval-group .interval-repeats > summary {
+  padding: 12px 0;
+  min-height: 44px;
+  font-size: var(--reading-body);
+  color: var(--cyan);
+}
+.interval-group .interval-repeats > summary > span {
+  flex: 1;
+}
+.interval-group .cycles-open,
+.interval-group .interval-repeats[open] .cycles-closed {
+  display: none;
+}
+.interval-group .interval-repeats[open] .cycles-open {
+  display: block;
+}
+.interval-group:has(.interval-repeats[open]) > .interval-preview {
+  display: none;
+}
+.interval-group .interval-cycles {
+  padding: 0;
+}
+.interval-cycle {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+.interval-cycle h3 {
+  font-size: var(--reading-help);
+  color: var(--cyan);
+  line-height: 1.5;
+  margin: 0;
+}
+.interval-cycle .run-block:last-child {
+  border-bottom: 0;
+}
+.run-details {
+  margin-top: 24px;
+}
+.run-details > summary {
+  font-size: var(--reading-body);
+  min-height: 44px;
+}
+.run-details-body {
+  display: grid;
+  gap: 24px;
+  padding: 16px 0;
+  min-width: 0;
+}
+.run-details-body h3 {
+  font-size: var(--reading-body);
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+.run-details-body p,
+.run-details-body .caption,
+.run-secondary {
+  font-size: var(--reading-help);
+  line-height: 1.5;
+}
+.run-details-body .heart-rate-guide {
+  margin: 0;
+}
+.run-secondary {
+  margin: 16px 0 0;
+  color: var(--muted);
+}
+.run-secondary > div {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.run-secondary dt {
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.run-secondary dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.run-layout .run-form label,
+.run-layout .run-form .field-trigger {
+  font-size: var(--reading-body);
+}
+.run-layout .run-form .caption,
+.run-layout .long-options .caption {
+  font-size: var(--reading-help);
+}
+.run-layout .run-form {
+  padding: 24px;
+}
+.run-layout .long-options {
+  margin: 24px 0;
+}
+.run-layout .long-options label {
+  font-size: var(--reading-body);
+}
+.run-layout .long-options label strong {
+  font-size: var(--reading-duration);
+}
+#settings-page .settings-panel-heading h2 {
+  font-size: 1.6rem;
+}
+#settings-page label,
+#settings-page .field-trigger,
+#settings-page .settings-tabs button,
+#settings-page .pace-toggle,
+#settings-page .settings-actions .button {
+  font-size: var(--reading-body);
+  line-height: 1.5;
+}
+#settings-page label small,
+#settings-page .caption,
+#settings-page .muted,
+#settings-page .settings-explanation,
+#settings-page .pace-toggle small,
+#settings-page .help-details p,
+#settings-page .settings-actions p,
+#settings-page .field-error,
+#settings-page .notice,
+#settings-page .data-card p {
+  font-size: var(--reading-help);
+  line-height: 1.5;
+}
+#settings-page .help-details > summary {
+  font-size: var(--reading-body);
+  line-height: 1.5;
+}
+#settings-page .form-pair {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0 24px;
+}
+#settings-page .recent-run-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0 24px;
+}
+#settings-page .recent-run-card {
+  padding: 24px 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+#settings-page .recent-run-card > .muted,
+#settings-page .heart-rate-settings > .muted {
+  margin: 8px 0 24px;
+}
+#settings-page .heart-rate-settings {
+  margin-top: 32px;
+  padding-top: 0;
+  border-top: 0;
+}
+#settings-page .heart-rate-settings h3,
+#settings-page .recent-run-card h3 {
+  font-size: 1.333333rem;
+}
+#settings-page .heart-rate-reference {
+  font-size: var(--reading-metric);
+  line-height: 1.5;
+  margin: 8px 0 24px;
+}
+#settings-page .actual-pace {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--reading-help);
+}
+#settings-page .actual-pace strong {
+  font-size: var(--reading-metric);
+}
+#settings-page .optional {
+  font-size: var(--reading-help);
+}
+#settings-page .settings-actions .settings-save {
+  min-width: 0;
+}
+.run-blocks,
+.run-details,
+#settings-page {
+  overflow-wrap: break-word;
+}
+.run-details summary:focus-visible,
+.interval-repeats summary:focus-visible,
+#settings-page :is(button, summary, a):focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+@media (max-width: 1023px) {
+  .run-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .run-block-metrics {
+    flex-direction: column;
+  }
+  .interval-group {
+    padding: 16px;
+  }
+  .run-layout .run-form {
+    padding: 20px 16px;
+  }
+  #settings-page .settings-panel {
+    padding: 24px 16px;
+  }
+  #settings-page .form-pair,
+  #settings-page .recent-run-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #settings-page .settings-tabs {
+    position: static;
+  }
+}
+
+/* At 200% zoom a 320px window has only 160 CSS pixels. Reflow the
+   existing shell and controls instead of clipping or reducing reading text. */
+@media (max-width: 280px) {
+  :root {
+    --nav-reserve: 0px;
+  }
+  .workspace {
+    padding-inline: 12px;
+  }
+  .sidebar {
+    padding: 12px;
+  }
+  .sidebar .brand {
+    font-size: 1.2rem;
+    gap: 4px;
+  }
+  .sidebar .brand-mark {
+    width: 24px;
+    height: 24px;
+  }
+  .sidebar nav:not(.is-circular) {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 8px 4px;
+  }
+  .sidebar nav .nav-track {
+    display: contents;
+  }
+  .sidebar nav .nav-step {
+    display: none;
+  }
+  .sidebar nav a {
+    min-width: 0;
+    min-height: 56px;
+    padding: 6px 4px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  main {
+    padding-bottom: 40px;
+  }
+  footer {
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .topbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-block: 12px;
+  }
+  .page-heading,
+  .section-title {
+    flex-wrap: wrap;
+  }
+  .page-heading > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+  h1,
+  h2,
+  h3 {
+    overflow-wrap: anywhere;
+  }
+  .button,
+  .text-button,
+  .text-link {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .hero {
+    padding: 16px;
+  }
+  .hero .button {
+    width: 100%;
+    padding-inline: 8px;
+  }
+  .week-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .week-summary .progress-ring {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .week-controls {
+    flex-wrap: wrap;
+  }
+  .week-controls h2 {
+    flex-basis: 100%;
+    order: -1;
+  }
+  .plan-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .plan-day > summary {
+    grid-template-columns: 24px minmax(0, 1fr) 16px;
+    gap: 8px;
+    padding: 16px 10px;
+  }
+  .plan-day-meta {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: left;
+    max-width: none;
+  }
+  .plan-day > summary > .chevron {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .plan-day .exercise-body {
+    padding-inline: 10px;
+  }
+  .plan-exercises li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .plan-exercises .button {
+    grid-column: 1;
+  }
+  .run-layout .run-form,
+  #settings-page .settings-panel {
+    padding-inline: 12px;
+  }
+  .interval-group {
+    padding-inline: 12px;
+  }
+  .run-form .hard-run-fields {
+    padding-inline: 8px;
+    min-inline-size: 0;
+  }
+  #settings-page .settings-actions {
+    padding-inline: 8px;
+    margin-inline: -8px;
+  }
+  #settings-page .settings-save-status {
+    align-items: flex-start;
+  }
+  #settings-page .settings-save-status p {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  #settings-page .data-actions .button {
+    padding-inline: 8px;
+  }
+  #settings-page .actual-pace {
+    padding-inline: 8px;
+  }
+  .field-date-input {
+    flex-wrap: wrap;
+    padding-inline: 8px;
+  }
+  .field-date-input input.field-date-text {
+    flex-basis: 100%;
+  }
+  .field-date-input .field-date-button {
+    margin-left: auto;
+  }
+}
+@media (max-width: 280px) {
+  .week-summary .split-stat {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .week-summary .split-stat > span {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+}
+#settings-page .recent-run-fields > label:last-child {
+  grid-column: auto;
+}

@@ -507,3 +507,88 @@
     transition: none;
   }
 }
+
+.field-control-month .field-value {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.field-month-calendar {
+  font-size: 1.066667rem;
+}
+.field-month-calendar .field-calendar-title strong {
+  font-size: 1.066667rem;
+  line-height: 1.5;
+}
+.field-month-calendar .field-calendar-title {
+  align-items: flex-start;
+}
+.field-month-calendar .field-calendar-close {
+  flex-shrink: 0;
+}
+.month-year-label {
+  font-size: 1.066667rem;
+  margin: 8px 0 16px;
+}
+.field-month-calendar select {
+  font-size: 1.066667rem;
+  margin-top: 8px;
+  min-height: 48px;
+}
+.field-month-calendar .month-prompt,
+.field-month-calendar .field-calendar-footer {
+  font-size: 0.933333rem;
+  line-height: 1.5;
+}
+.field-month-calendar .field-calendar-footer {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.field-month-calendar .field-calendar-footer span {
+  font-size: inherit;
+  min-width: 0;
+}
+.field-month-grid > [role="row"] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+.field-month-grid [role="gridcell"] {
+  min-width: 0;
+}
+.field-month-grid button {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.066667rem;
+  text-transform: capitalize;
+}
+.field-month-grid button[data-selected="true"] {
+  border-color: var(--lime);
+  background: #c3f96918;
+  color: var(--lime);
+  font-weight: 600;
+}
+.field-month-grid button:disabled {
+  color: var(--muted);
+  opacity: 0.45;
+}
+.field-month-calendar :is(button, select):focus-visible,
+.month-fallback :is(button, select):focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: -2px;
+}
+.month-fallback {
+  display: grid;
+  gap: 8px;
+}
+.month-fallback select {
+  margin: 0;
+}
+.field-month-calendar.field-calendar-sheet {
+  padding: 16px max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}

@@ -136,7 +136,7 @@ test("run drafts survive screens and workout changes; save retains keyboard focu
   await expect(page.locator('[name="minutes"]')).toHaveValue("40");
   await expect(page.locator('[name="notes"]')).toHaveValue("rascunho");
   await expect(page.locator("[data-run-draft-warning]")).toBeVisible();
-  await page.locator(".pace-method>summary").click();
+  await page.locator(".run-details>summary").click();
   const submit = page.locator('#run-form [type="submit"]');
   await submit.focus();
   await page.keyboard.press("Enter");
@@ -145,7 +145,7 @@ test("run drafts survive screens and workout changes; save retains keyboard focu
     .toBe(true);
   await expect(page.locator("[data-run-draft-warning]")).toBeHidden();
   await expect(submit).toBeFocused();
-  await expect(page.locator(".pace-method")).toHaveAttribute("open", "");
+  await expect(page.locator(".run-details")).toHaveAttribute("open", "");
   await page.reload();
   await expect(page.locator('[name="notes"]')).toHaveValue("rascunho");
 });

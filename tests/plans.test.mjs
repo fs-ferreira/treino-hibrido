@@ -59,7 +59,7 @@ test("lista e detalhe consultam o plano sem criar sessões ou modificar configur
   const detail = plansView(data.settings, resolveRoute("#treinos/hibrido-3x3"));
   assert.equal((detail.match(/data-plan-day=/g) || []).length, 7);
   assert.equal((detail.match(/data-action="guide"/g) || []).length, 23);
-  assert.match(detail, /75 minutos/);
+  assert.match(detail, /75 min/);
   assert.match(detail, /8 × \(3 \+ 1 min\)/);
   assert.match(detail, /data-open-today/);
   assert.match(detail, /Voltar para Treinos/);
