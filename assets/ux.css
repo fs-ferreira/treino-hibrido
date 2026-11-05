@@ -2276,6 +2276,8 @@ textarea,
 }
 .run-blocks {
   min-width: 0;
+  --reading-metric: 1.066667rem;
+  --reading-duration: 1.2rem;
 }
 .run-blocks .run-block {
   display: block;
@@ -2308,6 +2310,18 @@ textarea,
   flex-wrap: wrap;
   gap: 4px 24px;
   margin-top: 8px;
+}
+.run-pace-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+.run-block .block-speed {
+  color: var(--muted);
+  font-size: var(--reading-help);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 .run-block .block-pace,
 .run-block .heart-rate-target {

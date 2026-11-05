@@ -297,7 +297,7 @@ test("FC: Hoje e Treinos compartilham apresentação e resumo recolhido inclui a
   assert.match(html, /FC 95–133 bpm/);
   assert.doesNotMatch(
     html,
-    /FC de referência|% da FC máxima|km\/h|estimada|responde com atraso/,
+    /FC de referência|% da FC máxima|estimada|responde com atraso/,
   );
   assert.match(html, /Ver 8 ciclos/);
   assert.equal((html.match(/data-run-block=/g) || []).length, 18);

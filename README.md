@@ -169,6 +169,6 @@ Para revisão visual, execute `npm run preview:movements` e abra `http://127.0.0
 
 ## Apresentação compacta de corrida — v6.1
 
-Hoje e Treinos priorizam duração, pace e FC estimada. O intervalado mostra os alvos de forte e recuperação e mantém **Ver 8 ciclos** recolhido. **Detalhes e ajuda** reúne velocidade, distância, zonas, percentuais, ajuste de pace e orientação do relógio. Os cálculos e o formato de dados v6 permanecem iguais.
+Hoje e Treinos priorizam duração, pace, velocidade em km/h e FC estimada. O intervalado mostra os alvos de forte e recuperação e mantém **Ver 8 ciclos** recolhido. **Detalhes e ajuda** reúne distância, zonas, percentuais, ajuste de pace e orientação do relógio. Os cálculos e o formato de dados v6 permanecem iguais.
 
 A [validação da apresentação e do seletor](docs/validacao-corrida-configuracoes.md) registra testes, larguras, zoom real de 200% e limites da emulação móvel. Use `npm run test:ui` para a regressão no navegador e `npm run test:compat` para Firefox, WebKit e emulações Android/iOS (instale os navegadores com `npx playwright install firefox webkit chromium`, ou indique o executável do Chromium/Edge por `PLAYWRIGHT_CHROMIUM_EXECUTABLE`).

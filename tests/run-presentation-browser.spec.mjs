@@ -85,6 +85,16 @@ for (const width of [320, 390, 1440]) {
       "Pace 5:00/km",
       "Pace 6:00/km",
     ]);
+    await expect(session.locator(".interval-preview .block-speed")).toHaveText([
+      "· 12,0 km/h",
+      "· 10,0 km/h",
+    ]);
+    expect(
+      await session
+        .locator(".block-pace")
+        .first()
+        .evaluate((node) => getComputedStyle(node).fontSize),
+    ).toBe("16px");
     await expect(
       session.locator(".interval-preview .heart-rate-target"),
     ).toHaveText(["FC 152–171 bpm", "FC 95–133 bpm"]);
@@ -97,7 +107,7 @@ for (const width of [320, 390, 1440]) {
       "",
     );
     await expect(session.locator(".run-blocks")).not.toContainText(
-      /km\/h|% da FC máxima|FC de referência/,
+      /% da FC máxima|FC de referência/,
     );
     await fits(page);
     await capture(page, `today-${width}`);
