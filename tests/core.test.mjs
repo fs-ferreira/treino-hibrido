@@ -126,7 +126,11 @@ test("backup retorna cópia validada e sessões de semanas diferentes são indep
   for (const date of Object.keys(data.sessions)) {
     const { id, ...entry } = copy.sessions[date].workouts[0];
     assert.equal(id, `legacy-${date}`);
-    assert.deepEqual(entry, data.sessions[date]);
+    assert.deepEqual(entry, {
+      ...data.sessions[date],
+      completedAt: null,
+      canceledAt: null,
+    });
   }
   copy.sessions["2026-10-26"].workouts[0].sets["pec-deck"][0].kg = 30;
   assert.equal(
@@ -223,7 +227,7 @@ test("migra backup v1 sem perder texto ou sessões", () => {
     sessions: {},
   };
   const migrated = validateBackup(old);
-  assert.equal(migrated.version, 4);
+  assert.equal(migrated.version, 5);
   assert.equal(migrated.settings.recentRunNote, old.settings.recentRun);
   assert.deepEqual(migrated.settings.recentRun, {
     km: "",

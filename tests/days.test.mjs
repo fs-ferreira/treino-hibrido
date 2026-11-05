@@ -23,7 +23,7 @@ test("consulta não materializa; adicionar preserva o treino padrão e aceita ti
   assert.equal(data.sessions[date].workouts[0].id, initial.id);
   assert.notEqual(extra.id, data.sessions[date].workouts[2].id);
   assert.equal(weekSummary(data, date).planned, 8);
-  assert.equal(validateBackup(data).version, 4);
+  assert.equal(validateBackup(data).version, 5);
 });
 test("remanejamento preserva destino e identidade; origem vazia continua descanso", () => {
   const data = defaults(),

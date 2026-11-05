@@ -517,11 +517,12 @@ test("history responsive layouts keep fields accessible and capture the default,
   });
   expect(cloud.writes).toBe(0);
 });
-test("backup v4 preview distinguishes days, workouts and programming without restoring", async ({
+test("legacy v4 preview distinguishes days, workouts and programming without restoring", async ({
   page,
 }) => {
   await open(page, defaults(), "configuracoes/dados");
   const data = defaults();
+  data.version = 4;
   const item = addWorkout(data, TODAY, "easy");
   item.done = true;
   item.run = { minutes: 30, km: 5, rpe: 4, notes: "" };

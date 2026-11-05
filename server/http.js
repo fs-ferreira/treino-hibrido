@@ -1,5 +1,6 @@
 import { unavailable } from "./diagnostics.js";
 import { ApiError } from "./service.js";
+import { VERSION } from "../lib/core.js";
 const json = (value, status = 200) =>
   Response.json(value, {
     status,
@@ -83,7 +84,7 @@ export function createApi({ auth, service, config }) {
         : null;
       if (
         method !== "GET" &&
-        request.headers.get("X-Hibrido-Data-Version") !== "4"
+        request.headers.get("X-Hibrido-Data-Version") !== String(VERSION)
       )
         throw new ApiError(
           426,

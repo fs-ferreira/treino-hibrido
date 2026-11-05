@@ -143,8 +143,11 @@ test("days: atomic moves, immutable receipts, recorded-workout protection and le
     const oldClient = await api(request());
     assert.equal(oldClient.status, 426);
     assert.equal((await oldClient.json()).code, "CLIENT_UPGRADE_REQUIRED");
+    const v4 = request();
+    v4.headers.set("X-Hibrido-Data-Version", "4");
+    assert.equal((await api(v4)).status, 426);
     const modern = request();
-    modern.headers.set("X-Hibrido-Data-Version", "4");
+    modern.headers.set("X-Hibrido-Data-Version", "5");
     assert.equal((await api(modern)).status, 200);
   } finally {
     await db.close();

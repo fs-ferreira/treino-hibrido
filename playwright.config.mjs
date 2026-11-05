@@ -4,6 +4,7 @@ import path from "node:path";
 export default defineConfig({
   testDir: "./tests",
   testMatch: [
+    "workout-lifecycle-browser.spec.mjs",
     "movement-browser.spec.mjs",
     "exercise-card-browser.spec.mjs",
     "forearm-browser.spec.mjs",

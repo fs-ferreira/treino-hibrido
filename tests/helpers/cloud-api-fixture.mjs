@@ -6,7 +6,7 @@ import {
 export async function mockCloud(page, initial = defaults()) {
   let data = validateBackup({
       ...structuredClone(initial),
-      version: 4,
+      version: 5,
       sessions: Object.fromEntries(
         Object.entries(initial.sessions).map(([date, day]) => [
           date,

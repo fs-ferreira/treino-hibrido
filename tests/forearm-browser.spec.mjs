@@ -169,6 +169,8 @@ test("existing completed sessions stay completed; progress and confirmation acco
   expect(cloud.data.sessions["2026-11-02"].workouts[0]).toEqual({
     id: "legacy-2026-11-02",
     ...legacy,
+    completedAt: null,
+    canceledAt: null,
   });
   await page.locator('[data-action="finish-strength"]').click();
   const card = page.locator('[data-exercise="reverse-curl"]');
