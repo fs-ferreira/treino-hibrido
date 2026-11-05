@@ -5,6 +5,7 @@ import {
   normalizeStoredDay,
   moveWorkout,
   preserveDayMetadata,
+  preserveSettingsMetadata,
 } from "../lib/core.js";
 import { createRemoteDiary, RemoteError } from "../lib/remote-diary.js";
 const workout = (n) => ({
@@ -57,7 +58,11 @@ function setup() {
       attempts.push(options.body.operationId);
       if (intercept) await intercept();
       if (!applied.has(options.body.operationId)) {
-        if (path === "/settings") data.settings = options.body.value;
+        if (path === "/settings")
+          data.settings = preserveSettingsMetadata(
+            options.body.value,
+            data.settings,
+          );
         else if (path === "/days") {
           for (const [date, day] of Object.entries(options.body.value))
             data.sessions[date] = preserveDayMetadata(day, data.sessions[date]);
@@ -123,6 +128,42 @@ function setup() {
     },
   };
 }
+test("v5 settings queue replays without erasing FC or changing the immutable operation", async () => {
+  const f = setup();
+  const data = f.data;
+  data.settings.heartRate = { birthMonth: "1996-11", sex: "female" };
+  f.data = data;
+  const legacy = structuredClone(data);
+  legacy.version = 5;
+  delete legacy.settings.heartRate;
+  legacy.settings.longMinutes = 75;
+  const operation = {
+    id: crypto.randomUUID(),
+    path: "/settings",
+    value: legacy.settings,
+    sending: true,
+  };
+  await f.journal.put("u", {
+    sessionId: "s",
+    generation: "g",
+    operations: [operation],
+    snapshot: legacy,
+    blocked: false,
+  });
+  f.broken = true;
+  const remote = f.make();
+  const opened = await remote.open();
+  assert.deepEqual(opened.data.settings.heartRate, data.settings.heartRate);
+  assert.equal(opened.data.settings.longMinutes, 75);
+  await remote.resume();
+  assert.deepEqual(f.entry.operations[0].value, operation.value);
+  f.broken = false;
+  await remote.resume();
+  assert.deepEqual(f.data.settings.heartRate, data.settings.heartRate);
+  assert.ok(f.attempts.every((id) => id === operation.id));
+  remote.stop();
+});
+
 test("opening phases follow authentication and do not repeat in background checks", async () => {
   const events = [],
     f = setup(),

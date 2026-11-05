@@ -373,7 +373,7 @@ test("backups v1/v2 migram para v5 sem transformar zero em sem peso nem inventar
     "2026-10-20": run("interval"),
   };
   const copy = validateBackup(old);
-  assert.equal(copy.version, 5);
+  assert.equal(copy.version, 6);
   assert.equal(KEY, "treino-hibrido:v1");
   assert.equal(copy.settings.loadProgression, 5);
   assert.equal(copy.settings.paceProgression, false);

@@ -9,6 +9,7 @@ import {
   workoutStarted,
   preserveDayMetadata,
   preserveWorkoutMetadata,
+  preserveSettingsMetadata,
 } from "../lib/core.js";
 import { allowedEmail } from "./config.js";
 export class ApiError extends Error {
@@ -176,7 +177,7 @@ export function createDiaryService({ pool, config }) {
         if (path === "/settings") {
           const settings = clean({
             ...defaults(),
-            settings: body.value,
+            settings: preserveSettingsMetadata(body.value, d.settings),
           }).settings;
           await c.query("UPDATE diaries SET settings=$2 WHERE user_id=$1", [
             actor.userId,

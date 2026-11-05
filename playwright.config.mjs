@@ -13,6 +13,7 @@ export default defineConfig({
     "muscle-map-browser.spec.mjs",
     "text-browser.spec.mjs",
     "auth-browser.spec.mjs",
+    "heart-rate-browser.spec.mjs",
   ],
   workers: 1,
   timeout: 60000,

@@ -49,6 +49,8 @@ O app reúne os 21 exercícios das imagens do post de @thalleshirakawa e dois ex
 
 Referências de corrida: [CDC](https://www.cdc.gov/physical-activity-basics/measuring/index.html) e [V.O2](https://vdoto2.com/calculator/). Referências específicas dos exercícios e demonstrações estão em `assets/references.json` e no guia de cada exercício. Consulta em 20/10/2026. Principais fontes: ACE, Muscle & Strength, NASM, NISMAT e Catalyst Athletics. Os links externos dependem da disponibilidade dos provedores. A demonstração de reverse crunch é no chão; o guia descreve a adaptação ao banco.
 
+Em **Configurações → Corrida**, informe opcionalmente nascimento em **MM/AAAA** e sexo **Masculino/Feminino** para exibir faixas estimadas de frequência cardíaca em bpm em Hoje e Treinos. Masculino usa **220 − idade**; feminino usa **226 − idade**. A idade considera o mês de nascimento. Não há entrada manual de FC máxima. Sem o perfil, aparecem apenas zonas e percentuais. As referências seguem o método **% da FC máxima**; a [documentação de frequência cardíaca e formato v6](docs/frequencia-cardiaca.md) descreve as faixas, fontes, estimativas e cuidados com a resposta gradual da FC no intervalado. Essas referências orientam intensidade, sem comprovar um pace específico. Consulta das fontes de FC em 05/11/2026.
+
 ## Progressão de cargas e paces
 
 Em cada exercício, **Sem peso adicional** vale para as três séries. Os campos de carga ficam desabilitados; as cargas digitadas são preservadas para restaurar ao desmarcar. O histórico e as sugestões ignoram essas cargas enquanto o modo estiver ativo. Novos treinos herdam a última escolha por exercício; registros antigos com carga zero continuam como foram registrados.
@@ -70,7 +72,7 @@ A política inicial é uma **heurística do aplicativo**, não uma fórmula fisi
 
 Exemplo: 8:00/km com esforço 6 e teto 4 resulta em `480 × 1,05 = 504`, ou **8:24/km**. Com progressão, `480 × 1,025 = 492`, ou **8:12/km**. Arredondar apenas o pace final para segundos inteiros. Abrir telas ou semanas sem novos registros não acumula ajustes. Volume, recuperação e caminhada não aumentam automaticamente; no intervalado, somente os blocos fortes recebem a adaptação. Um ritmo forte que deixe de ser mais rápido que a recuperação fica sem estimativa até recalibrar os paces.
 
-Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 5 preservam essas informações e vários treinos por data; versões 1, 2, 3 e 4 continuam importáveis.
+Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 6 preservam essas informações, as referências cardíacas e vários treinos por data; versões 1–5 continuam importáveis.
 
 Para usar apenas a musculação, é possível salvar Progressão sem preencher Corrida. Se começar a preencher um par de paces ou uma corrida recente, complete os respectivos campos antes de salvar essa categoria.
 
@@ -84,13 +86,13 @@ Somente **Salvar alterações** muda o planejamento. Cada categoria valida apena
 
 Os formulários continuam montados ao alternar categorias. Na barra de abas, setas movem o foco, Enter/Espaço ativam e Tab segue para o conteúdo. A barra tem rolagem horizontal finita em telas estreitas. As ações ficam aderentes quando há alterações e espaço disponível; em viewports curtas ou com teclado reduzindo a área visível, voltam ao fluxo normal.
 
-Backups incluem apenas configurações salvas. Restaurar um backup ou limpar o diário após confirmação invalida as edições anteriores. O [formato versão 5](docs/formato-diario-v5.md) preserva as configurações salvas e a programação por data; rascunhos em memória não entram no arquivo.
+Backups incluem apenas configurações salvas. Restaurar um backup ou limpar o diário após confirmação invalida as edições anteriores. O [formato versão 6](docs/frequencia-cardiaca.md) preserva as configurações salvas e a programação por data; rascunhos em memória não entram no arquivo.
 
 A [evolução do diário para v5](docs/formato-diario-v5.md) documenta cancelamento, reativação, horários, estados por treino e compatibilidade com pendências antigas. Treinos cancelados e não realizados permanecem na meta semanal; somente concluídos contam como feitos. O calendário compartilhado começa na segunda-feira e aceita datas no padrão brasileiro.
 
 ## Dados e backup
 
-Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O backup é versão 5, com importação das versões anteriores. Novas gravações usam `X-Hibrido-Data-Version: 5`; abas antigas devem ser recarregadas.
+Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O backup é versão 6, com importação das versões anteriores. Novas gravações usam `X-Hibrido-Data-Version: 6`; abas antigas devem ser recarregadas.
 
 A [configuração de Google, Neon e Vercel](docs/autenticacao-e-neon.md) descreve credenciais, migrações, fallback, sessão única e ativação da hospedagem. As credenciais reais devem ser cadastradas nos serviços, nunca no repositório.
 
@@ -100,7 +102,7 @@ A [validação de progressão e painéis](docs/validacao-progressao.md) registra
 
 ## Treinos e navegação
 
-O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O diário utiliza o formato 5; consultar o plano continua sem criar registros.
+O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O diário utiliza o formato 6; consultar o plano continua sem criar registros.
 
 O menu tem quatro destinos: **Hoje, Treinos, Histórico e Configurações**. Semana foi incorporada a Hoje; `#semana` continua como atalho. A categoria Semana de Configurações foi preservada. `#hoje/AAAA-MM-DD/ID` identifica a data e o treino; recarga e histórico do navegador mantêm esse contexto. Tocar Hoje no menu volta à data atual.
 

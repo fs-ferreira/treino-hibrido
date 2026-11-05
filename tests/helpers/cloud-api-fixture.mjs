@@ -1,12 +1,13 @@
 import {
   defaults,
+  VERSION,
   validateBackup,
   normalizeStoredDay,
 } from "../../lib/core.js";
 export async function mockCloud(page, initial = defaults()) {
   let data = validateBackup({
       ...structuredClone(initial),
-      version: 5,
+      version: VERSION,
       sessions: Object.fromEntries(
         Object.entries(initial.sessions).map(([date, day]) => [
           date,
