@@ -1,5 +1,16 @@
 {
   "checkedOn": "2026-10-20",
+  "runningHeartRate": {
+    "checkedOn": "2026-11-05",
+    "method": "Percent of estimated maximum heart rate. App convention: male 220-age; female 226-age. Age uses birth month/year. No manual maximum-heart-rate input. Phase mapping is app guidance, not a measured pace conversion.",
+    "sources": [
+      "https://www.polar.com/us-en/guide/heart-rate-zones",
+      "https://www8.garmin.com/manuals/webhelp/vivosmarthr/EN-US/GUID-A8716C0B-B267-4C42-B45F-B9C7928BCA19.html",
+      "https://support.polar.com/e_manuals/Team_Pro/Polar_Team_Pro_user_manual_English/polar_heart_rate_zones.htm",
+      "https://www.heart.org/en/healthy-living/exercise-and-physical-activity/fitness-basics/target-heart-rates",
+      "https://www.cdc.gov/physical-activity-basics/measuring/"
+    ]
+  },
   "illustrationsReviewedOn": "2026-10-21",
   "muscleMapReviewedOn": "2026-11-02",
   "muscleMapNotes": "Original schematic front/back SVG atlas, with explicit qualitative primary and secondary targets for all 23 variants. Source review, complementary references and simplifications are documented in docs/mapa-muscular.md. Colors express roles, not measured activation. Both sides are shown for unilateral exercises. Empty secondary lists mean no secondary target is highlighted, not physiological inactivity.",

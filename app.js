@@ -28,7 +28,7 @@ import {
   maskTime,
   parseDuration,
   durationText,
-} from "./lib/core.js?v=5.0.0";
+} from "./lib/core.js?v=6.0.0";
 import {
   withoutWeight,
   loadSuggestions,
@@ -36,17 +36,17 @@ import {
   getRunPlan,
   paceRevision,
   effortTarget,
-} from "./lib/progression.js?v=4.0.0";
+} from "./lib/progression.js?v=6.0.0";
 import { workouts, exercises } from "./lib/exercises.js";
 import { muscleMap, createMuscleMapController } from "./lib/muscle-map.js";
-import { runBlocksView } from "./lib/run-view.js?v=1.7.0";
-import { plansView } from "./lib/plans-view.js?v=4.0.0";
+import { runBlocksView, heartRateGuide } from "./lib/run-view.js?v=6.0.0";
+import { plansView } from "./lib/plans-view.js?v=6.0.0";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=4.0.0";
 import {
   settingsView,
   createSettingsController,
   settingsSections,
-} from "./lib/settings.js?v=4.0.0";
+} from "./lib/settings.js?v=6.0.0";
 import { createMobileNav } from "./lib/mobile-nav.js?v=4.0.0";
 import { illustration } from "./lib/diagrams.js?v=2.2.0";
 import { createMovementPlayer } from "./lib/movement-player.js?v=2.2.0";
@@ -833,6 +833,7 @@ function runView(type) {
     ${missing && !plan.adjustment.blocked ? '<div class="notice">Configure seus paces para estimar a distância. <a href="#configuracoes/corrida">Configurar paces →</a></div>' : ""}
     ${r && !plan.saved ? '<p class="notice subtle">Este registro antigo não guardava o planejamento original. O plano abaixo é uma simulação com as referências atuais.</p>' : ""}
     ${paceAdvice(plan, type)}
+    ${heartRateGuide(snapshot.heartRate, type, Boolean(r && !snapshot.heartRate))}
     ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração padrão do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption">${snapshot.easyPace ? `Faixa de 60–90 min: <span id="long-distance-range">${longRangeText(snapshot.easyPace)}</span>. ` : ""}<span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Ajusta o padrão dos próximos longões. Escolha conforme sua capacidade atual; a duração não aumenta automaticamente."}</span></p></div>` : ""}
     <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${total.known && !total.complete ? `<p class="caption">Distância parcial: inclui apenas as etapas com pace informado.${type === "interval" && !snapshot.walkPace ? " Caminhada sem estimativa." : ""}</p>` : ""}</div>
     <aside><div class="panel effort-card"><span class="mini-icon">${icon("activity")}</span><h3>${type === "interval" ? "Forte. Sem sprint." : "O ritmo da conversa."}</h3><p>${type === "interval" ? "Blocos fortes em 7–8/10 de esforço: um ritmo repetível, com controle nos oito blocos. O ajuste usa apenas os dados desses blocos." : "Mantenha o esforço em 3–4/10, como no plano original. Você deve conseguir conversar com frases completas e sem dificuldade."}</p><a class="text-link" href="#configuracoes/corrida">Ajustar meus ritmos ${arrow}</a></div>
@@ -992,7 +993,7 @@ function guide(id) {
 }
 function sources() {
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">TRANSPARÊNCIA</span><button class="close-button" data-action="close-dialog" aria-label="Fechar fontes">×</button></div><h2 id="guide-title">Fontes e método</h2><p>Plano de @thalleshirakawa, com exercícios, séries e durações do post original.</p>${link("https://www.instagram.com/p/Dd8zBnRkXkR/", "Plano original")}<h3>Corrida</h3><p>Usamos seu pace informado para converter duração em distância e velocidade. Não estimamos capacidade fisiológica nem aplicamos automaticamente as zonas VDOT.</p>${link("https://www.cdc.gov/physical-activity-basics/measuring/index.html", "CDC · intensidade relativa e teste da conversa")}${link("https://vdoto2.com/calculator/", "V.O2 · referência sobre ritmos de treino")}<p>O esforço 3–4/10 e o intervalado de 3 min + 1 min são do post. O V.O2 é referência conceitual de ritmos, não a origem dessa sessão nem uma fórmula aplicada pelo app.</p><h3>Progressão</h3><p>Ajustamos segundos por km em 2,5% por ponto fora da faixa, até +10% ou −5%. Com progressão ativa: metade da desaceleração para excesso de 1–2 pontos; excesso de 3 ou mais mantém correção integral. Duas últimas sessões equivalentes na faixa permitem −1%, sem somar outra correção. Essa é uma heurística do app, não uma conversão fisiológica exata.</p><p>A carga sugerida usa a referência de cada série: aumenta pelo percentual escolhido ao atingir 8 repetições. Esse gatilho foi escolhido para este plano.</p>${link("https://pubmed.ncbi.nlm.nih.gov/19204579/", "ACSM · progressão em musculação (2009)")}<h3>Musculação</h3><p>Textos resumidos em português e ilustrações esquemáticas originais. As demonstrações externas podem mostrar equipamentos ou variantes diferentes; observe as notas de cada guia.</p><div class="source-list">${Object.values(
+    `<div class="dialog-top"><span class="eyebrow">TRANSPARÊNCIA</span><button class="close-button" data-action="close-dialog" aria-label="Fechar fontes">×</button></div><h2 id="guide-title">Fontes e método</h2><p>Plano de @thalleshirakawa, com exercícios, séries e durações do post original.</p>${link("https://www.instagram.com/p/Dd8zBnRkXkR/", "Plano original")}<h3>Corrida</h3><p>Usamos seu pace informado para converter duração em distância e velocidade. Não estimamos capacidade fisiológica nem aplicamos automaticamente as zonas VDOT.</p>${link("https://www.cdc.gov/physical-activity-basics/measuring/index.html", "CDC · intensidade relativa e teste da conversa")}${link("https://vdoto2.com/calculator/", "V.O2 · referência sobre ritmos de treino")}<p>O esforço 3–4/10 e o intervalado de 3 min + 1 min são do post. O V.O2 é referência conceitual de ritmos, não a origem dessa sessão nem uma fórmula aplicada pelo app.</p><h3>Frequência cardíaca</h3><p>As metas por etapa são uma orientação adotada pelo app usando percentuais da FC máxima: leve e longão em Z2 (60–70%), aquecimento e recuperação em Z1–Z2 (50–70%), blocos fortes em Z4 (80–90%) e caminhada em direção a Z1 (50–60%). Não são uma conversão de batimentos em pace.</p><p>Calculamos a idade pelo mês/ano de nascimento e estimamos 220 − idade para masculino ou 226 − idade para feminino. As fórmulas por sexo são a convenção adotada neste app. Os limites das faixas são arredondados para bpm inteiros. Uma estimativa pela idade pode diferir da FC máxima real.</p><p>Nos intervalados a FC responde com atraso. Não acelere para atingir a faixa imediatamente e não exija que a FC caia para a referência durante 1 minuto de recuperação ou 3 minutos de caminhada. Mantenha esforço controlado e use também o teste da conversa.</p>${link("https://www.polar.com/us-en/guide/heart-rate-zones", "Polar · zonas em percentuais da FC máxima")}${link("https://www8.garmin.com/manuals/webhelp/vivosmarthr/EN-US/GUID-A8716C0B-B267-4C42-B45F-B9C7928BCA19.html", "Garmin · cálculo das zonas cardíacas")}${link("https://support.polar.com/e_manuals/Team_Pro/Polar_Team_Pro_user_manual_English/polar_heart_rate_zones.htm", "Polar · resposta gradual da frequência cardíaca")}${link("https://www.heart.org/en/healthy-living/exercise-and-physical-activity/fitness-basics/target-heart-rates", "American Heart Association · estimativa geral de 220 − idade")}<p class="caption">Referências de frequência cardíaca consultadas em 05/11/2026.</p><h3>Progressão</h3><p>Ajustamos segundos por km em 2,5% por ponto fora da faixa, até +10% ou −5%. Com progressão ativa: metade da desaceleração para excesso de 1–2 pontos; excesso de 3 ou mais mantém correção integral. Duas últimas sessões equivalentes na faixa permitem −1%, sem somar outra correção. Essa é uma heurística do app, não uma conversão fisiológica exata.</p><p>A carga sugerida usa a referência de cada série: aumenta pelo percentual escolhido ao atingir 8 repetições. Esse gatilho foi escolhido para este plano.</p>${link("https://pubmed.ncbi.nlm.nih.gov/19204579/", "ACSM · progressão em musculação (2009)")}<h3>Musculação</h3><p>Textos resumidos em português e ilustrações esquemáticas originais. As demonstrações externas podem mostrar equipamentos ou variantes diferentes; observe as notas de cada guia.</p><div class="source-list">${Object.values(
       exercises,
     )
       .map((ex) =>
@@ -1002,7 +1003,7 @@ function sources() {
       )
       .join(
         "",
-      )}</div><p class="caption">Referências consultadas em 20/10/2026. Vídeos dependem dos sites de origem.</p>`,
+      )}</div><p class="caption">Referências de musculação consultadas em 20/10/2026. Vídeos dependem dos sites de origem.</p>`,
   );
 }
 function addWorkoutDialog() {

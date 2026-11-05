@@ -87,7 +87,7 @@ test("legacy v4 retains unknown completion time; invalid status combinations and
   delete item.canceledAt;
   const old = { ...data, version: 4 },
     restored = validateBackup(old);
-  assert.equal(restored.version, 5);
+  assert.equal(restored.version, 6);
   assert.equal(restored.sessions[DATE].workouts[1].completedAt, null);
   assert.match(
     workoutHero(restored.sessions[DATE].workouts[1], DATE, data.settings),
