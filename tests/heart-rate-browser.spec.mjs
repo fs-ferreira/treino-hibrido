@@ -76,25 +76,26 @@ for (const width of [320, 390, 1440]) {
     page.on("pageerror", (error) => errors.push(error.message));
     await open(page, configured(), `hoje/${DATE}`, width);
     const session = page.locator("#session");
-    const repeats = session.locator(".interval-repeats");
-    await expect(repeats).not.toHaveAttribute("open", "");
-    await expect(session.locator(".interval-preview")).toContainText(
+    await expect(session.locator(".interval-repeats")).toHaveCount(0);
+    await expect(session.locator(".interval-group h3")).toContainText(
+      "Repetir 8 vezes",
+    );
+    await expect(session.locator(".interval-steps")).toContainText(
       "FC 152–171 bpm",
     );
-    await expect(session.locator(".interval-preview")).toContainText(
+    await expect(session.locator(".interval-steps")).toContainText(
       "FC 95–133 bpm",
     );
-    await repeats.locator("summary").focus();
-    await page.keyboard.press("Enter");
-    await expect(repeats).toHaveAttribute("open", "");
-    await expect(session.locator("[data-run-block]")).toHaveCount(18);
+
+    await expect(session.locator("[data-run-block]")).toHaveCount(4);
     await expect(session.locator("[data-run-block='1']")).toContainText(
       "FC 152–171 bpm",
     );
     await expect(session.locator("[data-run-block='2']")).toContainText(
       "Reduza o esforço.",
     );
-    await session.locator(".run-details > summary").click();
+    await session.locator(".run-details > summary").focus();
+    await page.keyboard.press("Enter");
     await expect(session.locator(".heart-rate-guide")).toContainText(
       "não precisa chegar à faixa antes do próximo bloco",
     );
@@ -111,7 +112,7 @@ for (const width of [320, 390, 1440]) {
     await navigate(page, "treinos/hibrido-3x3");
     const day = page.locator('[data-plan-day="2"]');
     await day.locator(":scope > summary").click();
-    await expect(day.locator(".interval-preview")).toContainText("152–171 bpm");
+    await expect(day.locator(".interval-steps")).toContainText("152–171 bpm");
     await expect(day.locator(".heart-rate-guide")).toContainText(
       "FC máxima estimada: 190 bpm",
     );

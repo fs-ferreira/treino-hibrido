@@ -365,8 +365,7 @@ textarea::placeholder {
 summary::-webkit-details-marker {
   display: none;
 }
-.history-strength[open] > summary .icon,
-.interval-repeats[open] > summary > .icon {
+.history-strength[open] > summary .icon {
   transform: rotate(180deg);
 }
 .run-overview small {
@@ -438,41 +437,6 @@ summary::-webkit-details-marker {
   line-height: 1.7;
   color: var(--muted);
 }
-.interval-repeats {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  margin: 16px 0;
-}
-.interval-repeats > summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  cursor: pointer;
-  list-style: none;
-}
-.interval-repeats > summary b {
-  font-size: 16px;
-  display: block;
-}
-.interval-repeats > summary small {
-  display: block;
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.6;
-  margin-top: 8px;
-}
-.interval-repeats .text-link {
-  font-size: 12px;
-  color: var(--cyan);
-  min-height: 32px;
-  margin-top: 4px;
-}
-.interval-cycles {
-  padding: 0 20px 8px;
-}
 
 .heart-rate-settings {
   margin-top: 28px;
@@ -494,22 +458,14 @@ summary::-webkit-details-marker {
 .run-block-description {
   min-width: 0;
 }
-.run-block .heart-rate-target,
-.interval-repeats > summary .heart-rate-target {
+.run-block .heart-rate-target {
   color: var(--cyan);
   font-size: 12px;
   line-height: 1.6;
 }
-.run-block .heart-rate-hint,
-.interval-repeats > summary .heart-rate-hint {
+.run-block .heart-rate-hint {
   font-size: 11px;
   line-height: 1.6;
-}
-.interval-repeats > summary > span {
-  min-width: 0;
-}
-.interval-repeats > summary > .icon {
-  flex-shrink: 0;
 }
 .block-values {
   flex-shrink: 0;
@@ -534,15 +490,6 @@ summary::-webkit-details-marker {
   .run-block .block-values small {
     margin-left: 10px;
   }
-}
-.interval-cycle {
-  border-top: 1px solid var(--line);
-  padding-top: 20px;
-}
-.interval-cycle h3 {
-  font-size: 13px;
-  color: var(--cyan);
-  margin-bottom: 12px;
 }
 .plan-card .muted {
   font-size: 15px;
@@ -2356,47 +2303,10 @@ textarea,
   color: var(--muted);
   font-weight: 400;
 }
-.interval-group .interval-repeats {
-  border: 0;
-  border-radius: 0;
-  margin: 0;
-  background: transparent;
-}
-.interval-group .interval-repeats > summary {
-  padding: 12px 0;
-  min-height: 44px;
-  font-size: var(--reading-body);
-  color: var(--cyan);
-}
-.interval-group .interval-repeats > summary > span {
-  flex: 1;
-}
-.interval-group .cycles-open,
-.interval-group .interval-repeats[open] .cycles-closed {
-  display: none;
-}
-.interval-group .interval-repeats[open] .cycles-open {
-  display: block;
-}
-.interval-group:has(.interval-repeats[open]) > .interval-preview {
-  display: none;
-}
-.interval-group .interval-cycles {
-  padding: 0;
-}
-.interval-cycle {
-  padding: 16px 0;
-  border-top: 1px solid var(--line);
-}
-.interval-cycle h3 {
-  font-size: var(--reading-help);
-  color: var(--cyan);
-  line-height: 1.5;
-  margin: 0;
-}
-.interval-cycle .run-block:last-child {
+.interval-steps .run-block:last-child {
   border-bottom: 0;
 }
+
 .run-details {
   margin-top: 24px;
 }
@@ -2543,7 +2453,6 @@ textarea,
   overflow-wrap: break-word;
 }
 .run-details summary:focus-visible,
-.interval-repeats summary:focus-visible,
 #settings-page :is(button, summary, a):focus-visible {
   outline: 2px solid var(--lime);
   outline-offset: 3px;

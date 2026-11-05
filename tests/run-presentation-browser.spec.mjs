@@ -81,11 +81,11 @@ for (const width of [320, 390, 1440]) {
     page.on("pageerror", (e) => errors.push(e.message));
     await open(page, width);
     const session = page.locator("#session");
-    await expect(session.locator(".interval-preview .block-pace")).toHaveText([
+    await expect(session.locator(".interval-steps .block-pace")).toHaveText([
       "Pace 5:00/km",
       "Pace 6:00/km",
     ]);
-    await expect(session.locator(".interval-preview .block-speed")).toHaveText([
+    await expect(session.locator(".interval-steps .block-speed")).toHaveText([
       "· 12,0 km/h",
       "· 10,0 km/h",
     ]);
@@ -96,11 +96,11 @@ for (const width of [320, 390, 1440]) {
         .evaluate((node) => getComputedStyle(node).fontSize),
     ).toBe("16px");
     await expect(
-      session.locator(".interval-preview .heart-rate-target"),
+      session.locator(".interval-steps .heart-rate-target"),
     ).toHaveText(["FC 152–171 bpm", "FC 95–133 bpm"]);
-    await expect(session.locator(".interval-repeats")).not.toHaveAttribute(
-      "open",
-      "",
+    await expect(session.locator(".interval-repeats")).toHaveCount(0);
+    await expect(session.locator(".interval-group h3")).toContainText(
+      "Repetir 8 vezes",
     );
     await expect(session.locator(".run-details")).not.toHaveAttribute(
       "open",
@@ -111,11 +111,8 @@ for (const width of [320, 390, 1440]) {
     );
     await fits(page);
     await capture(page, `today-${width}`);
-    await session.locator(".interval-repeats > summary").focus();
-    await page.keyboard.press("Enter");
-    await expect(session.locator(".interval-cycle")).toHaveCount(8);
-    await expect(session.locator(".interval-preview")).toBeHidden();
-    await expect(session.locator("[data-run-block]")).toHaveCount(18);
+    await expect(session.locator(".interval-steps")).toBeVisible();
+    await expect(session.locator("[data-run-block]")).toHaveCount(4);
     await session.locator(".run-details > summary").click();
     await expect(session.locator(".run-secondary")).toContainText(
       "Z4 · 80–90%",
@@ -290,12 +287,12 @@ test("real browser zoom at 200% preserves running plans, settings and month sele
             .locator("#session .interval-group")
             .scrollIntoViewIfNeeded();
           await capture(page, `zoom-200-${width}-today-collapsed`);
-          await page.locator("#session .interval-repeats > summary").click();
           await page.locator("#session .run-details > summary").click();
-          await expect(page.locator("#session .interval-cycle")).toHaveCount(8);
+          await expect(page.locator("#session .interval-repeats")).toHaveCount(
+            0,
+          );
           await page
-            .locator("#session .interval-cycle")
-            .first()
+            .locator("#session .interval-group")
             .scrollIntoViewIfNeeded();
         }
         const layout = await page.evaluate(() => ({

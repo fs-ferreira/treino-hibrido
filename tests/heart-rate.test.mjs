@@ -283,7 +283,7 @@ test("FC: omissão em operações antigas preserva metadados, null explícito li
   );
 });
 
-test("FC: Hoje e Treinos compartilham apresentação e resumo recolhido inclui ambas as metas", () => {
+test("FC: Hoje e Treinos compartilham apresentação e resumo único inclui ambas as metas", () => {
   const settings = defaults().settings;
   Object.assign(settings, {
     easyPace: "6:00",
@@ -299,8 +299,8 @@ test("FC: Hoje e Treinos compartilham apresentação e resumo recolhido inclui a
     html,
     /FC de referência|% da FC máxima|estimada|responde com atraso/,
   );
-  assert.match(html, /Ver 8 ciclos/);
-  assert.equal((html.match(/data-run-block=/g) || []).length, 18);
+  assert.match(html, /Repetir 8 vezes/);
+  assert.equal((html.match(/data-run-block=/g) || []).length, 4);
   const details = runDetailsView(
     runningPlan("interval", settings),
     createHeartRatePlan("interval", settings.heartRate),

@@ -43,8 +43,8 @@ import {
   runBlocksView,
   heartRateNotice,
   runDetailsView,
-} from "./lib/run-view.js?v=6.1.1";
-import { plansView } from "./lib/plans-view.js?v=6.1.1";
+} from "./lib/run-view.js?v=6.1.2";
+import { plansView } from "./lib/plans-view.js?v=6.1.2";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=4.0.0";
 import {
   settingsView,

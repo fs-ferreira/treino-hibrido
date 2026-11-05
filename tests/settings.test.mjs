@@ -226,7 +226,7 @@ test("edições são cópias independentes e reset não altera o diário salvo",
   assert.equal(edits.dirty("progressao", saved), false);
   assert.equal(JSON.stringify(saved), original);
 });
-test("intervalado agrupado mantém os 18 estágios e oito ciclos com total de 40 minutos", () => {
+test("intervalado mostra um único par e preserva os 18 estágios e 40 minutos", () => {
   const s = {
     ...defaults().settings,
     easyPace: "6:00",
@@ -236,9 +236,10 @@ test("intervalado agrupado mantém os 18 estágios e oito ciclos com total de 40
   const blocks = runningPlan("interval", s),
     original = JSON.stringify(blocks),
     html = runBlocksView(blocks);
-  assert.equal((html.match(/data-run-block=/g) || []).length, 18);
-  assert.equal((html.match(/class="interval-cycle"/g) || []).length, 8);
-  assert.match(html, /Ver 8 ciclos/);
+  assert.equal((html.match(/data-run-block=/g) || []).length, 4);
+  assert.equal(blocks.length, 18);
+  assert.doesNotMatch(html, /interval-repeats|interval-cycle|Ver 8 ciclos/);
+  assert.match(html, /Repetir 8 vezes/);
   assert.match(html, /32 min/);
   assert.equal(
     blocks.reduce((sum, b) => sum + b.minutes, 0),

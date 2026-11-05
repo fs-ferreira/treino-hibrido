@@ -127,7 +127,7 @@ Execute `npm ci`, `npm test`, `npm run test:ui`, `npm run test:auth` e `npm run 
 - `lib/mobile-nav.js`: menu circular com quatro links, gestos, teclado e encaixe cancelável.
 - `lib/plans.js`, `lib/plans-view.js`, `lib/routes.js`: catálogo estático, consulta dos sete dias e rotas de lista/detalhe.
 - `lib/settings.js`: catálogo das categorias, formulários, validação independente e edições temporárias em memória.
-- `lib/run-view.js`: etapas da corrida, com os oito ciclos do intervalado agrupados para consulta.
+- `lib/run-view.js`: etapas da corrida, com um único par de forte e recuperação para repetir oito vezes.
 - `assets/ux.css`: escala de leitura, controles, categorias e ajustes responsivos compartilhados.
 - `lib/core.js`: calendário, cálculos e validação dos backups.
 - `lib/progression.js`: sugestões por série, ajuste de paces e planejamento preservado por sessão.
@@ -169,6 +169,6 @@ Para revisão visual, execute `npm run preview:movements` e abra `http://127.0.0
 
 ## Apresentação compacta de corrida — v6.1
 
-Hoje e Treinos priorizam duração, pace, velocidade em km/h e FC estimada. O intervalado mostra os alvos de forte e recuperação e mantém **Ver 8 ciclos** recolhido. **Detalhes e ajuda** reúne distância, zonas, percentuais, ajuste de pace e orientação do relógio. Os cálculos e o formato de dados v6 permanecem iguais.
+Hoje e Treinos priorizam duração, pace, velocidade em km/h e FC estimada. O intervalado mostra uma vez os alvos de forte e recuperação, com a indicação **Repetir 8 vezes**, sem lista expandida de ciclos. **Detalhes e ajuda** reúne distância, zonas, percentuais, ajuste de pace e orientação do relógio. Os cálculos e o formato de dados v6 permanecem iguais.
 
 A [validação da apresentação e do seletor](docs/validacao-corrida-configuracoes.md) registra testes, larguras, zoom real de 200% e limites da emulação móvel. Use `npm run test:ui` para a regressão no navegador e `npm run test:compat` para Firefox, WebKit e emulações Android/iOS (instale os navegadores com `npx playwright install firefox webkit chromium`, ou indique o executável do Chromium/Edge por `PLAYWRIGHT_CHROMIUM_EXECUTABLE`).

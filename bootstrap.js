@@ -169,7 +169,7 @@ async function mount(value) {
   skip.href = "#main";
   skip.textContent = "Pular para o conteúdo";
   if (!mounted) {
-    appLoad ??= import("./app.js?v=6.1.1").catch((error) => {
+    appLoad ??= import("./app.js?v=6.1.2").catch((error) => {
       appLoadFailed = true;
       throw error;
     });

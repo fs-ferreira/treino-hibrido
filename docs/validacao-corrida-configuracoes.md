@@ -45,3 +45,7 @@ As capturas foram inspecionadas em `test-results/run-presentation/`, incluindo p
 - `npm run build` e `git diff --check`: aprovados.
 
 Os projetos de compatibilidade testam os motores no Windows e os recursos de emulação do Playwright. Permanecem pendentes o teste com dispositivos físicos Android/iOS, Safari real, teclado virtual físico e leitores de tela NVDA/VoiceOver. Os nomes acessíveis, papéis, seleção e foco foram verificados automaticamente; isso não substitui uma sessão com leitor de tela.
+
+## Ajuste v6.1.2
+
+A lista expandida dos oito ciclos foi removida de Hoje e Treinos. O planejamento mostra aquecimento, um par de forte e recuperação com **Repetir 8 vezes**, e caminhada final. As 18 etapas e os 40 minutos permanecem no modelo e nos snapshots. Pace, km/h, FC e fontes reduzidas continuam visíveis. A ajuda técnica permanece disponível.
