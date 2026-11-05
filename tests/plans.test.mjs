@@ -60,7 +60,7 @@ test("lista e detalhe consultam o plano sem criar sessões ou modificar configur
   assert.equal((detail.match(/data-plan-day=/g) || []).length, 7);
   assert.equal((detail.match(/data-action="guide"/g) || []).length, 23);
   assert.match(detail, /75 min/);
-  assert.match(detail, /8 × \(3 \+ 1 min\)/);
+  assert.match(detail, /Repetir 8 vezes/);
   assert.match(detail, /data-open-today/);
   assert.match(detail, /Voltar para Treinos/);
   assert.doesNotMatch(detail, /<input|<select|<textarea|data-field=/);

@@ -220,7 +220,10 @@ test("FC: snapshot individual é imutável e registros antigos não recebem bpm 
   );
   assert.equal(legacy.blocks[1].heartRate.minBpm, null);
   assert.equal(legacy.snapshot.heartRate, undefined);
-  assert.match(heartRateNotice(undefined, true), /Orientação geral/);
+  assert.match(
+    heartRateNotice(undefined, true),
+    /Registro sem referência cardíaca/,
+  );
 });
 
 test("FC: backups 1–5 migram sem inferir referência e v6 preserva metas e valida corrupção", () => {
@@ -306,8 +309,8 @@ test("FC: Hoje e Treinos compartilham apresentação e resumo único inclui amba
     createHeartRatePlan("interval", settings.heartRate),
     "interval",
   );
-  assert.match(details, /Z4 · 80–90%/);
-  assert.match(details, /km\/h/);
+  assert.doesNotMatch(details, /Z4 · 80–90%/);
+  assert.doesNotMatch(details, /km\/h/);
   assert.equal((details.match(/A FC responde com atraso/g) || []).length, 1);
   const catalog = plansView(
     settings,
@@ -315,7 +318,7 @@ test("FC: Hoje e Treinos compartilham apresentação e resumo único inclui amba
     new Set([2, 4, 6]),
   );
   assert.ok(catalog.includes(html));
-  assert.match(catalog, /FC máxima estimada: 190 bpm/);
-  assert.match(catalog, /não comprovam um pace específico/);
-  assert.match(catalog, /não precisa chegar à faixa antes do próximo bloco/);
+  assert.match(catalog, /FC máxima estimada: <b>190 bpm/);
+  assert.match(catalog, /Fontes e método/);
+  assert.match(catalog, /sem exigir uma queda imediata/);
 });

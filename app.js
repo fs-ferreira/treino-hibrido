@@ -1,3 +1,4 @@
+import { watchHeartRateHelp } from "./lib/heart-rate.js";
 import { account } from "./lib/account.js";
 import { notify } from "./lib/notifications.js";
 import {
@@ -22,7 +23,6 @@ import {
   addDays,
   weekStart,
   workoutFor,
-  distance,
   validateBackup,
   previousSets,
   maskTime,
@@ -30,7 +30,7 @@ import {
   durationText,
   isOptionalSaturday,
   chooseOptionalWorkout,
-} from "./lib/core.js?v=7.0.0";
+} from "./lib/core.js?v=7.1.0";
 import {
   getPlan,
   getActivePlan,
@@ -45,7 +45,6 @@ import {
   roundLoadUp,
   getRunPlan,
   paceRevision,
-  effortTarget,
 } from "./lib/progression.js?v=6.0.0";
 import { workouts, exercises, workoutName } from "./lib/exercises.js";
 import { muscleMap, createMuscleMapController } from "./lib/muscle-map.js";
@@ -53,8 +52,8 @@ import {
   runBlocksView,
   heartRateNotice,
   runDetailsView,
-} from "./lib/run-view.js?v=6.1.2";
-import { plansView } from "./lib/plans-view.js?v=7.0.0";
+} from "./lib/run-view.js?v=7.1.0";
+import { plansView } from "./lib/plans-view.js?v=7.1.0";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=4.0.0";
 import {
   settingsView,
@@ -62,8 +61,8 @@ import {
   settingsSections,
 } from "./lib/settings.js?v=7.0.0";
 import { createMobileNav } from "./lib/mobile-nav.js?v=6.1.0";
-import { illustration } from "./lib/diagrams.js?v=2.2.0";
-import { createMovementPlayer } from "./lib/movement-player.js?v=2.2.0";
+import { illustration } from "./lib/diagrams.js?v=7.1.0";
+import { createMovementPlayer } from "./lib/movement-player.js?v=7.1.0";
 import { hydrateIcons, applyTimeMask } from "./lib/ui.js?v=1.6.0";
 import { icon } from "./lib/icons.js?v=1.6.0";
 import { createMotionDiagnostics } from "./lib/motion-diagnostics.js?v=1.6.0";
@@ -578,8 +577,6 @@ function syncLongRun() {
     `${data.settings.longMinutes} min`;
   $(".hero-stats b").textContent = data.settings.longMinutes;
   $(".run-overview strong").textContent = `${total.minutes} min`;
-  const range = $("#long-distance-range");
-  if (range) range.textContent = longRangeText(snapshot.easyPace);
   $("#session .run-blocks").innerHTML = runBlocksView(blocks);
   const help = $("#session .run-details"),
     open = help.open;
@@ -590,12 +587,7 @@ function syncLongRun() {
     selected,
     selectedWorkout,
   );
-  help.outerHTML = runDetailsView(
-    blocks,
-    snapshot.heartRate,
-    "long",
-    paceMethod(plan, "long"),
-  );
+  help.outerHTML = runDetailsView(blocks, snapshot.heartRate, "long", plan);
   $("#session .run-details").open = open;
 }
 function updateTitle(route) {
@@ -764,7 +756,7 @@ function strengthView(type) {
     s = currentSession(),
     total = count(selected),
     planned = strengthSetCount(getType(selected));
-  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/${planned} séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / planned})"></span></div><p class="section-hint">3 séries de 6–8 repetições.</p><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
+  return `<div class="section-title"><div><p class="eyebrow">MUSCULAÇÃO · ${shortDate(selected)}</p><h2>Sua sessão de ${w.name}</h2></div><span class="count-pill">${total}/${planned} séries</span></div><div class="progress-line"><span style="transform:scaleX(${total / planned})"></span></div><div class="exercise-list">${w.ids.map((id, index) => exerciseCard(id, index, s)).join("")}</div><div class="session-bottom"><button class="button ${s?.done ? "quiet" : "primary"}" data-action="finish-strength">${s?.done ? "Reabrir sessão" : "Concluir sessão"} ${s?.done ? "↶" : "✓"}</button></div>`;
 }
 function loadSuggestionReason(suggestion) {
   if (suggestion.percent)
@@ -814,32 +806,8 @@ function exerciseCard(id, index, s) {
       .join("")}
     ${exerciseHistory(id, previous, suggestions)}</div></div></div></details>`;
 }
-function longRangeText(pace) {
-  return pace
-    ? `${num(distance(60, pace), 1)}–${num(distance(90, pace), 1)} km`
-    : "";
-}
 function effortOptions(selectedRpe) {
   return `<option value="">Selecione</option>${Array.from({ length: 11 }, (_, i) => `<option value="${i}" ${selectedRpe === i ? "selected" : ""}>${i}${i === 0 ? " · repouso" : i === 10 ? " · máximo" : ""}</option>`).join("")}`;
-}
-function paceHelp(plan) {
-  const context = plan.saved
-    ? "Planejamento salvo com esta sessão."
-    : plan.adjustment.sourceDate
-      ? "Calculado a partir de uma corrida anterior; abrir a tela não acumula ajustes."
-      : "Usa o pace definido em Configurações.";
-  return `O esforço real orienta o ritmo. Seus paces base são preservados. ${context}`;
-}
-function paceMethod(plan, type) {
-  const a = plan.adjustment;
-  const reasons = {
-    maintain: "Esforço na faixa: manter o ritmo realizado.",
-    ease: "Esforço acima da faixa: reduzir o ritmo.",
-    partial: "Progressão ativa: metade da pequena correção para desacelerar.",
-    calibrate: "Esforço abaixo da faixa: aproximar do alvo.",
-    progress: "Duas corridas na faixa: avanço de 1% no pace.",
-  };
-  return `<section class="pace-method"><h3>Ritmo e esforço</h3><p class="caption" data-plan-caption>${paceHelp(plan)}</p><p>Alvo ${effortTarget(type).join("–")}/10${type === "interval" ? " nos blocos fortes" : ""}.</p>${a.sourceDate ? `<p>${reasons[a.reason] || ""}</p><p>Referência: ${shortDate(a.sourceDate)} · ${paceText(a.previousPace)}/km · esforço ${a.rpe}/10.${a.percent ? ` Ajuste de ${a.percent > 0 ? "+" : ""}${weightText(a.percent)}% no tempo por km.` : ""}</p>` : ""}${type === "long" && plan.snapshot.easyPace ? `<p>Faixa de 60–90 min: <span id="long-distance-range">${longRangeText(plan.snapshot.easyPace)}</span>.</p>` : ""}</section>`;
 }
 function paceAdvice(plan, type) {
   return `<div class="pace-advice ${plan.adjustment.blocked ? "pace-conflict" : ""}" aria-label="Origem do ritmo"><p class="eyebrow cyan-text">${plan.saved ? "Plano registrado" : plan.adjustment.sourceDate ? "Ritmo ajustado" : "Pace base"}</p>${plan.adjustment.blocked ? `<p class="form-error">${type === "interval" ? "O pace forte sugerido precisa ser mais rápido que a recuperação. As etapas fortes ficam sem estimativa até a recalibração." : "O ritmo calculado ficou fora da faixa de 0:01 a 99:59/km. A distância fica sem estimativa até a recalibração."} <a href="#configuracoes/corrida">Revisar paces base</a>.</p>` : ""}</div>`;
@@ -864,7 +832,7 @@ function runView(type) {
     ${paceAdvice(plan, type)}
     ${heartRateNotice(snapshot.heartRate, Boolean(r && !snapshot.heartRate))}
     ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração padrão do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption"><span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Padrão dos próximos longões. A duração não aumenta automaticamente."}</span></p></div>` : ""}
-    <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${runDetailsView(blocks, snapshot.heartRate, type, paceMethod(plan, type))}</div>
+    <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${runDetailsView(blocks, snapshot.heartRate, type, plan)}</div>
     <aside>
     <form id="run-form" class="panel run-form"><h3>Como foi a corrida?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${escape(v.minutes ?? "")}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${escape(v.km ?? "")}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${Number(v.minutes) > 0 && Number(v.km) > 0 ? paceText((Number(v.minutes) * 60) / Number(v.km)) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label>
     ${type === "interval" ? `<fieldset class="hard-run-fields"><legend>Blocos fortes <span class="optional">opcional</span></legend><p class="caption" id="hard-run-hint">Preencha os dois campos para ajustar o próximo intervalado. Não use a média da sessão inteira.</p><label>Pace médio dos blocos fortes<input name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${escape(v.hardPace ?? "")}" placeholder="mm:ss" aria-describedby="hard-run-hint"></label><label>Esforço dos blocos fortes (0–10)<select name="hardRpe">${effortOptions(v.hardRpe === "" ? null : Number(v.hardRpe))}</select></label></fieldset>` : ""}
@@ -1022,7 +990,7 @@ function guide(id) {
 }
 function sources() {
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">TRANSPARÊNCIA</span><button class="close-button" data-action="close-dialog" aria-label="Fechar fontes">×</button></div><h2 id="guide-title">Fontes e método</h2><p>Plano de @thalleshirakawa, com exercícios, séries e durações do post original.</p>${link("https://www.instagram.com/p/Dd8zBnRkXkR/", "Plano original")}<h3>Corrida</h3><p>Usamos seu pace informado para converter duração em distância e velocidade. Não estimamos capacidade fisiológica nem aplicamos automaticamente as zonas VDOT.</p>${link("https://www.cdc.gov/physical-activity-basics/measuring/index.html", "CDC · intensidade relativa e teste da conversa")}${link("https://vdoto2.com/calculator/", "V.O2 · referência sobre ritmos de treino")}<p>O esforço 3–4/10 e o intervalado de 3 min + 1 min são do post. O V.O2 é referência conceitual de ritmos, não a origem dessa sessão nem uma fórmula aplicada pelo app.</p><h3>Frequência cardíaca</h3><p>As metas por etapa são uma orientação adotada pelo app usando percentuais da FC máxima: leve e longão em Z2 (60–70%), aquecimento e recuperação em Z1–Z2 (50–70%), blocos fortes em Z4 (80–90%) e caminhada em direção a Z1 (50–60%). Não são uma conversão de batimentos em pace.</p><p>Calculamos a idade pelo mês/ano de nascimento e estimamos 220 − idade para masculino ou 226 − idade para feminino. As fórmulas por sexo são a convenção adotada neste app. Os limites das faixas são arredondados para bpm inteiros. Uma estimativa pela idade pode diferir da FC máxima real.</p><p>Nos intervalados a FC responde com atraso. Não acelere para atingir a faixa imediatamente e não exija que a FC caia para a referência durante 1 minuto de recuperação ou 3 minutos de caminhada. Mantenha esforço controlado e use também o teste da conversa.</p>${link("https://www.polar.com/us-en/guide/heart-rate-zones", "Polar · zonas em percentuais da FC máxima")}${link("https://www8.garmin.com/manuals/webhelp/vivosmarthr/EN-US/GUID-A8716C0B-B267-4C42-B45F-B9C7928BCA19.html", "Garmin · cálculo das zonas cardíacas")}${link("https://support.polar.com/e_manuals/Team_Pro/Polar_Team_Pro_user_manual_English/polar_heart_rate_zones.htm", "Polar · resposta gradual da frequência cardíaca")}${link("https://www.heart.org/en/healthy-living/exercise-and-physical-activity/fitness-basics/target-heart-rates", "American Heart Association · estimativa geral de 220 − idade")}<p class="caption">Referências de frequência cardíaca consultadas em 05/11/2026.</p><h3>Progressão</h3><p>Ajustamos segundos por km em 2,5% por ponto fora da faixa, até +10% ou −5%. Com progressão ativa: metade da desaceleração para excesso de 1–2 pontos; excesso de 3 ou mais mantém correção integral. Duas últimas sessões equivalentes na faixa permitem −1%, sem somar outra correção. Essa é uma heurística do app, não uma conversão fisiológica exata.</p><p>A carga sugerida usa a referência de cada série: aumenta pelo percentual escolhido ao atingir 8 repetições. Esse gatilho foi escolhido para este plano.</p>${link("https://pubmed.ncbi.nlm.nih.gov/19204579/", "ACSM · progressão em musculação (2009)")}<h3>Musculação</h3><p>Textos resumidos em português e ilustrações esquemáticas originais. As demonstrações externas podem mostrar equipamentos ou variantes diferentes; observe as notas de cada guia.</p><div class="source-list">${Object.values(
+    `<div class="dialog-top"><span class="eyebrow">TRANSPARÊNCIA</span><button class="close-button" data-action="close-dialog" aria-label="Fechar fontes">×</button></div><h2 id="guide-title">Fontes e método</h2><p>Plano de @thalleshirakawa, com exercícios, séries e durações do post original.</p>${link("https://www.instagram.com/p/Dd8zBnRkXkR/", "Plano original")}<h3>Corrida</h3><p>Usamos seu pace informado para converter duração em distância e velocidade. Não estimamos capacidade fisiológica nem aplicamos automaticamente as zonas VDOT.</p>${link("https://www.cdc.gov/physical-activity-basics/measuring/index.html", "CDC · intensidade relativa e teste da conversa")}${link("https://vdoto2.com/calculator/", "V.O2 · referência sobre ritmos de treino")}<p>O esforço 3–4/10 e o intervalado de 3 min + 1 min são do post. Nos blocos fortes, o app usa alvo de esforço 7–8/10. O V.O2 é referência conceitual de ritmos, não a origem dessa sessão nem uma fórmula aplicada pelo app.</p><h3>Frequência cardíaca</h3><p>As metas por etapa são uma orientação adotada pelo app usando percentuais da FC máxima: leve e longão em Z2 (60–70%), aquecimento e recuperação em Z1–Z2 (50–70%), blocos fortes em Z4 (80–90%) e caminhada em direção a Z1 (50–60%). Não são uma conversão de batimentos em pace.</p><p>Calculamos a idade pelo mês/ano de nascimento e estimamos 220 − idade para masculino ou 226 − idade para feminino. As fórmulas por sexo são a convenção adotada neste app. Os limites das faixas são arredondados para bpm inteiros. Uma estimativa pela idade pode diferir da FC máxima real.</p><p>${watchHeartRateHelp}</p><p>Nos intervalados a FC responde com atraso. Não acelere para atingir a faixa imediatamente e não exija que a FC caia para a referência durante 1 minuto de recuperação ou 3 minutos de caminhada. Mantenha esforço controlado e use também o teste da conversa.</p>${link("https://www.polar.com/us-en/guide/heart-rate-zones", "Polar · zonas em percentuais da FC máxima")}${link("https://www8.garmin.com/manuals/webhelp/vivosmarthr/EN-US/GUID-A8716C0B-B267-4C42-B45F-B9C7928BCA19.html", "Garmin · cálculo das zonas cardíacas")}${link("https://support.polar.com/e_manuals/Team_Pro/Polar_Team_Pro_user_manual_English/polar_heart_rate_zones.htm", "Polar · resposta gradual da frequência cardíaca")}${link("https://www.heart.org/en/healthy-living/exercise-and-physical-activity/fitness-basics/target-heart-rates", "American Heart Association · estimativa geral de 220 − idade")}<p class="caption">Referências de frequência cardíaca consultadas em 05/11/2026.</p><h3>Progressão</h3><p>Ajustamos segundos por km em 2,5% por ponto fora da faixa, até +10% ou −5%. Com progressão ativa: metade da desaceleração para excesso de 1–2 pontos; excesso de 3 ou mais mantém correção integral. Duas últimas sessões equivalentes na faixa permitem −1%, sem somar outra correção. Essa é uma heurística do app, não uma conversão fisiológica exata.</p><p>A carga sugerida usa a referência de cada série: aumenta pelo percentual escolhido ao atingir 8 repetições. Esse gatilho foi escolhido para este plano.</p>${link("https://pubmed.ncbi.nlm.nih.gov/19204579/", "ACSM · progressão em musculação (2009)")}<h3>Musculação</h3><p>Textos resumidos em português e ilustrações esquemáticas originais. As demonstrações externas podem mostrar equipamentos ou variantes diferentes; observe as notas de cada guia.</p><div class="source-list">${Object.values(
       exercises,
     )
       .map((ex) =>
@@ -1045,7 +1013,7 @@ function crossValues(cross) {
 function crossView() {
   const item = currentSession(),
     v = runDrafts.get(draftKey()) ?? crossValues(item?.cross);
-  return `<div class="section-title"><h2>Sua sessão de Cross</h2></div><p class="section-hint">Siga a programação da sua aula.</p><form id="cross-form" class="panel run-form"><h3>Como foi a aula?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" required value="${escape(v.minutes)}"></label><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label><label>Observações (opcional)<textarea name="notes" maxlength="2000">${escape(v.notes)}</textarea></label><p class="form-error" data-cross-error role="alert"></p><button type="submit" class="button primary">${item?.done ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button>${item?.done ? '<button type="button" class="button quiet" data-action="reopen-cross">Reabrir sessão</button>' : ""}</form>`;
+  return `<div class="section-title"><h2>Sua sessão de Cross</h2></div><form id="cross-form" class="panel run-form"><h3>Como foi a aula?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" required value="${escape(v.minutes)}"></label><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label><label>Observações (opcional)<textarea name="notes" maxlength="2000">${escape(v.notes)}</textarea></label><p class="form-error" data-cross-error role="alert"></p><button type="submit" class="button primary">${item?.done ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button>${item?.done ? '<button type="button" class="button quiet" data-action="reopen-cross">Reabrir sessão</button>' : ""}</form>`;
 }
 function optionalWorkoutDialog() {
   const items = scheduledWorkouts(data, selected),
@@ -1088,7 +1056,7 @@ function planActivationDialog(id) {
   const pending = pendingPlanChange(data.settings),
     date = pending?.planId === id ? pending.from : dateKey();
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">PLANO DE TREINO</span><button class="close-button" data-action="close-dialog" aria-label="Fechar ativação de plano">×</button></div><h2 id="guide-title">${plan.name}</h2><p>Datas já salvas serão mantidas, inclusive descanso. A divisão muda apenas nas datas sem programação salva.</p>${pending ? `<p class="notice">Esta escolha substitui a mudança agendada para ${escape(fullDate(pending.from))}.</p>` : ""}<ul class="plan-preview">${planWeek(
+    `<div class="dialog-top"><span class="eyebrow">PLANO DE TREINO</span><button class="close-button" data-action="close-dialog" aria-label="Fechar ativação de plano">×</button></div><h2 id="guide-title">${plan.name}</h2><p>A partir da data de início, dias sem treino iniciado ou concluído passam a seguir este plano. Dias com registros e datas anteriores serão preservados.</p>${pending ? `<p class="notice">Esta escolha substitui a mudança agendada para ${escape(fullDate(pending.from))}.</p>` : ""}<ul class="plan-preview">${planWeek(
       data.settings,
       id,
     )
@@ -1318,7 +1286,7 @@ document.addEventListener("click", (event) => {
     return planActivationDialog(button.dataset.plan);
   if (action === "cancel-plan-change") {
     openDialog(
-      `<div class="dialog-top"><button class="close-button" data-action="close-dialog" aria-label="Fechar cancelamento">×</button></div><h2 id="guide-title">Cancelar agendamento</h2><p>O plano atual continuará ativo. Os treinos já salvos serão mantidos.</p><form id="cancel-plan-form"><p class="form-error" data-plan-error role="alert"></p><button class="button primary" type="submit">Confirmar cancelamento</button></form>`,
+      `<div class="dialog-top"><button class="close-button" data-action="close-dialog" aria-label="Fechar cancelamento">×</button></div><h2 id="guide-title">Cancelar agendamento</h2><p>O plano atual continuará ativo. Dias com registros serão preservados.</p><form id="cancel-plan-form"><p class="form-error" data-plan-error role="alert"></p><button class="button primary" type="submit">Confirmar cancelamento</button></form>`,
       true,
     );
     return;
@@ -1814,13 +1782,15 @@ document.addEventListener("submit", (event) => {
         selected,
         selectedWorkout,
       );
-      const caption = $(".run-details [data-plan-caption]");
-      if (caption) caption.textContent = paceHelp(savedPlan);
-      else
-        $(".run-details-body").insertAdjacentHTML(
-          "beforeend",
-          paceMethod(savedPlan, s.type),
-        );
+      const help = $(".run-details"),
+        open = help.open;
+      help.outerHTML = runDetailsView(
+        savedPlan.blocks,
+        savedPlan.snapshot.heartRate,
+        s.type,
+        savedPlan,
+      );
+      $(".run-details").open = open;
       const longCaption = $("[data-long-caption]");
       if (longCaption)
         longCaption.textContent =

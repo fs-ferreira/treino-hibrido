@@ -319,52 +319,78 @@ function harness(reduce = false) {
     },
   };
 }
-test("player inicia automaticamente, repete, pausa e libera recursos ao fechar", () => {
-  const h = harness();
+test("player único inicia automaticamente, pausa, continua da posição e libera recursos", () => {
+  const h = harness(),
+    button = h.get('[data-motion="toggle"]');
   assert.equal(h.queue.size, 1);
+  assert.equal(button.attributes["aria-pressed"], "true");
   h.step(0);
   h.step(1000);
   const drawing = h.get(".motion-stage").innerHTML;
-  h.click("pause");
+  h.click("toggle");
   assert.equal(h.queue.size, 0);
-  assert.equal(h.get(".motion-status").textContent, "Pausado");
+  assert.equal(button.attributes["aria-label"], "Reproduzir demonstração");
   h.step(2000);
   assert.equal(h.get(".motion-stage").innerHTML, drawing);
-  h.click("play");
-  h.step(2000);
-  h.step(7000);
-  assert.equal(h.queue.size, 1);
-  assert.match(h.get(".motion-status").textContent, /Reproduzindo/);
-  h.click("play");
+  h.click("toggle");
+  h.step(3000);
+  assert.equal(h.get(".motion-stage").innerHTML, drawing);
+  h.step(3500);
+  assert.equal(
+    h.get(".motion-stage").innerHTML,
+    drawMovement("incline", cyclePose(1500), "unit-animated", "Movimento"),
+  );
+  assert.equal(h.get('[data-motion="toggle"]'), button);
   h.step(8000);
+  assert.equal(h.queue.size, 1);
+  assert.equal(h.get(".motion-status").textContent, "Reproduzindo");
   h.dispose();
   assert.equal(h.queue.size, 0);
   assert.equal(h.preference.change, null);
   assert.equal(h.doc.change, null);
-});
-test("movimento reduzido oferece etapas e não inicia animação", () => {
-  const h = harness(true);
-  assert.equal(h.get(".motion-controls").hidden, true);
-  h.click("play");
+  h.click("toggle");
   assert.equal(h.queue.size, 0);
-  h.click("end");
-  assert.equal(h.get(".motion-status").textContent, "Final");
-  h.click("middle");
-  assert.equal(h.get(".motion-status").textContent, "Meio");
-  h.click("reset");
-  assert.equal(h.get(".motion-status").textContent, "Início");
+});
+test("movimento reduzido começa estático e permite reprodução manual pelo botão único", () => {
+  const h = harness(true);
+  assert.equal(h.queue.size, 0);
+  assert.equal(h.get(".motion-controls").hidden, false);
+  const initial = h.get(".motion-stage").innerHTML;
+  h.step(1000);
+  assert.equal(h.get(".motion-stage").innerHTML, initial);
+  h.click("toggle");
+  assert.equal(h.queue.size, 1);
+  h.step(0);
+  h.step(500);
+  assert.notEqual(h.get(".motion-stage").innerHTML, initial);
+  h.click("toggle");
+  assert.equal(h.queue.size, 0);
   h.dispose();
 });
-test("preferência reduzida e aba oculta interrompem reprodução", () => {
+test("preferência e aba oculta pausam sem reiniciar ou retomar automaticamente", () => {
   const h = harness();
-  h.click("play");
-  h.doc.hidden = true;
-  h.doc.change();
-  assert.equal(h.queue.size, 0);
-  h.click("play");
+  h.step(0);
+  h.step(500);
+  const drawing = h.get(".motion-stage").innerHTML;
   h.preference.matches = true;
   h.preference.change();
   assert.equal(h.queue.size, 0);
-  assert.equal(h.get(".motion-controls").hidden, true);
+  assert.equal(h.get(".motion-stage").innerHTML, drawing);
+  h.preference.matches = false;
+  h.preference.change();
+  assert.equal(h.queue.size, 0);
+  h.click("toggle");
+  h.step(1000);
+  h.step(1500);
+  h.doc.hidden = true;
+  h.doc.change();
+  assert.equal(h.queue.size, 0);
+  h.click("toggle");
+  assert.equal(h.queue.size, 0);
+  h.doc.hidden = false;
+  h.doc.change();
+  assert.equal(h.queue.size, 0);
+  h.click("toggle");
+  assert.equal(h.queue.size, 1);
   h.dispose();
 });

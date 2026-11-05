@@ -162,7 +162,7 @@ for (const date of ["2026-10-27", "2026-10-29", "2026-10-31"])
       "Usamos seu ritmo configurado",
     );
     await expect(page.locator("#session")).not.toContainText(
-      "Caminhada sem estimativa.",
+      "sem estimativa para caminhada.",
     );
     if (date === "2026-10-31") {
       await expect(page.locator("#long-distance-range")).toHaveCount(0);
@@ -193,35 +193,31 @@ test("pace explanation distinguishes base, history and saved planning", async ({
   await openApp(page, data);
   await selectRun(page, "2026-10-27");
   await page.locator(".run-details > summary").click();
-  await expect(page.locator("[data-plan-caption]")).toContainText(
-    "Usa o pace definido em Configurações.",
-  );
-  await expect(page.locator("[data-plan-caption]")).not.toContainText(
-    "Calculado a partir",
-  );
+  await expect(page.locator("[data-plan-caption]")).toHaveCount(0);
+
   await expect(page.locator("#session")).toContainText(
-    "Caminhada sem estimativa.",
+    "sem estimativa para caminhada.",
   );
   await selectRun(page, "2026-10-29");
   await page.locator(".run-details > summary").click();
   await expect(page.locator(".block-pace").first()).toContainText("6:18");
   await expect(page.locator("[data-plan-caption]")).toContainText(
-    "Calculado a partir de uma corrida anterior",
+    "referência 22/10/2026",
   );
   await expect(page.locator("#session")).not.toContainText(
-    "Caminhada sem estimativa.",
+    "sem estimativa para caminhada.",
   );
   await page.locator('[name="minutes"]').fill("30");
   await page.locator('[name="km"]').fill("5");
   await choose(page.locator('[name="rpe"]'), "4");
   await page.locator("#run-form [type=submit]").click();
-  await expect(page.locator("[data-plan-caption]")).toContainText(
-    "Planejamento salvo com esta sessão.",
+  await expect(page.locator(".pace-advice .eyebrow")).toHaveText(
+    "Plano registrado",
   );
   await page.reload();
   await selectRun(page, "2026-10-29");
-  await expect(page.locator("[data-plan-caption]")).toContainText(
-    "Planejamento salvo com esta sessão.",
+  await expect(page.locator(".pace-advice .eyebrow")).toHaveText(
+    "Plano registrado",
   );
 });
 
@@ -257,7 +253,7 @@ test("pace conflict keeps recalibration warning without duplicate setup notice",
   );
   await expect(page.locator("#session .notice")).toHaveCount(0);
   await expect(page.locator("[data-plan-caption]")).toContainText(
-    "Calculado a partir de uma corrida anterior",
+    "referência 20/10/2026",
   );
 });
 
@@ -273,8 +269,8 @@ test("saving long run without a pace creates saved help and preserves the select
   await choose(page.locator('[name="rpe"]'), "4");
   await page.locator("#run-form [type=submit]").click();
   await expect(page.locator("#long-minutes")).toBeDisabled();
-  await expect(page.locator("[data-plan-caption]")).toContainText(
-    "Planejamento salvo com esta sessão.",
+  await expect(page.locator(".pace-advice .eyebrow")).toHaveText(
+    "Plano registrado",
   );
   await expect(page.locator("[data-long-caption]")).toHaveText(
     "Duração preservada no planejamento registrado.",
@@ -321,9 +317,7 @@ test("saved planning and legacy simulation remain distinct; partial totals requi
     "O plano abaixo é uma simulação",
   );
   await expect(page.locator("#long-minutes")).toBeDisabled();
-  await expect(page.locator(".run-details")).toContainText(
-    "Faixa de 60–90 min: 10,0–15,0 km.",
-  );
+  await expect(page.locator(".run-distance")).toContainText("10,00 km");
 });
 
 for (const width of [320, 390, 768, 1440])
@@ -385,10 +379,8 @@ test("catalogue guidance covers unilateral days; all guides retain execution and
     if ((await item.getAttribute("open")) === null)
       await item.locator(":scope > summary").click();
     if (day === 3 || day === 5)
-      await expect(item).toContainText(
-        "Nos unilaterais, complete os dois lados.",
-      );
-    else await expect(item).not.toContainText("Nos unilaterais");
+      await expect(item).toContainText("Complete os dois lados.");
+    else await expect(item).not.toContainText("Complete os dois lados.");
     await expect(item.locator(".plan-exercises")).not.toContainText("3 × 6–8");
   }
   for (const id of Object.keys(exercises)) {

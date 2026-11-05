@@ -114,9 +114,10 @@ for (const width of [320, 390, 1440]) {
     await expect(session.locator(".interval-steps")).toBeVisible();
     await expect(session.locator("[data-run-block]")).toHaveCount(4);
     await session.locator(".run-details > summary").click();
-    await expect(session.locator(".run-secondary")).toContainText(
-      "Z4 · 80–90%",
-    );
+    await expect(session.locator(".run-secondary")).toHaveCount(0);
+    await expect(
+      session.locator('.run-details [data-action="sources"]'),
+    ).toHaveCount(1);
     expect(await session.getByText(/A FC responde com atraso:/).count()).toBe(
       1,
     );
@@ -383,3 +384,66 @@ test("settings keep pending actions and field errors accessible in short viewpor
   await capture(page, "settings-error-short-320");
   expect(cloud.writes).toBe(0);
 });
+
+for (const width of [320, 390, 1280])
+  test(
+    "compact catalog and help, unchanged Today metrics at " + width,
+    async ({ page }) => {
+      await open(page, width);
+      await expect(page.locator("#session .block-pace").first()).toHaveCSS(
+        "font-size",
+        "16px",
+      );
+      await navigate(page, "treinos/hibrido-cross");
+      await page.locator('[data-plan-day="2"] > summary').click();
+      const day = page.locator('[data-plan-day="2"]');
+      await expect(day.locator(".block-pace").first()).toHaveCSS(
+        "font-size",
+        "14px",
+      );
+      await expect(day.locator(".block-duration").first()).toHaveCSS(
+        "font-size",
+        "16px",
+      );
+      await expect(day.locator(".run-instruction").first()).toHaveCSS(
+        "font-size",
+        "13px",
+      );
+      await expect(day.locator(".plan-effort")).toHaveCount(0);
+      await day.locator(".run-details > summary").click();
+      await expect(day.locator(".run-secondary")).toHaveCount(0);
+      await expect(day.locator(".run-details-body > section")).toHaveCount(2);
+      await fits(page);
+      await day.screenshot({
+        path: "test-results/run-presentation/compact-catalog-" + width + ".png",
+      });
+      await page.locator('[data-plan-day="6"] > summary').click();
+      const long = page
+        .locator('[data-plan-day="6"] .help-details')
+        .filter({ has: page.locator("summary", { hasText: "Corrida longa" }) });
+      await long.locator(":scope > summary").click();
+      await expect(long.locator(".block-pace")).toHaveCSS("font-size", "14px");
+      await page
+        .locator('[data-plan-day="1"] [data-action="guide"]')
+        .first()
+        .click();
+      const toggle = page.locator('#guide-dialog [data-motion="toggle"]');
+      await expect(toggle).toBeVisible();
+      await expect(toggle).toHaveAttribute("aria-pressed", "false");
+      await expect(page.locator("#guide-dialog [data-motion]")).toHaveCount(1);
+      expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44);
+      await toggle.focus();
+      await page.keyboard.press("Enter");
+      await expect(toggle).toHaveAttribute("aria-pressed", "true");
+      await page.keyboard.press("Space");
+      await expect(toggle).toHaveAttribute("aria-pressed", "false");
+      await expect(toggle).toBeFocused();
+      await fits(page);
+      await page
+        .locator("#guide-dialog")
+        .screenshot({
+          path:
+            "test-results/run-presentation/compact-player-" + width + ".png",
+        });
+    },
+  );

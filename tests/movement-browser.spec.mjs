@@ -77,7 +77,7 @@ test("isolated objects, skeleton, anchors, axes and reduced motion", async ({
   await expect(page.locator("#lab-phase-value")).toHaveText("100%");
 });
 
-test("production guide player keeps pause, restart, steps and disposal", async ({
+test("production guide uses a single accessible toggle and preserves reduced-motion control", async ({
   page,
 }) => {
   await page.clock.install();
@@ -95,35 +95,45 @@ test("production guide player keeps pause, restart, steps and disposal", async (
       document.querySelector(".movement-guide"),
     );
   });
-  await expect(page.locator('[data-motion="pause"]')).toBeEnabled();
-  await expect(page.locator(".movement-guide .movement")).toHaveCount(0);
+  const toggle = page.locator('[data-motion="toggle"]');
+  await expect(page.locator(".movement-guide button")).toHaveCount(1);
+  await expect(toggle).toHaveAccessibleName("Pausar demonstração");
+  await expect(page.locator(".motion-steps")).toHaveCount(0);
   await page.clock.runFor(1600);
-  await page.locator('[data-motion="pause"]').click();
+  await toggle.focus();
+  await page.keyboard.press("Enter");
   const markup = await page.locator(".motion-stage").innerHTML();
   await page.clock.runFor(1000);
   expect(await page.locator(".motion-stage").innerHTML()).toBe(markup);
-  await page.locator('[data-motion="end"]').click();
-  await expect(page.locator(".motion-status")).toHaveText("Final");
-  await page.locator('[data-motion="reset"]').click();
-  await expect(page.locator(".motion-status")).toHaveText("Início");
-  await page.locator('[data-motion="play"]').click();
-  await page.clock.runFor(6200);
-  await expect(page.locator(".motion-status")).toContainText("Reproduzindo");
-  await expect(page.locator('[data-motion="pause"]')).toBeEnabled();
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAccessibleName("Reproduzir demonstração");
+  await page.keyboard.press("Space");
+  await page.clock.runFor(500);
+  expect(await page.locator(".motion-stage").innerHTML()).not.toBe(markup);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await page.clock.runFor(100);
+  const frozen = await page.locator(".motion-stage").innerHTML();
+  await page.clock.runFor(500);
+  expect(await page.locator(".motion-stage").innerHTML()).toBe(frozen);
+  await toggle.click();
+  await page.clock.runFor(500);
+  expect(await page.locator(".motion-stage").innerHTML()).not.toBe(frozen);
   await page.evaluate(() => window.disposePlayer());
   const closed = await page.locator(".motion-stage").innerHTML();
   await page.clock.runFor(2000);
   expect(await page.locator(".motion-stage").innerHTML()).toBe(closed);
-  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.evaluate(async () => {
     const { createMovementPlayer } = await import("/lib/movement-player.js");
     window.disposePlayer = createMovementPlayer(
       document.querySelector(".movement-guide"),
     );
   });
-  await expect(page.locator(".motion-controls")).toBeHidden();
-  await page.locator('[data-motion="middle"]').click();
-  await expect(page.locator(".motion-status")).toHaveText("Meio");
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate(() => window.disposePlayer());
 });
 
 test("single active scene calculation, SVG and layout stay below 16ms at p95", async ({
@@ -186,7 +196,7 @@ test("all 23 exercise guides open with one automatically animated stage", async 
       page.locator(".movement-guide svg.exercise-figure"),
     ).toHaveCount(1);
     await expect(page.locator('[data-motion="open"]')).toHaveCount(0);
-    await expect(page.locator('[data-motion="pause"]')).toBeEnabled();
+    await expect(page.locator('[data-motion="toggle"]')).toBeEnabled();
     const before = await page.locator(".motion-stage").innerHTML();
     await page.clock.runFor(500);
     expect(await page.locator(".motion-stage").innerHTML()).not.toBe(before);

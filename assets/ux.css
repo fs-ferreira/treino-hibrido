@@ -2316,7 +2316,7 @@ textarea,
 }
 .run-details-body {
   display: grid;
-  gap: 24px;
+  gap: 12px;
   padding: 16px 0;
   min-width: 0;
 }
@@ -2326,30 +2326,12 @@ textarea,
   margin: 0 0 8px;
 }
 .run-details-body p,
-.run-details-body .caption,
-.run-secondary {
+.run-details-body .caption {
   font-size: var(--reading-help);
   line-height: 1.5;
 }
 .run-details-body .heart-rate-guide {
   margin: 0;
-}
-.run-secondary {
-  margin: 16px 0 0;
-  color: var(--muted);
-}
-.run-secondary > div {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-}
-.run-secondary dt {
-  color: var(--text);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.run-secondary dd {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
 }
 .run-layout .run-form label,
 .run-layout .run-form .field-trigger {
@@ -2661,4 +2643,21 @@ textarea,
 }
 #settings-page .recent-run-fields > label:last-child {
   grid-column: auto;
+}
+
+.run-details-body > section + section {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.run-details-body p {
+  margin: 0;
+}
+.run-distance strong {
+  color: var(--text);
+  font-size: 1.066667rem;
+  font-variant-numeric: tabular-nums;
+}
+.run-method-link {
+  justify-self: start;
+  min-height: 44px;
 }

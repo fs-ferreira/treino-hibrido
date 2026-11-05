@@ -180,7 +180,7 @@ test("schedule, change date, cancel and activate automatically without altering 
   ).toContainText("Ativo");
   expect(cloud.data.sessions).toEqual(saved);
   await nav(page, "hoje/2026-11-13");
-  await expect(page.locator(".hero h2")).toContainText("descanso");
+  await expect(page.locator(".hero h2")).toContainText("Corrida regenerativa");
 });
 test("switch blocks affected running draft and Saturday choices can change or clear before starting", async ({
   page,
@@ -236,4 +236,28 @@ test("failed plan activation keeps its pending operation and confirms only after
     .poll(() => cloud.data.settings.planHistory.at(-1).planId)
     .toBe(CROSS_PLAN_ID);
   await expect(page.locator("#toast")).toHaveText("Planejamento salvo.");
+});
+
+test("activating now replaces today's untouched interval and preserves days with recorded workouts", async ({
+  page,
+}) => {
+  const d = defaults();
+  const raw = materializeDay(d, TODAY);
+  raw.workouts[0].type = "interval";
+  const yesterday = materializeDay(d, "2026-11-04");
+  yesterday.workouts[0].done = true;
+  const saved = structuredClone(yesterday);
+  const cloud = await open(page, 390, d);
+  await activate(page);
+  await nav(page, "hoje/" + TODAY);
+  await expect(page.locator(".hero h2")).toContainText("Cross");
+  await page.locator('#cross-form [name="minutes"]').fill("45");
+  await choose(page.locator('#cross-form [name="rpe"]'), "6");
+  await page.locator('#cross-form [type="submit"]').click();
+  await expect
+    .poll(() => cloud.data.sessions[TODAY].workouts[0].type)
+    .toBe("cross");
+  expect(cloud.data.sessions["2026-11-04"]).toEqual(saved);
+  await page.reload();
+  await expect(page.locator(".hero h2")).toContainText("Cross");
 });

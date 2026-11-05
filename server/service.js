@@ -11,6 +11,7 @@ import {
   preserveWorkoutMetadata,
   preserveSettingsMetadata,
   assertOptionalDayChange,
+  shouldReplanDay,
 } from "../lib/core.js";
 import { allowedEmail } from "./config.js";
 export class ApiError extends Error {
@@ -277,7 +278,8 @@ export function createDiaryService({ pool, config }) {
             for (const item of day.workouts) {
               const next = afterItems.get(item.id);
               if (
-                (workoutStarted(item) || item.canceledAt) &&
+                (workoutStarted(item) ||
+                  (item.canceledAt && !shouldReplanDay(before, date))) &&
                 (!next || next.date !== date || next.item.type !== item.type)
               )
                 fail(
@@ -291,7 +293,12 @@ export function createDiaryService({ pool, config }) {
                   "WORKOUT_STARTED",
                   "Treinos com registros não podem ser cancelados.",
                 );
-              if (item.optional && next && !next.item.optional)
+              if (
+                item.optional &&
+                next &&
+                !next.item.optional &&
+                !shouldReplanDay(before, date)
+              )
                 fail(
                   422,
                   "INVALID_DATA",

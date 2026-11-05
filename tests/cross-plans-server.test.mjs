@@ -6,6 +6,7 @@ import { migrate } from "../scripts/migrate.mjs";
 import { createDiaryService } from "../server/service.js";
 import {
   defaults,
+  materializeDay,
   chooseOptionalWorkout,
   createWorkout,
   completeWorkout,
@@ -43,6 +44,9 @@ test("API persists dated plans and Cross, rejects Saturday conflicts and protect
       "2026-11-02",
       "2026-11-02",
     );
+    const before = defaults();
+    materializeDay(before, "2026-11-05").workouts[0].type = "interval";
+    await service.save(actor, "/days", op(before.sessions));
     const settingsOp = op(d.settings),
       body = JSON.stringify(settingsOp),
       receipt = await service.save(actor, "/settings", settingsOp);
@@ -62,6 +66,17 @@ test("API persists dated plans and Cross, rejects Saturday conflicts and protect
     assert.deepEqual(
       (await service.read(actor)).settings.planHistory,
       d.settings.planHistory,
+    );
+    materializeDay(d, "2026-11-05");
+    assert.equal(d.sessions["2026-11-05"].workouts[0].type, "cross");
+    await service.save(
+      actor,
+      "/days",
+      op({ "2026-11-05": d.sessions["2026-11-05"] }),
+    );
+    assert.equal(
+      (await service.read(actor)).sessions["2026-11-05"].workouts[0].type,
+      "cross",
     );
     const item = chooseOptionalWorkout(d, "2026-11-07", "cross");
     await service.save(actor, "/days", op(d.sessions));

@@ -38,6 +38,12 @@ import {
   loadSuggestions,
 } from "../lib/progression.js";
 import { historyView, historyDefaults } from "../lib/history-view.js";
+test.beforeEach((t) =>
+  t.mock.timers.enable({
+    apis: ["Date"],
+    now: new Date("2026-11-05T12:00:00").getTime(),
+  }),
+);
 const TODAY = "2026-11-02",
   SAT = "2026-11-07";
 const diary = () => {
@@ -72,15 +78,15 @@ test("dated activation preserves older weeks, replaces only the future change an
     changePlan(d.settings, CROSS_PLAN_ID, "2026-02-30", TODAY),
   );
 });
-test("new calendar, independent catalog and preserved saved dates including explicit rest", () => {
+test("new calendar replaces unstarted saved dates and keeps catalog independent", () => {
   const d = defaults();
   materializeDay(d, "2026-11-05");
   d.sessions["2026-11-06"] = { workouts: [] };
   const original = structuredClone(d.sessions);
   d.settings = changePlan(d.settings, CROSS_PLAN_ID, TODAY, TODAY);
   assert.deepEqual(d.sessions, original);
-  assert.equal(scheduledWorkouts(d, "2026-11-05")[0].type, "easy");
-  assert.deepEqual(scheduledWorkouts(d, "2026-11-06"), []);
+  assert.equal(scheduledWorkouts(d, "2026-11-05")[0].type, "cross");
+  assert.equal(scheduledWorkouts(d, "2026-11-06")[0].type, "easy");
   assert.equal(workoutFor("2026-11-12", d.settings), "cross");
   assert.deepEqual(
     planWeek(d.settings, CROSS_PLAN_ID).map((d) => d.type),
@@ -147,6 +153,7 @@ test("choice can be changed or cleared before starting; add, move and reactivati
 test("saved conflicting Saturday remains intact and cannot gain another activity", () => {
   const d = defaults();
   addWorkout(d, SAT, "upper");
+  d.sessions[SAT].workouts[1].done = true;
   const saved = structuredClone(d.sessions);
   d.settings = changePlan(d.settings, CROSS_PLAN_ID, TODAY, TODAY);
   assert.deepEqual(d.sessions, saved);
@@ -273,4 +280,63 @@ test("legacy omissions retain new metadata without mutating immutable operation 
   const body = JSON.stringify(day);
   assert.deepEqual(preserveDayMetadata(day, d.sessions[SAT]), d.sessions[SAT]);
   assert.equal(JSON.stringify(day), body);
+});
+
+test("plan change reapplies today and future unstarted days, but preserves an entire started day", () => {
+  const d = defaults(),
+    today = "2026-11-05",
+    future = "2026-11-06";
+  const old = materializeDay(d, today);
+  old.workouts[0].type = "interval";
+  materializeDay(d, future);
+  d.settings = changePlan(d.settings, CROSS_PLAN_ID, today, today);
+  assert.equal(scheduledWorkouts(d, today)[0].type, "cross");
+  assert.equal(scheduledWorkouts(d, future)[0].type, "easy");
+  assert.equal(old.workouts[0].type, "interval"); // Reading does not mutate raw history.
+  const current = materializeDay(d, today);
+  assert.equal(current.workouts[0].type, "cross");
+  assert.match(current.planKey, /hibrido-cross@/);
+  addWorkout(d, today, "interval");
+  assert.equal(scheduledWorkouts(d, today).length, 2); // Explicit changes after activation persist.
+  const locked = defaults();
+  materializeDay(locked, today).workouts[0].type = "interval";
+  locked.sessions[today].workouts[0].run = {
+    minutes: 40,
+    km: 6,
+    rpe: 7,
+    notes: "partial",
+  };
+  addWorkout(locked, today, "upper");
+  locked.settings = changePlan(locked.settings, CROSS_PLAN_ID, today, today);
+  assert.deepEqual(
+    scheduledWorkouts(locked, today).map((w) => w.type),
+    ["interval", "upper"],
+  );
+  assert.deepEqual(validateBackup(d).sessions, d.sessions);
+});
+test("canceling a future plan reapplies its unstarted programming and never replaces completed history", () => {
+  const d = defaults(),
+    future = "2026-11-12";
+  d.settings = changePlan(d.settings, CROSS_PLAN_ID, "2026-11-09", TODAY);
+  assert.equal(materializeDay(d, future).workouts[0].type, "cross");
+  d.settings = cancelPlanChange(d.settings, TODAY);
+  assert.equal(scheduledWorkouts(d, future)[0].type, "easy");
+  const key = d.sessions[future].planKey;
+  assert.ok(key);
+  const oldDay = materializeDay(d, "2026-10-29");
+  d.settings = changePlan(d.settings, CROSS_PLAN_ID, TODAY, TODAY);
+  assert.equal(
+    scheduledWorkouts(d, "2026-10-29")[0].type,
+    oldDay.workouts[0].type,
+  );
+});
+
+test("the new schedule does not revert when a previously unstarted date becomes past", (t) => {
+  const d = defaults(),
+    date = "2026-11-05";
+  materializeDay(d, date).workouts[0].type = "interval";
+  d.settings = changePlan(d.settings, CROSS_PLAN_ID, date, date);
+  assert.equal(scheduledWorkouts(d, date)[0].type, "cross");
+  t.mock.timers.setTime(new Date("2026-11-06T12:00:00").getTime());
+  assert.equal(scheduledWorkouts(d, date)[0].type, "cross");
 });

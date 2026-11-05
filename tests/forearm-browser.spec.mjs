@@ -70,9 +70,14 @@ for (const width of [390, 1280])
       await expect(
         guide.locator(`svg[data-scene="${exercise.id}"]`),
       ).toHaveCount(1);
-      await expect(guide.locator(".motion-controls")).toBeHidden();
-      await guide.locator('[data-motion="end"]').click();
-      await expect(guide.locator(".motion-status")).toHaveText("Final");
+      await expect(guide.locator(".motion-controls")).toBeVisible();
+      await guide.locator('[data-motion="toggle"]').click();
+      await expect(guide.locator('[data-motion="toggle"]')).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await guide.locator('[data-motion="toggle"]').click();
+      await expect(guide.locator(".motion-status")).toHaveText("Pausado");
       if (exercise.id === "wrist-curl") {
         await expect(guide).toContainText("Repita do outro lado.");
         await expect(guide).toContainText("6–8 repetições em cada braço");

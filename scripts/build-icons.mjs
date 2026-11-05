@@ -11,6 +11,7 @@ const names = [
   "chevron-down",
   "moon",
   "play",
+  "pause",
   "activity",
   "layout-dashboard",
   "calendar-days",

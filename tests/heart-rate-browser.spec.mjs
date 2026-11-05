@@ -97,7 +97,7 @@ for (const width of [320, 390, 1440]) {
     await session.locator(".run-details > summary").focus();
     await page.keyboard.press("Enter");
     await expect(session.locator(".heart-rate-guide")).toContainText(
-      "não precisa chegar à faixa antes do próximo bloco",
+      "sem exigir uma queda imediata",
     );
     await mkdir("test-results/heart-rate", { recursive: true });
     await page.screenshot({
@@ -184,11 +184,16 @@ test("sem configuração ou referência histórica mostra somente zonas sem inve
   item.run = { minutes: 40, km: 6, rpe: 8, notes: "", plan: snapshot };
   await open(page, data, `hoje/${DATE}`);
   await expect(page.locator("#session .heart-rate-reference")).toContainText(
-    "Orientação geral",
+    "Registro sem referência cardíaca",
   );
   await expect(page.locator("#session .run-blocks")).not.toContainText("bpm");
   await expect(page.locator("#session .run-blocks")).not.toContainText(
     "80–90%",
   );
-  await expect(page.locator("#session .run-details")).toContainText("80–90%");
+  await expect(page.locator("#session .run-details")).toContainText(
+    "A FC responde com atraso",
+  );
+  await page.locator("#session .run-details > summary").click();
+  await page.locator('#session .run-details [data-action="sources"]').click();
+  await expect(page.locator("#guide-dialog")).toContainText("80–90%");
 });

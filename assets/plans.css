@@ -372,3 +372,21 @@
   border-color: var(--lime);
   background: #c3f9690c;
 }
+
+/* Compact running typography applies only inside the plan catalogue. */
+.plan-day-body .run-blocks {
+  --reading-body: 0.933333rem;
+  --reading-metric: 0.933333rem;
+  --reading-duration: 1.066667rem;
+  --reading-help: 0.866667rem;
+}
+.plan-day-body .run-blocks .run-block {
+  padding-block: 12px;
+}
+.plan-day-body .interval-group {
+  padding: 16px;
+}
+.plan-day-body .run-details {
+  --reading-body: 0.933333rem;
+  --reading-help: 0.866667rem;
+}

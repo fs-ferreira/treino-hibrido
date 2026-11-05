@@ -231,14 +231,7 @@
   height: auto;
   display: block;
 }
-.motion-status {
-  text-align: center;
-  font-size: 12px;
-  min-height: 18px;
-  color: #79dfe5;
-}
-.motion-controls,
-.motion-steps {
+.motion-controls {
   display: flex;
   gap: 8px;
   justify-content: center;
@@ -253,22 +246,6 @@
 .motion-controls button:disabled {
   opacity: 0.4;
   cursor: default;
-}
-.motion-steps button {
-  background: transparent;
-  border: 1px solid #41525e;
-  border-radius: 7px;
-  color: #c2d0d6;
-  padding: 9px 18px;
-  min-height: 44px;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.motion-steps button[aria-pressed="true"] {
-  border-color: #79dfe5;
-  color: #79dfe5;
-  background: #79dfe511;
 }
 .motion-note {
   text-align: center;
