@@ -62,7 +62,7 @@ test("salvar Progressão ou Semana ignora rascunhos inválidos de Corrida e pres
   assert.equal(week.longDay, 0);
   assert.equal(week.longMinutes, 75);
   assert.equal(week.loadProgression, 2.5);
-  assert.equal(validateBackup({ ...defaults(), settings: week }).version, 6);
+  assert.equal(validateBackup({ ...defaults(), settings: week }).version, 7);
 });
 test("progressão e semana validam limites, passo, valores vazios e tipos", () => {
   const s = defaults().settings;

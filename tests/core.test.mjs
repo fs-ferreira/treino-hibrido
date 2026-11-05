@@ -227,7 +227,7 @@ test("migra backup v1 sem perder texto ou sessões", () => {
     sessions: {},
   };
   const migrated = validateBackup(old);
-  assert.equal(migrated.version, 6);
+  assert.equal(migrated.version, 7);
   assert.equal(migrated.settings.recentRunNote, old.settings.recentRun);
   assert.deepEqual(migrated.settings.recentRun, {
     km: "",

@@ -137,7 +137,7 @@ test("new exercise records round-trip in v3 backups and use existing progression
     assert.equal(loadSuggestions(data.sessions, "2026-11-09", id, 5)[0].kg, 6);
   }
   const restored = validateBackup(JSON.parse(JSON.stringify(data)));
-  assert.equal(restored.version, 6);
+  assert.equal(restored.version, 7);
   for (const [date, entry] of Object.entries(data.sessions)) {
     const { id, ...item } = restored.sessions[date].workouts[0];
     assert.deepEqual(item, { ...entry, completedAt: null, canceledAt: null });

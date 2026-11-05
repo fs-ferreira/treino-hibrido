@@ -491,3 +491,74 @@ test("conflicting legacy metadata enters recovery and preserves the original pen
   assert.equal(f.attempts.length, 0);
   remote.stop();
 });
+
+test("v6 pending settings and day operations preserve plan history, bonus and Cross after reload", async () => {
+  const f = setup(),
+    data = f.data;
+  data.settings.planHistory.push({
+    planId: "hibrido-cross",
+    from: "2026-11-02",
+  });
+  data.sessions["2026-11-07"] = {
+    workouts: [
+      {
+        id: "cross-bonus",
+        type: "cross",
+        sourcePlanId: "hibrido-cross",
+        optional: true,
+        done: true,
+        completedAt: "2026-11-07T18:00:00.000Z",
+        canceledAt: null,
+        sets: {},
+        run: null,
+        cross: { minutes: 45, rpe: 7, notes: "aula" },
+      },
+    ],
+  };
+  f.data = data;
+  const oldSettings = structuredClone(data.settings);
+  delete oldSettings.planHistory;
+  oldSettings.longMinutes = 80;
+  const day = structuredClone(data.sessions["2026-11-07"]);
+  for (const key of ["sourcePlanId", "optional", "cross"])
+    delete day.workouts[0][key];
+  const operations = [
+    {
+      id: crypto.randomUUID(),
+      path: "/settings",
+      value: oldSettings,
+      sending: true,
+    },
+    {
+      id: crypto.randomUUID(),
+      path: "/days",
+      value: { "2026-11-07": day },
+      sending: false,
+    },
+  ];
+  const original = JSON.stringify(operations);
+  await f.journal.put("u", {
+    sessionId: "s",
+    generation: "g",
+    operations,
+    snapshot: data,
+    blocked: false,
+  });
+  f.broken = true;
+  const remote = f.make();
+  const opened = await remote.open();
+  assert.deepEqual(opened.data.settings.planHistory, data.settings.planHistory);
+  assert.deepEqual(
+    opened.data.sessions["2026-11-07"],
+    data.sessions["2026-11-07"],
+  );
+  await remote.save(opened.data);
+  assert.equal(JSON.stringify(operations), original);
+  f.broken = false;
+  await remote.save(opened.data);
+  assert.deepEqual(f.data.settings.planHistory, data.settings.planHistory);
+  assert.equal(f.data.settings.longMinutes, 80);
+  assert.deepEqual(f.data.sessions["2026-11-07"], data.sessions["2026-11-07"]);
+  assert.equal(f.entry, null);
+  remote.stop();
+});

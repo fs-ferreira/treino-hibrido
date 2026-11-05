@@ -10,6 +10,7 @@ import {
   preserveDayMetadata,
   preserveWorkoutMetadata,
   preserveSettingsMetadata,
+  assertOptionalDayChange,
 } from "../lib/core.js";
 import { allowedEmail } from "./config.js";
 export class ApiError extends Error {
@@ -290,6 +291,12 @@ export function createDiaryService({ pool, config }) {
                   "WORKOUT_STARTED",
                   "Treinos com registros não podem ser cancelados.",
                 );
+              if (item.optional && next && !next.item.optional)
+                fail(
+                  422,
+                  "INVALID_DATA",
+                  "A classificação de bônus deve ser preservada.",
+                );
               if (next && next.date !== date && workoutStarted(next.item))
                 fail(
                   409,
@@ -298,6 +305,18 @@ export function createDiaryService({ pool, config }) {
                 );
             }
           // Defaults are virtual until a day is edited. A move must preserve its stable identity.
+          for (const date of Object.keys(changes)) {
+            try {
+              assertOptionalDayChange(
+                before.settings,
+                date,
+                scheduledWorkouts(before, date),
+                data.sessions[date].workouts,
+              );
+            } catch (error) {
+              fail(422, "INVALID_DATA", error.message);
+            }
+          }
           for (const date of Object.keys(changes))
             if (!before.sessions[date])
               for (const item of scheduledWorkouts(before, date)) {

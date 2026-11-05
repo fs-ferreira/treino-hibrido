@@ -28,7 +28,17 @@ import {
   maskTime,
   parseDuration,
   durationText,
-} from "./lib/core.js?v=6.0.0";
+  isOptionalSaturday,
+  chooseOptionalWorkout,
+} from "./lib/core.js?v=7.0.0";
+import {
+  getPlan,
+  getActivePlan,
+  pendingPlanChange,
+  changePlan,
+  cancelPlanChange,
+  planWeek,
+} from "./lib/plans.js";
 import {
   withoutWeight,
   loadSuggestions,
@@ -37,20 +47,20 @@ import {
   paceRevision,
   effortTarget,
 } from "./lib/progression.js?v=6.0.0";
-import { workouts, exercises } from "./lib/exercises.js";
+import { workouts, exercises, workoutName } from "./lib/exercises.js";
 import { muscleMap, createMuscleMapController } from "./lib/muscle-map.js";
 import {
   runBlocksView,
   heartRateNotice,
   runDetailsView,
 } from "./lib/run-view.js?v=6.1.2";
-import { plansView } from "./lib/plans-view.js?v=6.1.2";
+import { plansView } from "./lib/plans-view.js?v=7.0.0";
 import { resolveRoute, isAppHash } from "./lib/routes.js?v=4.0.0";
 import {
   settingsView,
   createSettingsController,
   settingsSections,
-} from "./lib/settings.js?v=6.1.0";
+} from "./lib/settings.js?v=7.0.0";
 import { createMobileNav } from "./lib/mobile-nav.js?v=6.1.0";
 import { illustration } from "./lib/diagrams.js?v=2.2.0";
 import { createMovementPlayer } from "./lib/movement-player.js?v=2.2.0";
@@ -285,15 +295,20 @@ function runValues(run) {
   };
 }
 function captureRunDraft() {
-  const form = $("#run-form");
+  const form = $("#run-form, #cross-form");
   if (!form) return;
   const values = {
-    ...runValues(null),
+    ...(form.id === "cross-form" ? crossValues(null) : runValues(null)),
     ...Object.fromEntries(new FormData(form)),
   };
   const key = draftKey();
   if (
-    JSON.stringify(values) === JSON.stringify(runValues(currentSession()?.run))
+    JSON.stringify(values) ===
+    JSON.stringify(
+      form.id === "cross-form"
+        ? crossValues(currentSession()?.cross)
+        : runValues(currentSession()?.run),
+    )
   )
     runDrafts.delete(key);
   else runDrafts.set(key, values);
@@ -431,17 +446,25 @@ function syncTodayStatus() {
   }
   const split = $(".split-stat");
   if (split)
-    split.innerHTML = `<span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span>`;
+    split.innerHTML = `<span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span>${summary.cross.planned ? `<span>Cross <b>${summary.cross.done}/${summary.cross.planned}</b></span>` : ""}`;
   const details = $("[data-summary-details]");
   if (details) details.innerHTML = summaryDetails(summary);
   document.querySelectorAll(".week-strip .day").forEach((button) => {
     const key = button.dataset.date,
       items = scheduledWorkouts(data, key),
       states = items.map((item) => stateFor(item, key));
-    button.setAttribute("aria-label", dayLabel(key, items, states));
+    button.setAttribute(
+      "aria-label",
+      dayLabel(key, items, states, isOptionalSaturday(data, key)),
+    );
     if (key === dateKey()) button.setAttribute("aria-current", "date");
     else button.removeAttribute("aria-current");
-    button.innerHTML = dayContents(key, items, states);
+    button.innerHTML = dayContents(
+      key,
+      items,
+      states,
+      isOptionalSaturday(data, key),
+    );
   });
   const hero = $(".hero");
   if (hero) {
@@ -613,7 +636,7 @@ function render({ preserve = false, preserveHistoryCard = false } = {}) {
   });
   const content =
     (runDrafts.size && !(route.section === "hoje" && runDrafts.has(draftKey()))
-      ? `<p class="caption run-draft-notice">Há rascunhos de corrida nesta visita. Eles se perdem ao recarregar. <a href="#hoje/${escape(runDrafts.keys().next().value)}">Ver rascunho</a></p>`
+      ? `<p class="caption run-draft-notice">Há rascunhos de corrida ou Cross nesta visita. Eles se perdem ao recarregar. <a href="#hoje/${escape(runDrafts.keys().next().value)}">Ver rascunho</a></p>`
       : "") +
     (
       {
@@ -696,18 +719,19 @@ function weekStrip(start = weekStart(selected)) {
       const key = addDays(start, i),
         items = scheduledWorkouts(data, key),
         states = items.map((item) => stateFor(item, key));
-      return `<button class="day ${key === selected ? "selected" : ""} ${items[0] ? workouts[items[0].type].kind : "rest"}" data-action="day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""} aria-label="${escape(dayLabel(key, items, states))}">${dayContents(key, items, states)}</button>`;
+      return `<button class="day ${key === selected ? "selected" : ""} ${items[0] ? workouts[items[0].type].kind : "rest"}" data-action="day" data-date="${key}" aria-pressed="${key === selected}" ${key === dateKey() ? 'aria-current="date"' : ""} aria-label="${escape(dayLabel(key, items, states, isOptionalSaturday(data, key)))}">${dayContents(key, items, states, isOptionalSaturday(data, key))}</button>`;
     },
   ).join("")}</div>`;
 }
 function dayWorkoutsView() {
   const items = scheduledWorkouts(data, selected);
-  return `<section class="day-workouts" aria-label="Treinos do dia"><div class="section-title"><h2>Treinos do dia</h2><button class="button quiet" data-action="add-workout">Adicionar treino ${icon("plus")}</button></div><div class="day-workout-list">${items.map((item) => `<article class="panel day-workout ${item.id === selectedWorkout ? "is-selected" : ""}"><button class="workout-select" data-action="select-workout" data-workout="${item.id}" aria-pressed="${item.id === selectedWorkout}"><b>${workouts[item.type].name}</b><span data-workout-status="${item.id}">${statusBadge(stateFor(item))}</span><span>${item.id === selectedWorkout ? "Em exibição" : "Abrir"} ${icon("arrow-down")}</span></button>${item.canceledAt ? `<button class="text-button" data-action="reactivate-workout" data-workout="${item.id}">Reativar</button>` : `<button class="text-button" data-action="move-workout" data-workout="${item.id}" ${canReorganize(item) ? "" : "disabled"} aria-label="Reorganizar ${workouts[item.type].name}" aria-describedby="reorganize-help">Reorganizar</button>`}</article>`).join("")}</div><p class="caption" id="reorganize-help">Treinos com registros não podem ser movidos ou cancelados.${items.some((item) => runDrafts.has(draftKey(selected, item.id))) ? " Salve o rascunho de corrida antes de reorganizar." : ""}</p></section>`;
+  return `<section class="day-workouts" aria-label="Treinos do dia"><div class="section-title"><h2>Treinos do dia</h2><button class="button quiet" data-action="add-workout">Adicionar treino ${icon("plus")}</button></div><div class="day-workout-list">${isOptionalSaturday(data, selected) ? `<p class="caption">Sábado opcional · bônus fora da meta.</p><button class="text-button" data-action="choose-optional">${items.some((s) => !s.canceledAt) ? "Trocar atividade ou descansar" : "Escolher atividade"}</button>` : ""}${items.map((item) => `<article class="panel day-workout ${item.id === selectedWorkout ? "is-selected" : ""}"><button class="workout-select" data-action="select-workout" data-workout="${item.id}" aria-pressed="${item.id === selectedWorkout}"><b>${workoutName(item)}</b><span data-workout-status="${item.id}">${statusBadge(stateFor(item))}</span><span>${item.id === selectedWorkout ? "Em exibição" : "Abrir"} ${icon("arrow-down")}</span></button>${item.canceledAt ? `<button class="text-button" data-action="reactivate-workout" data-workout="${item.id}">Reativar</button>` : `<button class="text-button" data-action="move-workout" data-workout="${item.id}" ${canReorganize(item) ? "" : "disabled"} aria-label="Reorganizar ${workoutName(item)}" aria-describedby="reorganize-help">Reorganizar</button>`}</article>`).join("")}</div><p class="caption" id="reorganize-help">Treinos com registros não podem ser movidos ou cancelados.${items.some((item) => runDrafts.has(draftKey(selected, item.id))) ? " Salve o rascunho do treino antes de reorganizar." : ""}</p></section>`;
 }
 function heroView() {
   const item = currentSession();
   return workoutHero(item, selected, data.settings, {
     hasDraft: runDrafts.has(draftKey(selected, item?.id)),
+    optional: isOptionalSaturday(data, selected),
   });
 }
 function todayView() {
@@ -722,14 +746,15 @@ function todayView() {
       fullDate(selected),
       `<button class="button quiet" data-action="reset-day" ${selected === dateKey() ? "hidden" : ""}>Ir para hoje</button>`,
     ) +
-    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><h2>Resumo da semana</h2><div class="progress-ring" style="--progress:${summary.planned ? (summary.done / summary.planned) * 100 : 0}%"><div><b>${summary.done}<small>/${summary.planned}</small></b><span>treinos concluídos</span></div></div><p class="caption">Concluídos / programados</p><div class="split-stat"><span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span></div><p class="summary-details" data-summary-details>${summaryDetails(summary)}</p></section></div>
+    `<div class="dashboard-grid">${heroView()}<section class="week-summary panel"><h2>Resumo da semana</h2><div class="progress-ring" style="--progress:${summary.planned ? (summary.done / summary.planned) * 100 : 0}%"><div><b>${summary.done}<small>/${summary.planned}</small></b><span>treinos concluídos</span></div></div><p class="caption">Concluídos / programados</p><div class="split-stat"><span>Musculação <b>${summary.strength.done}/${summary.strength.planned}</b></span><span>Corrida <b>${summary.run.done}/${summary.run.planned}</b></span>${summary.cross.planned ? `<span>Cross <b>${summary.cross.done}/${summary.cross.planned}</b></span>` : ""}</div><p class="summary-details" data-summary-details>${summaryDetails(summary)}</p></section></div>
   <section id="week-navigation" aria-label="Navegação semanal"><div class="week-controls"><button class="button quiet" data-action="prev-week" aria-label="Semana anterior">←</button><h2>${shortDate(start)} — ${shortDate(addDays(start, 6))}</h2><button class="button quiet" data-action="next-week" aria-label="Próxima semana">→</button><button class="text-button" data-action="current-week" ${weekStart(selected) === weekStart(dateKey()) ? "hidden" : ""}>Semana atual</button></div>${weekStrip(start)}</section>${dayWorkoutsView()}<section id="session" class="session-section" data-workout-id="${escape(selectedWorkout ?? "")}">${sessionView(getType(selected))}</section>`
   );
 }
 function sessionView(type) {
   const w = workouts[type];
   if (currentSession()?.canceledAt)
-    return `<div class="panel canceled-session"><span class="eyebrow">TREINO CANCELADO</span><h2>O plano continua aqui.</h2><p>Reative o treino para registrar seus resultados.</p>${w.kind === "strength" ? `<ul>${w.ids.map((id) => `<li><span>${escape(exercises[id].name)}</span><button class="text-button" data-action="guide" data-id="${id}">Como fazer ${icon("arrow-up-right")}</button></li>`).join("")}</ul>` : `<p>${escape(w.subtitle)} · ${type === "interval" ? "40 minutos, 8 blocos" : type === "easy" ? "30 minutos" : data.settings.longMinutes + " minutos"}</p>`}<button class="button quiet" data-action="reactivate-workout" data-workout="${selectedWorkout}">Reativar treino ${icon("rotate-ccw")}</button></div>`;
+    return `<div class="panel canceled-session"><span class="eyebrow">TREINO CANCELADO</span><h2>O plano continua aqui.</h2><p>Reative o treino para registrar seus resultados.</p>${w.kind === "strength" ? `<ul>${w.ids.map((id) => `<li><span>${escape(exercises[id].name)}</span><button class="text-button" data-action="guide" data-id="${id}">Como fazer ${icon("arrow-up-right")}</button></li>`).join("")}</ul>` : `<p>${escape(w.subtitle)}${type === "cross" ? "" : " · "}${type === "cross" ? "" : type === "interval" ? "40 minutos, 8 blocos" : type === "easy" ? "30 minutos" : data.settings.longMinutes + " minutos"}</p>`}<button class="button quiet" data-action="reactivate-workout" data-workout="${selectedWorkout}">Reativar treino ${icon("rotate-ccw")}</button></div>`;
+  if (w.kind === "cross") return crossView();
   if (w.kind === "strength") return strengthView(type);
   if (w.kind === "run") return runView(type);
   return `<div class="rest-card panel"><div class="rest-icon">☾</div><p class="eyebrow">ESPAÇO PARA RECUPERAR</p><h2>Hoje, desacelere.</h2><p>O plano reserva este dia para descanso. Priorize o sono e chegue ao próximo treino com disposição.</p><span class="muted">Próximo treino: ${workouts[getType(addDays(selected, 1))].name}</span></div>`;
@@ -929,7 +954,7 @@ function openDialog(html, compact = false) {
 }
 function confirmSession(onConfirm) {
   const completed = count(selected),
-    name = workouts[getType(selected)].name,
+    name = workoutName(currentSession()),
     planned = strengthSetCount(getType(selected));
   pendingConfirmation = onConfirm;
   openDialog(
@@ -1010,7 +1035,108 @@ function sources() {
       )}</div><p class="caption">Referências de musculação consultadas em 20/10/2026. Vídeos dependem dos sites de origem.</p>`,
   );
 }
+function crossValues(cross) {
+  return {
+    minutes: String(cross?.minutes ?? ""),
+    rpe: String(cross?.rpe ?? ""),
+    notes: cross?.notes ?? "",
+  };
+}
+function crossView() {
+  const item = currentSession(),
+    v = runDrafts.get(draftKey()) ?? crossValues(item?.cross);
+  return `<div class="section-title"><h2>Sua sessão de Cross</h2></div><p class="section-hint">Siga a programação da sua aula.</p><form id="cross-form" class="panel run-form"><h3>Como foi a aula?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" required value="${escape(v.minutes)}"></label><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label><label>Observações (opcional)<textarea name="notes" maxlength="2000">${escape(v.notes)}</textarea></label><p class="form-error" data-cross-error role="alert"></p><button type="submit" class="button primary">${item?.done ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button>${item?.done ? '<button type="button" class="button quiet" data-action="reopen-cross">Reabrir sessão</button>' : ""}</form>`;
+}
+function optionalWorkoutDialog() {
+  const items = scheduledWorkouts(data, selected),
+    active = items.filter((s) => !s.canceledAt);
+  if (
+    active.some(workoutStarted) ||
+    items.some((s) => runDrafts.has(draftKey(selected, s.id)))
+  ) {
+    notify(
+      "A atividade iniciada ou com rascunho deve ser preservada. Salve seu treino.",
+    );
+    return;
+  }
+  if (active.length > 1) {
+    notify(
+      "Reorganize a programação existente antes de escolher outra atividade.",
+    );
+    return;
+  }
+  openDialog(
+    `<div class="dialog-top"><span class="eyebrow">SÁBADO OPCIONAL</span><button class="close-button" data-action="close-dialog" aria-label="Fechar escolha de atividade">×</button></div><h2 id="guide-title">Escolher atividade</h2><p>${escape(fullDate(selected))}. Apenas para esta data, como bônus fora da meta.</p><form id="optional-workout-form" data-date="${selected}"><label>Atividade<select name="type">${[
+      ["rest", "Descanso"],
+      ["cross", "Cross"],
+      ["upper2", "Upper 2"],
+      ["long", "Longão"],
+    ]
+      .map(
+        ([id, name]) =>
+          `<option value="${id}" ${active[0]?.type === id ? "selected" : ""}>${name}</option>`,
+      )
+      .join(
+        "",
+      )}</select></label><p class="form-error" data-plan-error role="alert"></p><button class="button primary" type="submit">Salvar escolha</button></form>`,
+    true,
+  );
+}
+function planActivationDialog(id) {
+  const plan = getPlan(id);
+  if (!plan) return;
+  const pending = pendingPlanChange(data.settings),
+    date = pending?.planId === id ? pending.from : dateKey();
+  openDialog(
+    `<div class="dialog-top"><span class="eyebrow">PLANO DE TREINO</span><button class="close-button" data-action="close-dialog" aria-label="Fechar ativação de plano">×</button></div><h2 id="guide-title">${plan.name}</h2><p>Datas já salvas serão mantidas, inclusive descanso. A divisão muda apenas nas datas sem programação salva.</p>${pending ? `<p class="notice">Esta escolha substitui a mudança agendada para ${escape(fullDate(pending.from))}.</p>` : ""}<ul class="plan-preview">${planWeek(
+      data.settings,
+      id,
+    )
+      .map(
+        (d) =>
+          `<li><b>${d.label}:</b> ${d.optional ? "Opcional: Cross, Upper 2, longão ou descanso" : workoutName({ type: d.type, sourcePlanId: id })}</li>`,
+      )
+      .join(
+        "",
+      )}</ul><form id="activate-plan-form" data-plan="${id}"><fieldset class="reorganize-options"><legend>Quando começar?</legend><label><input type="radio" name="start" value="today" ${date === dateKey() ? "checked" : ""}>Começar hoje</label><label><input type="radio" name="start" value="date" ${date !== dateKey() ? "checked" : ""}>Começar em outra data</label></fieldset><label>Data de início<input type="date" name="from" min="${dateKey()}" value="${date}" ${date === dateKey() ? "disabled" : "required"}></label><p class="form-error" data-plan-error role="alert"></p><button class="button primary" type="submit">Confirmar ativação</button></form>`,
+  );
+}
+async function savePlanSettings(next, form) {
+  const error = form.querySelector("[data-plan-error]"),
+    button = form.querySelector('[type="submit"]');
+  const affected = [...runDrafts.keys()].some((key) => {
+    const date = key.split("/")[0];
+    return (
+      JSON.stringify(scheduledWorkouts(data, date)) !==
+      JSON.stringify(scheduledWorkouts({ ...data, settings: next }, date))
+    );
+  });
+  if (affected) {
+    error.textContent =
+      "Salve os rascunhos de corrida ou Cross afetados antes de alterar o plano.";
+    return;
+  }
+  button.disabled = true;
+  form.setAttribute("aria-busy", "true");
+  data.settings = next;
+  try {
+    const result = await account.remote.save(data);
+    render({ preserve: true });
+    if (result.saved === "cloud") {
+      dialogs.close();
+      notify("Planejamento salvo.");
+    } else
+      error.textContent =
+        "Alteração pendente de sincronização. Seus dados foram preservados; tente salvar novamente.";
+  } catch (e) {
+    error.textContent = e.message;
+  } finally {
+    button.disabled = false;
+    form.removeAttribute("aria-busy");
+  }
+}
 function addWorkoutDialog() {
+  if (isOptionalSaturday(data, selected)) return optionalWorkoutDialog();
   openDialog(
     `<div class="dialog-top"><span class="eyebrow">${escape(fullDate(selected))}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar adição de treino">×</button></div><h2 id="guide-title">Adicionar treino</h2><p>Os treinos desta data serão mantidos.</p><form id="add-workout-form" data-date="${selected}"><label>Treino<select name="type" required>${Object.entries(
       workouts,
@@ -1027,7 +1153,7 @@ function moveWorkoutDialog(id) {
   const item = scheduledWorkouts(data, selected).find((s) => s.id === id);
   if (!canReorganize(item)) return;
   openDialog(
-    `<div class="dialog-top"><span class="eyebrow">${escape(workouts[item.type].name)}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar reorganização de treino">${icon("x")}</button></div><h2 id="guide-title">Reorganizar treino</h2><p class="reorganize-date">${icon("calendar-days")} ${escape(fullDate(selected))}</p><form id="move-workout-form" data-date="${selected}" data-workout="${id}"><fieldset class="reorganize-options"><legend class="sr-only">O que deseja fazer?</legend><label><input type="radio" name="operation" value="move" checked><span>${icon("calendar-days")}<b>Mover treino</b><small>Escolher outra data</small></span></label><label><input type="radio" name="operation" value="cancel"><span>${icon("minus")}<b>Cancelar treino</b><small>Não realizar esta sessão</small></span></label></fieldset><div data-move-fields><label>Data de destino<input type="date" name="destination" required></label><p class="caption" data-move-preview role="status">Os treinos do destino serão mantidos. Se a origem ficar sem treinos, será um dia de descanso.</p></div><div class="cancel-explanation" data-cancel-fields hidden>${icon("circle")}<p>Este treino será marcado como cancelado e continuará no histórico e na meta da semana. Você poderá reativá-lo depois.</p></div><p class="form-error" data-move-error role="alert"></p><div class="dialog-actions"><button type="button" class="button quiet" data-action="close-dialog">Voltar</button><button type="submit" class="button primary">Mover treino</button></div></form>`,
+    `<div class="dialog-top"><span class="eyebrow">${escape(workoutName(item))}</span><button class="close-button" data-action="close-dialog" aria-label="Fechar reorganização de treino">${icon("x")}</button></div><h2 id="guide-title">Reorganizar treino</h2><p class="reorganize-date">${icon("calendar-days")} ${escape(fullDate(selected))}</p><form id="move-workout-form" data-date="${selected}" data-workout="${id}"><fieldset class="reorganize-options"><legend class="sr-only">O que deseja fazer?</legend><label><input type="radio" name="operation" value="move" checked><span>${icon("calendar-days")}<b>Mover treino</b><small>Escolher outra data</small></span></label><label><input type="radio" name="operation" value="cancel"><span>${icon("minus")}<b>Cancelar treino</b><small>Não realizar esta sessão</small></span></label></fieldset><div data-move-fields><label>Data de destino<input type="date" name="destination" required></label><p class="caption" data-move-preview role="status">Os treinos do destino serão mantidos. Se a origem ficar sem treinos, será um dia de descanso.</p></div><div class="cancel-explanation" data-cancel-fields hidden>${icon("circle")}<p>Este treino será marcado como cancelado e continuará no histórico e na meta da semana. Você poderá reativá-lo depois.</p></div><p class="form-error" data-move-error role="alert"></p><div class="dialog-actions"><button type="button" class="button quiet" data-action="close-dialog">Voltar</button><button type="submit" class="button primary">Mover treino</button></div></form>`,
     true,
   );
 }
@@ -1187,6 +1313,22 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "add-workout") return addWorkoutDialog();
+  if (action === "choose-optional") return optionalWorkoutDialog();
+  if (action === "activate-plan")
+    return planActivationDialog(button.dataset.plan);
+  if (action === "cancel-plan-change") {
+    openDialog(
+      `<div class="dialog-top"><button class="close-button" data-action="close-dialog" aria-label="Fechar cancelamento">×</button></div><h2 id="guide-title">Cancelar agendamento</h2><p>O plano atual continuará ativo. Os treinos já salvos serão mantidos.</p><form id="cancel-plan-form"><p class="form-error" data-plan-error role="alert"></p><button class="button primary" type="submit">Confirmar cancelamento</button></form>`,
+      true,
+    );
+    return;
+  }
+  if (action === "reopen-cross") {
+    reopenWorkout(session());
+    persist("Sessão reaberta.");
+    render({ preserve: true });
+    return;
+  }
   if (action === "reactivate-workout") {
     if (
       !scheduledWorkouts(data, selected).some(
@@ -1198,7 +1340,13 @@ document.addEventListener("click", (event) => {
     const date = selected,
       id = button.dataset.workout;
     const candidate = structuredClone(data);
-    reactivateWorkout(candidate, date, id);
+    try {
+      reactivateWorkout(candidate, date, id);
+    } catch (error) {
+      button.disabled = false;
+      notify(error.message);
+      return;
+    }
     data = candidate;
     account.remote
       .save(candidate)
@@ -1330,6 +1478,13 @@ document.addEventListener(
 document.addEventListener("change", async (event) => {
   if (account.blocked) return;
   const input = event.target;
+  if (input.closest("#activate-plan-form") && input.name === "start") {
+    const field = input.form.elements.from;
+    field.disabled = input.value === "today";
+    field.required = !field.disabled;
+    fieldControls.refresh(input.form);
+    return;
+  }
   if (input.matches('#move-workout-form [name="operation"]')) {
     fieldControls.close();
     const form = input.form,
@@ -1357,7 +1512,7 @@ document.addEventListener("change", async (event) => {
     announceHistory();
     return;
   }
-  if (input.closest("#run-form")) {
+  if (input.closest("#run-form, #cross-form")) {
     captureRunDraft();
     syncTodayStatus();
   }
@@ -1473,6 +1628,11 @@ document.addEventListener("input", (event) => {
       preview.textContent = `Destino: ${fullDate(input.value)}. ${items.length ? items.map((s) => workouts[s.type].name).join(", ") + " serão mantidos." : "Dia de descanso."} A origem sem treinos ficará em descanso.`;
     }
   }
+  if (event.target.closest("#cross-form")) {
+    captureRunDraft();
+    syncTodayStatus();
+    return;
+  }
   if (event.target.closest("#run-form")) {
     captureRunDraft();
     syncTodayStatus();
@@ -1493,6 +1653,67 @@ document.addEventListener("submit", (event) => {
     values = Object.fromEntries(new FormData(form));
   if (form.matches("[data-settings-form]")) return;
   if (!form.reportValidity()) return;
+  if (form.getAttribute("aria-busy") === "true") return;
+  if (form.id === "activate-plan-form" || form.id === "cancel-plan-form") {
+    try {
+      const next =
+        form.id === "cancel-plan-form"
+          ? cancelPlanChange(data.settings)
+          : changePlan(
+              data.settings,
+              form.dataset.plan,
+              values.start === "today" ? dateKey() : values.from,
+            );
+      void savePlanSettings(next, form);
+    } catch (e) {
+      form.querySelector("[data-plan-error]").textContent = e.message;
+    }
+    return;
+  }
+  if (form.id === "optional-workout-form") {
+    try {
+      const date = form.dataset.date,
+        candidate = structuredClone(data);
+      if (
+        scheduledWorkouts(data, date).some((s) =>
+          runDrafts.has(draftKey(date, s.id)),
+        )
+      )
+        throw Error("Salve o rascunho antes de trocar a atividade.");
+      const item = chooseOptionalWorkout(candidate, date, values.type);
+      data = candidate;
+      persist("Escolha salva.");
+      dialogs.close(() => selectDay(date, item?.id, { keepScroll: false }));
+    } catch (e) {
+      form.querySelector("[data-plan-error]").textContent = e.message;
+    }
+    return;
+  }
+  if (form.id === "cross-form") {
+    const s = session(),
+      key = draftKey(),
+      submitted = JSON.stringify(runDrafts.get(key));
+    s.cross = {
+      minutes: Number(values.minutes),
+      rpe: Number(values.rpe),
+      notes: values.notes.trim(),
+    };
+    completeWorkout(s);
+    syncTodayStatus();
+    form.setAttribute("aria-busy", "true");
+    form.querySelector('[type="submit"]').disabled = true;
+    persist("Cross registrado.")
+      .then((saved) => {
+        if (saved && JSON.stringify(runDrafts.get(key)) === submitted)
+          runDrafts.delete(key);
+        if (key === draftKey()) render({ preserve: true });
+      })
+      .finally(() => {
+        form.removeAttribute("aria-busy");
+        form.querySelector('[type="submit"]').disabled = false;
+      });
+    return;
+  }
   if (form.id === "add-workout-form") {
     const date = form.dataset.date;
     form.querySelector('[type="submit"]').disabled = true;
@@ -1695,7 +1916,7 @@ function refreshCalendarDate() {
   const today = dateKey();
   if (today !== statusDate && !account.blocked) {
     statusDate = today;
-    syncTodayStatus();
+    render({ preserve: true });
   }
 }
 function watchCalendarDate() {

@@ -150,7 +150,7 @@ test("days: atomic moves, immutable receipts, recorded-workout protection and le
     v5.headers.set("X-Hibrido-Data-Version", "5");
     assert.equal((await api(v5)).status, 426);
     const modern = request();
-    modern.headers.set("X-Hibrido-Data-Version", "6");
+    modern.headers.set("X-Hibrido-Data-Version", "7");
     assert.equal((await api(modern)).status, 200);
   } finally {
     await db.close();

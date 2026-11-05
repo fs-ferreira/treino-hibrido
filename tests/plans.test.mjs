@@ -12,7 +12,7 @@ import { workouts } from "../lib/exercises.js";
 import { defaults, workoutFor, validateBackup } from "../lib/core.js";
 
 test("catálogo tem um plano ativo, os 23 exercícios e a divisão 3/3/1", () => {
-  assert.equal(trainingPlans.length, 1);
+  assert.equal(trainingPlans.length, 2);
   assert.equal(getActivePlan().id, "hibrido-3x3");
   assert.equal(getPlan("inexistente"), null);
   const week = planWeek(defaults().settings);
@@ -67,7 +67,7 @@ test("lista e detalhe consultam o plano sem criar sessões ou modificar configur
   data.settings.longMinutes = 60;
   data.settings.longDay = 6;
   assert.equal(JSON.stringify(data), original);
-  assert.equal(validateBackup(data).version, 6);
+  assert.equal(validateBackup(data).version, 7);
 });
 test("rotas distinguem lista e detalhe, preservam Treinos e tratam identificador desconhecido", () => {
   assert.deepEqual(sections, ["hoje", "treinos", "historico", "configuracoes"]);

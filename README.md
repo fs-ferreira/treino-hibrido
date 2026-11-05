@@ -34,7 +34,7 @@ Para conferir os candidatos sem apagar nada, execute `node scripts/cleanup-merge
 2. Em **Configurações → Semana**, escolha sábado ou domingo para o longão e a duração entre 60 e 90 minutos. Em **Progressão**, ajuste as sugestões de carga e ritmo. Cada categoria tem seu próprio salvamento.
 3. Em **Hoje**, navegue entre semanas e datas. Adicione treinos sem substituir os existentes; reorganize treinos sem registros para mover ou cancelar. Cancelamentos preservam o histórico e podem ser reativados. Uma data sem treinos fica em descanso. Cada treino tem seus próprios registros e conclusão. Na musculação, registre as séries e consulte **Como fazer** quando necessário.
 4. Depois da corrida, registre duração, distância, esforço e observações.
-5. Em Treinos, consulte o plano ativo e sua divisão em sete dias. Abra os dias para ver exercícios, guias e etapas das corridas. O catálogo é apenas para consulta; os resultados continuam sendo registrados nas sessões.
+5. Em Treinos, consulte os dois planos e sua divisão em sete dias. Abra os dias para ver exercícios, guias e etapas das corridas. Ative um plano agora ou agende uma mudança. Os resultados continuam sendo registrados nas sessões.
 6. Consulte Histórico, organizado por mês, e exporte periodicamente um backup em **Configurações → Dados**.
 
 O app reúne os 21 exercícios das imagens do post de @thalleshirakawa e dois exercícios adicionais de antebraço: rosca inversa após a rosca na polia no Upper e rosca de punho unilateral com halter após a Scott no Upper 2. São 23 exercícios, com 8/7/8 por sessão de musculação e 3 séries de 6–8 repetições; na rosca de punho, complete cada série nos dois braços e registre a carga por lado. A distribuição semanal é preservada. Variantes adotadas são indicadas nos guias. Ilustrações SVG são originais e esquemáticas; os vídeos externos mostram o movimento com mais detalhe.
@@ -72,7 +72,7 @@ A política inicial é uma **heurística do aplicativo**, não uma fórmula fisi
 
 Exemplo: 8:00/km com esforço 6 e teto 4 resulta em `480 × 1,05 = 504`, ou **8:24/km**. Com progressão, `480 × 1,025 = 492`, ou **8:12/km**. Arredondar apenas o pace final para segundos inteiros. Abrir telas ou semanas sem novos registros não acumula ajustes. Volume, recuperação e caminhada não aumentam automaticamente; no intervalado, somente os blocos fortes recebem a adaptação. Um ritmo forte que deixe de ser mais rápido que a recuperação fica sem estimativa até recalibrar os paces.
 
-Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 6 preservam essas informações, as referências cardíacas e vários treinos por data; versões 1–5 continuam importáveis.
+Os paces base e o vínculo com a corrida recente são preservados. Mudar a base leve reinicia as referências de leve, longão e intervalado; mudar somente a base forte reinicia a do intervalado. As sessões mantêm suas medições. Novas corridas salvam também uma cópia do planejamento; configurações ou histórico editados depois não alteram esse plano. Registros antigos sem cópia são identificados como simulação quando abertos. Backups versão 7 preservam essas informações, as referências cardíacas, vários treinos por data, o histórico dos planos e os registros de Cross e bônus; versões 1–6 continuam importáveis.
 
 Para usar apenas a musculação, é possível salvar Progressão sem preencher Corrida. Se começar a preencher um par de paces ou uma corrida recente, complete os respectivos campos antes de salvar essa categoria.
 
@@ -92,7 +92,7 @@ A [evolução do diário para v5](docs/formato-diario-v5.md) documenta cancelame
 
 ## Dados e backup
 
-Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O backup é versão 6, com importação das versões anteriores. Novas gravações usam `X-Hibrido-Data-Version: 6`; abas antigas devem ser recarregadas.
+Login Google obrigatório, restrito às contas autorizadas. O banco Neon é a fonte principal; cada alteração é enviada imediatamente e, em falhas de envio, fica pendente neste dispositivo. Uma sessão por conta: entrar em outro navegador invalida o anterior. Tokens não são armazenados no diário local. O backup é versão 7, com importação das versões anteriores. Novas gravações usam `X-Hibrido-Data-Version: 7`; abas antigas devem ser recarregadas.
 
 A [configuração de Google, Neon e Vercel](docs/autenticacao-e-neon.md) descreve credenciais, migrações, fallback, sessão única e ativação da hospedagem. As credenciais reais devem ser cadastradas nos serviços, nunca no repositório.
 
@@ -102,7 +102,7 @@ A [validação de progressão e painéis](docs/validacao-progressao.md) registra
 
 ## Treinos e navegação
 
-O catálogo estático contém um único plano, **Treino Híbrido — força e corrida**, ativo por definição. Lista em `#treinos`; detalhes em `#treinos/hibrido-3x3`. Dia e duração do longão refletem Configurações. Não há criação, edição, exclusão ou troca de plano; consultar o catálogo ou abrir um guia não cria sessões. O diário utiliza o formato 6; consultar o plano continua sem criar registros.
+O catálogo contém dois planos: **Treino Híbrido — força e corrida** (`#treinos/hibrido-3x3`) e **Treino Híbrido — força, corrida e Cross** (`#treinos/hibrido-cross`). Selecione um card e use **Ativar plano** para começar hoje ou em uma data futura. Uma única mudança pode ficar agendada; é possível alterar a data ou cancelá-la. A vigência é calculada pela data local e preserva as semanas anteriores. Consultar os planos ou abrir guias não cria sessões. Datas com programação salva, inclusive descanso explícito, têm prioridade e não são substituídas na troca.
 
 O menu tem quatro destinos: **Hoje, Treinos, Histórico e Configurações**. Semana foi incorporada a Hoje; `#semana` continua como atalho. A categoria Semana de Configurações foi preservada. `#hoje/AAAA-MM-DD/ID` identifica a data e o treino; recarga e histórico do navegador mantêm esse contexto. Tocar Hoje no menu volta à data atual.
 
@@ -172,3 +172,15 @@ Para revisão visual, execute `npm run preview:movements` e abra `http://127.0.0
 Hoje e Treinos priorizam duração, pace, velocidade em km/h e FC estimada. O intervalado mostra uma vez os alvos de forte e recuperação, com a indicação **Repetir 8 vezes**, sem lista expandida de ciclos. **Detalhes e ajuda** reúne distância, zonas, percentuais, ajuste de pace e orientação do relógio. Os cálculos e o formato de dados v6 permanecem iguais.
 
 A [validação da apresentação e do seletor](docs/validacao-corrida-configuracoes.md) registra testes, larguras, zoom real de 200% e limites da emulação móvel. Use `npm run test:ui` para a regressão no navegador e `npm run test:compat` para Firefox, WebKit e emulações Android/iOS (instale os navegadores com `npx playwright install firefox webkit chromium`, ou indique o executável do Chromium/Edge por `PLAYWRIGHT_CHROMIUM_EXECUTABLE`).
+
+## Segundo plano: força, corrida e Cross
+
+Segunda Upper, terça intervalado, quarta Lower, quinta Cross, sexta corrida regenerativa, sábado opcional e domingo descanso. Upper, Lower e Upper 2 usam os mesmos exercícios e progressão do primeiro plano. Regenerativa é a corrida leve de 30 minutos, com os mesmos paces, esforço, referência cardíaca e progressão; o nome fica ligado à origem da sessão mesmo após trocar de plano. O filtro do histórico reúne corrida leve e regenerativa.
+
+Cross segue a programação da aula. Registre minutos, esforço de 0 a 10 e observações opcionais (até 2.000 caracteres); não há WOD nem progressão automática. Rascunhos de Cross, assim como os de corrida, sobrevivem à navegação durante a visita, mas se perdem ao recarregar. A troca de plano é bloqueada se afetar um rascunho não salvo.
+
+No sábado, escolha Cross, Upper 2, longão ou descanso para aquela data. Sem escolha não há sessão. É possível trocar a opção antes de iniciar, sem rascunhos. O sábado é sempre bônus fora da meta regular: 5/5 mais bônus concluídos, sem pendência por não fazê-lo. Adição e remanejamento respeitam uma atividade por sábado; exceções já salvas são preservadas. O bônus mantém essa classificação se movido para outra data. Resultados alimentam o histórico e a progressão equivalente. Semanas de transição e programações anteriores usam os treinos efetivos.
+
+Configurações → Semana informa o plano vigente e o próximo agendado. O seletor do dia do longão continua valendo apenas para o primeiro plano; a duração de 60–90 minutos também serve ao longão opcional. O formato 7 usa os mesmos campos JSON do banco e os mesmos endpoints, sem tabelas novas. A importação aceita versões 1–6 e mantém o primeiro plano como padrão. Operações antigas pendentes preservam os metadados novos.
+
+Validação específica: `node --test tests/cross-plans.test.mjs tests/cross-plans-server.test.mjs` e `npx playwright test cross-plans-browser.spec.mjs`. A suíte de interface inclui os fluxos de ativação, Cross e sábado opcional em 390 e 1280 px.

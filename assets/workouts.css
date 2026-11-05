@@ -449,3 +449,22 @@
     min-width: 0;
   }
 }
+
+/* Cross is recorded independently of running and strength. */
+.hero.cross {
+  background: linear-gradient(125deg, #332a1d, #201c17 78%);
+}
+.tag.cross {
+  color: #f2c879;
+  border-color: #68532e;
+}
+.day.cross {
+  border-bottom-color: #f2c879;
+}
+.split-stat {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.status-optional {
+  color: var(--muted);
+}
