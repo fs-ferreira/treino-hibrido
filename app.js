@@ -30,7 +30,7 @@ import {
   durationText,
   isOptionalSaturday,
   chooseOptionalWorkout,
-} from "./lib/core.js?v=7.1.0";
+} from "./lib/core.js?v=7.1.1";
 import {
   getPlan,
   getActivePlan,

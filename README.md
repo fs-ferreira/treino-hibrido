@@ -190,3 +190,9 @@ Validação específica: `node --test tests/cross-plans.test.mjs tests/cross-pla
 Em Treinos, as etapas de corrida usam 14 px para títulos, pace e FC, 16 px para duração e 13 px para notas, definidos em rem. Hoje mantém o tamanho das métricas. A regra de séries aparece no resumo do plano e no cabeçalho da sessão, sem repetição nas listas; orientações específicas dos unilaterais permanecem. A ajuda da corrida tem no máximo três blocos e um único acesso a Fontes e método. Os controles de inspeção do laboratório de movimentos continuam disponíveis; o guia público usa somente Reproduzir/Pausar.
 
 O formato do backup continua sendo 7. Um campo opcional `planKey` por dia identifica a vigência sob a qual a programação foi editada. Dias antigos sem esse campo seguem compatíveis; o campo é preservado nas operações antigas pendentes. A troca de plano reavalia dias ainda sem registros a partir da data de vigência escolhida (hoje ou uma data futura), sem alterar dias anteriores à vigência. O calendário continua consistente quando esses dias se tornam passados. Dias com registros não são substituídos.
+
+### Correção de persistência do Cross — v7.1.1
+
+Após uma troca de plano, uma sessão nova recebe uma identificação própria da data e da vigência. A geração também verifica identificações já usadas em outras datas, inclusive por treinos remanejados. Isso evita reutilizar o identificador de uma corrida anterior e bloquear a conclusão do Cross por duplicidade. Sessões já salvas mantêm suas identificações e seus registros. A validação de duplicatas no diário e na API continua ativa.
+
+A regressão cobre o intervalado movido para quinta, a corrida de quinta concluída em outra data, a ativação do plano com Cross e a conclusão direta da nova sessão, incluindo resposta perdida, recarga e sincronização em segundo plano.

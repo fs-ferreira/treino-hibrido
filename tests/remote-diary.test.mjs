@@ -1,7 +1,14 @@
+import {
+  replannedCrossFixture,
+  CROSS_DATE,
+  HISTORY_DATE,
+} from "./helpers/replanned-cross-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
   defaults,
+  materializeDay,
+  completeWorkout,
   normalizeStoredDay,
   moveWorkout,
   preserveDayMetadata,
@@ -561,4 +568,32 @@ test("v6 pending settings and day operations preserve plan history, bonus and Cr
   assert.deepEqual(f.data.sessions["2026-11-07"], data.sessions["2026-11-07"]);
   assert.equal(f.entry, null);
   remote.stop();
+});
+
+test("replacement Cross completion remains done after unknown-commit retry, reload and background refresh", async () => {
+  const f = setup();
+  f.data = replannedCrossFixture();
+  const previous = f.data.sessions[HISTORY_DATE];
+  const remote = f.make(),
+    opened = await remote.open();
+  const item = materializeDay(opened.data, CROSS_DATE).workouts[0];
+  item.cross = { minutes: 45, rpe: 7, notes: "Treino concluído" };
+  completeWorkout(item);
+  f.broken = true;
+  assert.equal((await remote.save(opened.data)).saved, "local");
+  const id = f.entry.operations[0].id;
+  remote.stop();
+  f.broken = false;
+  const next = f.make(),
+    loaded = await next.open();
+  await next.save(loaded.data);
+  await next.check();
+  assert.equal(f.data.sessions[CROSS_DATE].workouts[0].done, true);
+  assert.equal(f.data.sessions[CROSS_DATE].workouts[0].cross.minutes, 45);
+  assert.deepEqual(f.data.sessions[HISTORY_DATE], previous);
+  assert.equal(f.entry, null);
+  assert.ok(f.attempts.every((attempt) => attempt === id));
+  const final = f.updates.at(-1);
+  assert.equal(final.sessions[CROSS_DATE].workouts[0].done, true);
+  next.stop();
 });

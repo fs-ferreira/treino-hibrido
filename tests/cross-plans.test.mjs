@@ -1,3 +1,8 @@
+import {
+  replannedCrossFixture,
+  CROSS_DATE,
+  HISTORY_DATE,
+} from "./helpers/replanned-cross-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -339,4 +344,46 @@ test("the new schedule does not revert when a previously unstarted date becomes 
   assert.equal(scheduledWorkouts(d, date)[0].type, "cross");
   t.mock.timers.setTime(new Date("2026-11-06T12:00:00").getTime());
   assert.equal(scheduledWorkouts(d, date)[0].type, "cross");
+});
+
+test("completed Cross survives a plan change when its old date ID belongs to a remapped completed run", () => {
+  const d = replannedCrossFixture(),
+    previous = structuredClone(d.sessions[HISTORY_DATE]);
+  const planned = scheduledWorkouts(d, CROSS_DATE)[0];
+  assert.equal(planned.type, "cross");
+  assert.notEqual(planned.id, previous.workouts[0].id);
+  assert.equal(scheduledWorkouts(d, CROSS_DATE)[0].id, planned.id);
+  const item = materializeDay(d, CROSS_DATE).workouts[0];
+  item.cross = { minutes: 45, rpe: 7, notes: "Cross concluído" };
+  completeWorkout(item);
+  const restored = validateBackup(JSON.parse(JSON.stringify(d)));
+  assert.equal(restored.sessions[CROSS_DATE].workouts[0].done, true);
+  assert.equal(restored.sessions[CROSS_DATE].workouts[0].cross.minutes, 45);
+  assert.deepEqual(restored.sessions[HISTORY_DATE], previous);
+});
+
+test("a virtual date never reuses a moved ID, even for the original or the same assignment", () => {
+  const d = defaults(),
+    date = CROSS_DATE,
+    to = "2026-11-06";
+  const original = scheduledWorkouts(d, date)[0].id;
+  moveWorkout(d, date, to, original);
+  delete d.sessions[date]; // Legacy import without the explicit source rest.
+  assert.notEqual(scheduledWorkouts(d, date)[0].id, original);
+  assert.equal(
+    scheduledWorkouts(d, date)[0].id,
+    scheduledWorkouts(d, date)[0].id,
+  );
+  d.settings = changePlan(d.settings, CROSS_PLAN_ID, date, date);
+  const cross = materializeDay(d, date).workouts[0];
+  const firstId = cross.id;
+  moveWorkout(d, date, to, firstId);
+  delete d.sessions[date].planKey; // An older queued day without assignment metadata.
+  const candidate = scheduledWorkouts(d, date)[0];
+  assert.notEqual(candidate.id, firstId);
+  assert.ok(candidate.id.length <= 100);
+  const replacement = materializeDay(d, date).workouts[0];
+  replacement.cross = { minutes: 30, rpe: 0, notes: "" };
+  completeWorkout(replacement);
+  assert.doesNotThrow(() => validateBackup(d));
 });

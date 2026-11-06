@@ -1,3 +1,8 @@
+import {
+  replannedCrossFixture,
+  CROSS_DATE,
+  HISTORY_DATE,
+} from "./helpers/replanned-cross-fixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -139,6 +144,75 @@ test("API persists dated plans and Cross, rejects Saturday conflicts and protect
       (await service.read(actor)).sessions["2026-11-07"].workouts[0].cross
         .minutes,
       50,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("API persists a completed replacement Cross without overwriting a completed workout moved from that date", async () => {
+  const db = new PGlite();
+  const query = async (sql, params) =>
+    params ? db.query(sql, params) : (await db.exec(sql)).at(-1);
+  const pool = { query, connect: async () => ({ query, release() {} }) };
+  try {
+    await migrate(pool);
+    await db.query(
+      'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$1,$2,true)',
+      ["remapped", "remapped@example.test"],
+    );
+    await db.query(
+      'INSERT INTO "session"(id,token,"expiresAt","userId") VALUES($1,$1,now()+interval \'1 day\',$2)',
+      ["remapped-session", "remapped"],
+    );
+    const actor = { userId: "remapped", sessionId: "remapped-session" },
+      service = createDiaryService({
+        pool,
+        config: {
+          origin: "http://localhost:4173",
+          emails: new Set(["remapped@example.test"]),
+        },
+      });
+    const generation = (await service.me(actor)).generation,
+      op = (value) => ({ generation, operationId: randomUUID(), value });
+    const before = replannedCrossFixture({ activate: false });
+    const moved = structuredClone(before.sessions);
+    const unstarted = moved[HISTORY_DATE].workouts[0];
+    unstarted.run = null;
+    unstarted.done = false;
+    unstarted.completedAt = null;
+    await service.save(actor, "/days", op(moved));
+    await service.save(
+      actor,
+      "/days",
+      op({ [HISTORY_DATE]: before.sessions[HISTORY_DATE] }),
+    );
+    const data = replannedCrossFixture();
+    await service.save(actor, "/settings", op(data.settings));
+    const cross = materializeDay(data, CROSS_DATE).workouts[0];
+    cross.cross = { minutes: 45, rpe: 7, notes: "Cross de hoje" };
+    completeWorkout(cross, "2026-11-05T18:00:00.000Z");
+    const operation = op({ [CROSS_DATE]: data.sessions[CROSS_DATE] }),
+      payload = JSON.stringify(operation);
+    const receipt = await service.save(actor, "/days", operation);
+    assert.deepEqual(await service.save(actor, "/days", operation), receipt);
+    assert.equal(JSON.stringify(operation), payload);
+    const saved = await service.read(actor);
+    assert.equal(saved.sessions[CROSS_DATE].workouts[0].done, true);
+    assert.equal(saved.sessions[CROSS_DATE].workouts[0].cross.minutes, 45);
+    assert.deepEqual(
+      saved.sessions[HISTORY_DATE],
+      before.sessions[HISTORY_DATE],
+    );
+    const bad = structuredClone(data.sessions[CROSS_DATE]);
+    bad.workouts[0].id = before.sessions[HISTORY_DATE].workouts[0].id;
+    await assert.rejects(
+      service.save(actor, "/days", op({ [CROSS_DATE]: bad })),
+      (e) => e.status === 422,
+    );
+    assert.equal(
+      (await service.read(actor)).sessions[CROSS_DATE].workouts[0].done,
+      true,
     );
   } finally {
     await db.close();

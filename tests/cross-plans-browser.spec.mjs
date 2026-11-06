@@ -1,3 +1,8 @@
+import {
+  replannedCrossFixture,
+  CROSS_DATE,
+  HISTORY_DATE,
+} from "./helpers/replanned-cross-fixture.mjs";
 import { test, expect } from "@playwright/test";
 import { defaults, materializeDay } from "../lib/core.js";
 import { CROSS_PLAN_ID } from "../lib/plans.js";
@@ -260,4 +265,37 @@ test("activating now replaces today's untouched interval and preserves days with
   expect(cloud.data.sessions["2026-11-04"]).toEqual(saved);
   await page.reload();
   await expect(page.locator(".hero h2")).toContainText("Cross");
+});
+
+test("Cross after swapped dates persists its conclusion through background sync and reload", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const initial = replannedCrossFixture(),
+    previous = structuredClone(initial.sessions[HISTORY_DATE]);
+  const cloud = await open(page, 390, initial, "hoje/" + CROSS_DATE);
+  await expect(page.locator(".hero h2")).toContainText("Cross");
+  await page.locator('#cross-form [name="minutes"]').fill("45");
+  await choose(page.locator('#cross-form [name="rpe"]'), "7");
+  await page.locator('#cross-form [name="notes"]').fill("Aula concluída");
+  await page.locator('#cross-form [type="submit"]').click();
+  await expect
+    .poll(() => cloud.data.sessions[CROSS_DATE].workouts[0].done)
+    .toBe(true);
+  await expect(page.locator(".hero .session-state")).toContainText("Concluído");
+  await expect(
+    page.locator("#cross-form [data-run-draft-warning]"),
+  ).toBeHidden();
+  const refreshed = page.waitForResponse(
+    (r) => r.url().endsWith("/api/diary") && r.request().method() === "GET",
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await (await refreshed).finished();
+  await expect(page.locator(".hero .session-state")).toContainText("Concluído");
+  await page.reload();
+  await expect(page.locator(".hero .session-state")).toContainText("Concluído");
+  await expect(page.locator('#cross-form [name="minutes"]')).toHaveValue("45");
+  expect(cloud.data.sessions[HISTORY_DATE]).toEqual(previous);
+  expect(errors).toEqual([]);
 });
