@@ -224,7 +224,7 @@ test("settings selects retain drafts across screens and save through the origina
 }) => {
   const cloud = await open(page, "configuracoes/semana");
   await choose(page.locator("#setting-longDay"), "0");
-  await choose(page.locator("#setting-longMinutes"), "75");
+  await page.locator("#setting-longMinutes").fill("75");
   await page.evaluate(() => {
     location.hash = "historico";
   });
@@ -233,9 +233,7 @@ test("settings selects retain drafts across screens and save through the origina
     location.hash = "configuracoes/semana";
   });
   await expect(page.locator("#setting-longDay-trigger")).toHaveText(/Domingo/);
-  await expect(page.locator("#setting-longMinutes-trigger")).toHaveText(
-    /75 minutos/,
-  );
+  await expect(page.locator("#setting-longMinutes")).toHaveValue("75");
   await page.locator('#settings-panel-semana [type="submit"]').click();
   await expect.poll(() => cloud.data.settings.longDay).toBe(0);
   await expect.poll(() => cloud.data.settings.longMinutes).toBe(75);

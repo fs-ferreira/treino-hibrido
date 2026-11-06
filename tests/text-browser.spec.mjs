@@ -170,9 +170,7 @@ for (const date of ["2026-10-27", "2026-10-29", "2026-10-31"])
         el.value = "75";
         el.dispatchEvent(new Event("input", { bubbles: true }));
       });
-      await expect(page.locator(".long-options label strong")).toHaveText(
-        "75 min",
-      );
+      await expect(page.locator("#long-minutes")).toHaveValue("75");
       await expect(page.locator(".run-overview strong").first()).toContainText(
         "75",
       );

@@ -178,7 +178,7 @@ test("Cross validates its own result and stable conclusion, without fabricated r
   assert.deepEqual(validateBackup(d), d);
   const html = historyView(d, historyDefaults());
   assert.match(html, /CROSS/);
-  assert.match(html, /50,5/);
+  assert.match(html, /50 min 30 s/);
   assert.match(html, /&lt;aula&gt;/);
   assert.doesNotMatch(html, /Consultar séries registradas/);
   for (const patch of [
