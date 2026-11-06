@@ -1,3 +1,12 @@
+import {
+  durationField,
+  durationParts,
+  durationValueForSave,
+  readDuration,
+  readDurationField,
+  syncDurationField,
+  syncDurationFields,
+} from "./lib/duration-field.js";
 import { watchHeartRateHelp } from "./lib/heart-rate.js";
 import { account } from "./lib/account.js";
 import { notify } from "./lib/notifications.js";
@@ -26,8 +35,6 @@ import {
   validateBackup,
   previousSets,
   maskTime,
-  parseDuration,
-  durationText,
   isOptionalSaturday,
   chooseOptionalWorkout,
 } from "./lib/core.js?v=7.1.1";
@@ -285,7 +292,7 @@ function draftKey(date = selected, id = currentSession(date)?.id) {
 }
 function runValues(run) {
   return {
-    minutes: String(run?.minutes ?? ""),
+    ...durationParts(run?.minutes == null ? null : run.minutes * 60),
     km: String(run?.km ?? ""),
     rpe: String(run?.rpe ?? ""),
     notes: run?.notes ?? "",
@@ -573,8 +580,6 @@ function syncLongRun() {
     selected,
     selectedWorkout,
   );
-  $(".long-options label strong").textContent =
-    `${data.settings.longMinutes} min`;
   $(".hero-stats b").textContent = data.settings.longMinutes;
   $(".run-overview strong").textContent = `${total.minutes} min`;
   $("#session .run-blocks").innerHTML = runBlocksView(blocks);
@@ -676,6 +681,7 @@ function render({ preserve = false, preserveHistoryCard = false } = {}) {
   if (route.section !== "historico") $("#history-status").textContent = "";
   hydrateIcons();
   muscleMaps.refresh();
+  syncDurationFields(main);
   if (route.section === "configuracoes")
     settingsUi.mount($("#settings-page"), route.settingsSection);
   fieldControls.refresh(main);
@@ -831,10 +837,10 @@ function runView(type) {
     ${r && !plan.saved ? '<p class="notice subtle">Este registro antigo não guardava o planejamento original. O plano abaixo é uma simulação com as referências atuais.</p>' : ""}
     ${paceAdvice(plan, type)}
     ${heartRateNotice(snapshot.heartRate, Boolean(r && !snapshot.heartRate))}
-    ${isLong ? `<div class="panel long-options"><label for="long-minutes">Duração padrão do longão <strong>${snapshot.longMinutes} min</strong></label><input id="long-minutes" type="range" min="60" max="90" step="5" value="${snapshot.longMinutes}" ${plan.saved ? "disabled" : ""}><div class="range-labels"><span>60 min</span><span>90 min</span></div><p class="caption"><span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Padrão dos próximos longões. A duração não aumenta automaticamente."}</span></p></div>` : ""}
+    ${isLong ? `<div class="panel long-options">${durationField({ id: "long-minutes", name: "longMinutes", label: "Duração padrão do longão", value: snapshot.longMinutes * 60, precision: "minutes", required: true, min: 3600, max: 5400, step: 300, disabled: plan.saved })}<p class="caption"><span data-long-caption>${plan.saved ? "Duração preservada no planejamento registrado." : "Padrão dos próximos longões. A duração não aumenta automaticamente."}</span></p></div>` : ""}
     <div class="timeline" aria-hidden="true">${blocks.map((b) => `<span class="${b.kind}" style="flex:${b.minutes}"></span>`).join("")}</div><div class="run-blocks">${runBlocksView(blocks)}</div>${runDetailsView(blocks, snapshot.heartRate, type, plan)}</div>
     <aside>
-    <form id="run-form" class="panel run-form"><h3>Como foi a corrida?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" inputmode="decimal" required value="${escape(v.minutes ?? "")}" placeholder="Ex.: 30"></label><label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${escape(v.km ?? "")}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${Number(v.minutes) > 0 && Number(v.km) > 0 ? paceText((Number(v.minutes) * 60) / Number(v.km)) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label>
+    <form id="run-form" class="panel run-form"><h3>Como foi a corrida?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p>${durationField({ id: "run-duration", parts: v, required: true })}<label>Distância realizada (km)<input name="km" type="number" min="0.001" max="1000" step="0.001" inputmode="decimal" required value="${escape(v.km ?? "")}" placeholder="Ex.: 5"></label><div class="actual-pace">Pace realizado <strong id="actual-pace">${readDuration(v).seconds && Number(v.km) >= 0.001 && Number(v.km) <= 1000 ? paceText(readDuration(v).seconds / Number(v.km)) : "—"} /km</strong></div><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label>
     ${type === "interval" ? `<fieldset class="hard-run-fields"><legend>Blocos fortes <span class="optional">opcional</span></legend><p class="caption" id="hard-run-hint">Preencha os dois campos para ajustar o próximo intervalado. Não use a média da sessão inteira.</p><label>Pace médio dos blocos fortes<input name="hardPace" data-mask="pace" inputmode="numeric" maxlength="5" pattern="[0-9]{1,2}:[0-5][0-9]" value="${escape(v.hardPace ?? "")}" placeholder="mm:ss" aria-describedby="hard-run-hint"></label><label>Esforço dos blocos fortes (0–10)<select name="hardRpe">${effortOptions(v.hardRpe === "" ? null : Number(v.hardRpe))}</select></label></fieldset>` : ""}
     <label>Observações <span class="optional">opcional</span><textarea name="notes" maxlength="2000" rows="3" placeholder="Sensações, percurso, clima…">${escape(v.notes ?? "")}</textarea></label><p id="run-error" class="form-error" role="alert"></p><button class="button primary run-primary" type="submit">${r ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button></form></aside></div>`;
 }
@@ -1005,7 +1011,7 @@ function sources() {
 }
 function crossValues(cross) {
   return {
-    minutes: String(cross?.minutes ?? ""),
+    ...durationParts(cross?.minutes == null ? null : cross.minutes * 60),
     rpe: String(cross?.rpe ?? ""),
     notes: cross?.notes ?? "",
   };
@@ -1013,7 +1019,7 @@ function crossValues(cross) {
 function crossView() {
   const item = currentSession(),
     v = runDrafts.get(draftKey()) ?? crossValues(item?.cross);
-  return `<div class="section-title"><h2>Sua sessão de Cross</h2></div><form id="cross-form" class="panel run-form"><h3>Como foi a aula?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p><label>Duração realizada (min)<input name="minutes" type="number" min="0.01" max="1440" step="0.01" required value="${escape(v.minutes)}"></label><label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label><label>Observações (opcional)<textarea name="notes" maxlength="2000">${escape(v.notes)}</textarea></label><p class="form-error" data-cross-error role="alert"></p><button type="submit" class="button primary">${item?.done ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button>${item?.done ? '<button type="button" class="button quiet" data-action="reopen-cross">Reabrir sessão</button>' : ""}</form>`;
+  return `<div class="section-title"><h2>Sua sessão de Cross</h2></div><form id="cross-form" class="panel run-form"><h3>Como foi a aula?</h3><p class="run-draft-notice caption" data-run-draft-warning ${runDrafts.has(draftKey()) ? "" : "hidden"}>Rascunho nesta visita. Alterações não salvas se perdem ao recarregar.</p>${durationField({ id: "cross-duration", parts: v, required: true })}<label>Esforço percebido da sessão (0–10)<select name="rpe" required>${effortOptions(v.rpe === "" ? null : Number(v.rpe))}</select></label><label>Observações (opcional)<textarea name="notes" maxlength="2000">${escape(v.notes)}</textarea></label><p class="form-error" data-cross-error role="alert"></p><button type="submit" class="button primary">${item?.done ? "Salvar alterações" : "Salvar e concluir"} ${icon("check")}</button>${item?.done ? '<button type="button" class="button quiet" data-action="reopen-cross">Reabrir sessão</button>' : ""}</form>`;
 }
 function optionalWorkoutDialog() {
   const items = scheduledWorkouts(data, selected),
@@ -1565,16 +1571,17 @@ document.addEventListener("input", (event) => {
   if (account.blocked) return;
   const input = event.target;
   if (input.closest("[data-settings-form]")) return;
+  const duration = input.closest("[data-duration-field]");
+  if (duration) syncDurationField(duration);
   if (input.id === "long-minutes" && !input.disabled) {
-    data.settings.longMinutes = Number(input.value);
+    const result = syncDurationField(duration, { showErrors: true });
+    if (result.error) return;
+    data.settings.longMinutes = result.seconds / 60;
     persist();
     syncLongRun();
     return;
   }
-  if (input.dataset.mask)
-    applyTimeMask(input, (value) =>
-      maskTime(value, input.dataset.mask === "duration" ? 6 : 4),
-    );
+  if (input.dataset.mask) applyTimeMask(input, (value) => maskTime(value));
   if (
     input.dataset.field &&
     input.dataset.field !== "done" &&
@@ -1605,10 +1612,12 @@ document.addEventListener("input", (event) => {
     captureRunDraft();
     syncTodayStatus();
     const form = $("#run-form"),
-      m = Number(form.elements.minutes.value),
+      seconds = readDurationField(
+        form.querySelector("[data-duration-field]"),
+      ).seconds,
       km = Number(form.elements.km.value);
     $("#actual-pace").textContent =
-      `${m > 0 && km > 0 ? paceText((m * 60) / km) : "—"} /km`;
+      `${seconds && form.elements.km.checkValidity() && km >= 0.001 && km <= 1000 ? paceText(seconds / km) : "—"} /km`;
   }
 });
 document.addEventListener("submit", (event) => {
@@ -1620,6 +1629,7 @@ document.addEventListener("submit", (event) => {
   const form = event.target,
     values = Object.fromEntries(new FormData(form));
   if (form.matches("[data-settings-form]")) return;
+  syncDurationFields(form, { showErrors: true });
   if (!form.reportValidity()) return;
   if (form.getAttribute("aria-busy") === "true") return;
   if (form.id === "activate-plan-form" || form.id === "cancel-plan-form") {
@@ -1662,7 +1672,11 @@ document.addEventListener("submit", (event) => {
       key = draftKey(),
       submitted = JSON.stringify(runDrafts.get(key));
     s.cross = {
-      minutes: Number(values.minutes),
+      minutes: durationValueForSave(
+        readDurationField(form.querySelector("[data-duration-field]")).seconds,
+        s.cross?.minutes,
+        60,
+      ),
       rpe: Number(values.rpe),
       notes: values.notes.trim(),
     };
@@ -1760,7 +1774,11 @@ document.addEventListener("submit", (event) => {
           ).snapshot
         : null);
     s.run = {
-      minutes: Number(values.minutes),
+      minutes: durationValueForSave(
+        readDurationField(form.querySelector("[data-duration-field]")).seconds,
+        previous?.minutes,
+        60,
+      ),
       km: Number(values.km),
       rpe: Number(values.rpe),
       notes: values.notes.trim(),
@@ -1772,8 +1790,11 @@ document.addEventListener("submit", (event) => {
     };
     $("#run-error").textContent = "";
     if (plan) {
-      const slider = $("#long-minutes");
-      if (slider) slider.disabled = true;
+      const plannedDuration = $("#long-minutes");
+      if (plannedDuration) {
+        plannedDuration.disabled = true;
+        plannedDuration.closest("[data-duration-field]").disabled = true;
+      }
       $(".pace-advice .eyebrow").textContent = "Plano registrado";
       const savedPlan = getRunPlan(
         s.type,
@@ -1847,15 +1868,14 @@ $("#guide-dialog").addEventListener("click", (event) => {
       dialogs.close();
   }
 });
-document.addEventListener("focusout", (event) => {
-  if (
-    !event.target.closest("[data-settings-form]") &&
-    event.target.dataset.mask === "duration"
-  ) {
-    const seconds = parseDuration(event.target.value);
-    if (seconds) event.target.value = durationText(seconds);
-  }
-});
+document.addEventListener(
+  "invalid",
+  (event) => {
+    const field = event.target.closest("[data-duration-field]");
+    if (field) syncDurationField(field, { showErrors: true });
+  },
+  true,
+);
 account.update = (next, force = false) => {
   if (account.blocked) return;
   const stable = (value) =>

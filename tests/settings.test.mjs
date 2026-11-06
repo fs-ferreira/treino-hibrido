@@ -111,12 +111,13 @@ test("corrida valida paces, pares, ordem dos ritmos e referência recente sem in
     check({ ...raw, easyPace: "0:00", hardPace: "5:00" }).errors.easyPace,
   );
   assert.ok(check({ ...raw, walkPace: "10:99" }).errors.walkPace);
-  assert.ok(check({ ...raw, recentKm: "8" }).errors.recentTime);
+  assert.ok(check({ ...raw, recentKm: "8" }).errors.recentMinutes);
   assert.ok(
     check({
       ...raw,
       recentKm: "8",
-      recentTime: "00:48:00",
+      recentMinutes: "48",
+      recentSeconds: "0",
       recentDate: "2026-10-24",
     }).errors.recentDate,
   );
@@ -124,7 +125,8 @@ test("corrida valida paces, pares, ordem dos ritmos e referência recente sem in
     check({
       ...raw,
       recentKm: "0",
-      recentTime: "00:48:00",
+      recentMinutes: "48",
+      recentSeconds: "0",
       recentDate: "2026-10-20",
     }).errors.recentKm,
   );
@@ -139,7 +141,8 @@ test("corrida vinculada preserva o pace forte manual e reinicia somente as refer
     raw = {
       ...settingsDraft("corrida", s),
       recentKm: "8",
-      recentTime: "00:48:00",
+      recentMinutes: "48",
+      recentSeconds: "0",
       recentDate: "2026-10-20",
       useRecentPace: true,
     };
@@ -166,7 +169,8 @@ test("edições parciais ficam apenas na página atual e não sobrevivem a uma n
   const raw = {
     ...settingsDraft("corrida", saved),
     easyPace: "6:",
-    recentTime: "00:4",
+    recentMinutes: "4.",
+    recentSeconds: "",
   };
   edits.capture("corrida", raw, saved);
   assert.deepEqual(edits.get("corrida", saved), raw);
@@ -272,6 +276,9 @@ function controllerFixture(commit = () => true) {
       doc.activeElement = this;
     },
     scrollIntoView() {},
+    querySelectorAll() {
+      return [];
+    },
     ...extra,
   });
   const tabs = Object.fromEntries(

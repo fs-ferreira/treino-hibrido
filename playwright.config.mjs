@@ -5,6 +5,7 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: [
     "cross-plans-browser.spec.mjs",
+    "duration-browser.spec.mjs",
     "workout-lifecycle-browser.spec.mjs",
     "movement-browser.spec.mjs",
     "exercise-card-browser.spec.mjs",

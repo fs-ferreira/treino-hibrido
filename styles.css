@@ -105,7 +105,7 @@ nav a .icon {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 16px;
 }
-.recent-run-fields label:last-child {
+.recent-run-fields > label:last-child {
   grid-column: 1 / -1;
 }
 .recent-run-fields > label {
@@ -1312,6 +1312,48 @@ footer .text-button {
   font-size: 21px;
   margin-bottom: 24px;
 }
+.duration-field {
+  border: 0;
+  padding: 0;
+  margin: 0 0 20px;
+  min-inline-size: 0;
+  color: #d5d9df;
+}
+.duration-field legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.duration-parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.duration-field[data-precision="minutes"] .duration-parts {
+  grid-template-columns: minmax(0, 1fr);
+}
+.duration-parts label {
+  min-width: 0;
+  margin-bottom: 0;
+}
+.duration-parts input {
+  min-width: 0;
+  box-sizing: border-box;
+}
+.duration-field > .field-error {
+  display: block;
+  margin-top: 8px;
+}
+.duration-field > .field-error[hidden] {
+  display: none;
+}
+.duration-field:disabled {
+  opacity: 0.65;
+}
+.duration-hint {
+  margin-top: 8px;
+}
 label {
   display: block;
   font-size: 12px;
@@ -1384,7 +1426,7 @@ label small {
   padding: 20px;
   margin-top: 16px;
 }
-.long-options label {
+.long-options > label {
   display: flex;
   justify-content: space-between;
   margin: 0 0 14px;
